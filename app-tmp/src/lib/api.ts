@@ -1,26 +1,30 @@
 "use client";
 
+const DEFAULT_PROD_API_URL = "https://api.thermocontrol.medicalthermo.com";
+
 export function getApiBaseUrl(): string {
-  const envUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (envUrl && envUrl !== "http://localhost:3001" && envUrl !== "http://127.0.0.1:3001") {
-    return envUrl;
-  }
   if (typeof window !== "undefined") {
-    // Quando executado no navegador fora de localhost puro (ex: produção, IP local, domínio real):
-    // Usamos string vazia para requisições relativas ("/api/..."), de modo que o próprio
-    // servidor Next.js faça o proxy transparente via rewrites para a API local (porta 3001).
-    // Isso elimina erros de conexão com localhost:3001 na máquina do cliente, Mixed Content e CORS.
-    if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
-      return "";
+    // Desenvolvimento local em localhost
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      return process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
     }
-    return "http://localhost:3001";
+    // Domínio oficial de produção da MedicalThermo
+    if (window.location.hostname.includes("thermocontrol.medicalthermo.com")) {
+      return DEFAULT_PROD_API_URL;
+    }
+    if (process.env.NEXT_PUBLIC_API_URL && !process.env.NEXT_PUBLIC_API_URL.includes("localhost")) {
+      return process.env.NEXT_PUBLIC_API_URL;
+    }
+    return DEFAULT_PROD_API_URL;
   }
-  return process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3001";
+  return process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || DEFAULT_PROD_API_URL;
 }
 
-export const API_URL = typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
-  ? ""
-  : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001");
+export const API_URL = typeof window !== "undefined"
+  ? (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+      ? (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001")
+      : DEFAULT_PROD_API_URL)
+  : (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || DEFAULT_PROD_API_URL);
 
 export function buildApiUrl(path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) return path;

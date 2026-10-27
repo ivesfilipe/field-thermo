@@ -1,8 +1,11 @@
 import type { NextConfig } from "next";
 
-const internalApiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3001";
+const internalApiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "https://api.thermocontrol.medicalthermo.com";
 
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_API_URL: internalApiUrl
+  },
   async rewrites() {
     return [
       {

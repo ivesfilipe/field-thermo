@@ -20,6 +20,9 @@ jobs:
 
       - name: Build do Next.js (produção)
         working-directory: ./app-tmp
+        env:
+          NEXT_PUBLIC_API_URL: https://api.thermocontrol.medicalthermo.com
+          INTERNAL_API_URL: https://api.thermocontrol.medicalthermo.com
         run: npm run build
 
       - name: Sincronizar source da API com servidor
