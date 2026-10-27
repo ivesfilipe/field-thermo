@@ -1,19 +1,30 @@
 import type { NextConfig } from "next";
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-const apiOrigin = new URL(apiUrl);
+const internalApiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3001";
 
 const nextConfig: NextConfig = {
-  env: {
-    NEXT_PUBLIC_API_URL: apiUrl
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${internalApiUrl}/api/:path*`
+      },
+      {
+        source: "/uploads/:path*",
+        destination: `${internalApiUrl}/uploads/:path*`
+      }
+    ];
   },
   images: {
-    dangerouslyAllowLocalIP: apiOrigin.hostname === "localhost" || apiOrigin.hostname === "127.0.0.1",
+    dangerouslyAllowLocalIP: true,
     remotePatterns: [
       {
-        protocol: apiOrigin.protocol.replace(":", "") as "http" | "https",
-        hostname: apiOrigin.hostname,
-        ...(apiOrigin.port ? { port: apiOrigin.port } : {})
+        protocol: "http",
+        hostname: "**"
+      },
+      {
+        protocol: "https",
+        hostname: "**"
       }
     ]
   },
@@ -23,3 +34,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+

@@ -23,6 +23,7 @@ export default function LoginPage() {
       await login(email, senha);
       router.push("/app");
     } catch (err) {
+      console.error("Erro no login:", err);
       setErro(err instanceof ApiError ? err.message : "Erro ao conectar com a API. Verifique se o servidor está rodando.");
     } finally {
       setCarregando(false);

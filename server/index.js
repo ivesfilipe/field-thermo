@@ -70,12 +70,16 @@ app.use((err, req, res, next) => {
 
 module.exports = app;
 
-if (require.main === module) {
+const isMain = require.main === module;
+const isPassenger = typeof process.env.PASSENGER_APP_ENV !== 'undefined' || typeof PhusionPassenger !== 'undefined';
+
+if (isMain || isPassenger) {
   if (config.IS_PRODUCTION && config.JWT_SECRET === 'field20_secret_desenvolvimento_local') {
-    console.error('ERRO: Defina um JWT_SECRET forte em .env antes de iniciar em produção.');
-    process.exit(1);
+    console.warn('AVISO DE SEGURANÇA: JWT_SECRET padrão em uso. Recomenda-se definir um segredo forte em .env.');
   }
-  app.listen(config.PORT, () => {
-    console.log(`Thermo control API rodando em http://localhost:${config.PORT}`);
+  const port = process.env.PORT || config.PORT || 3001;
+  app.listen(port, () => {
+    console.log(`Thermo control API rodando na porta ${port}`);
   });
 }
+

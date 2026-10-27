@@ -1,6 +1,33 @@
 "use client";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+export function getApiBaseUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl && envUrl !== "http://localhost:3001" && envUrl !== "http://127.0.0.1:3001") {
+    return envUrl;
+  }
+  if (typeof window !== "undefined") {
+    // Quando executado no navegador fora de localhost puro (ex: produção, IP local, domínio real):
+    // Usamos string vazia para requisições relativas ("/api/..."), de modo que o próprio
+    // servidor Next.js faça o proxy transparente via rewrites para a API local (porta 3001).
+    // Isso elimina erros de conexão com localhost:3001 na máquina do cliente, Mixed Content e CORS.
+    if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+      return "";
+    }
+    return "http://localhost:3001";
+  }
+  return process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3001";
+}
+
+export const API_URL = typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
+  ? ""
+  : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001");
+
+export function buildApiUrl(path: string): string {
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  const base = getApiBaseUrl();
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${cleanPath}`;
+}
 
 export class ApiError extends Error {
   status: number;
@@ -24,7 +51,8 @@ export function setToken(token: string | null) {
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const token = getToken();
   const exigeCorpo = method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE";
-  const res = await fetch(`${API_URL}${path}`, {
+  const url = buildApiUrl(path);
+  const res = await fetch(url, {
     method,
     headers: {
       "Content-Type": "application/json",
@@ -44,7 +72,8 @@ export async function uploadRequest<T>(path: string, field: string, file: File):
   const token = getToken();
   const fd = new FormData();
   fd.append(field, file);
-  const res = await fetch(`${API_URL}${path}`, {
+  const url = buildApiUrl(path);
+  const res = await fetch(url, {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: fd
@@ -58,7 +87,8 @@ export async function uploadRequest<T>(path: string, field: string, file: File):
 
 export async function uploadFormRequest<T>(path: string, fd: FormData): Promise<T> {
   const token = getToken();
-  const res = await fetch(`${API_URL}${path}`, {
+  const url = buildApiUrl(path);
+  const res = await fetch(url, {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: fd
@@ -81,7 +111,9 @@ export const api = {
 };
 
 export function mediaUrl(rel: string): string {
-  return `${API_URL}${rel}`;
+  if (!rel) return "";
+  if (rel.startsWith("http://") || rel.startsWith("https://") || rel.startsWith("data:")) return rel;
+  return buildApiUrl(rel);
 }
 
 export function wazeUrl(endereco: string): string {
