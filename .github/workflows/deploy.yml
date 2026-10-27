@@ -11,10 +11,18 @@ jobs:
       - name: Baixar código do GitHub
         uses: actions/checkout@v4
 
-      - name: Instalar sshpass
+      - name: Instalar sshpass e rsync
         run: sudo apt-get update -y && sudo apt-get install -y sshpass rsync
 
-      - name: Sincronizar arquivos com servidor
+      - name: Instalar dependências do frontend (Next.js)
+        working-directory: ./app-tmp
+        run: npm ci
+
+      - name: Build do Next.js (produção)
+        working-directory: ./app-tmp
+        run: npm run build
+
+      - name: Sincronizar source da API com servidor
         run: |
           rsync -avz -e "sshpass -p '${{ secrets.SSH_PASSWORD }}' ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no" \
             --exclude='node_modules' \
@@ -28,6 +36,12 @@ jobs:
             --exclude='.DS_Store' \
             ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/medicalthermo/field-thermo/
 
-      - name: Reiniciar aplicação no servidor
+      - name: Sincronizar build do Next.js (.next) com servidor
         run: |
-          sshpass -p '${{ secrets.SSH_PASSWORD }}' ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "touch /home/medicalthermo/field-thermo/tmp/restart.txt"
+          rsync -avz -e "sshpass -p '${{ secrets.SSH_PASSWORD }}' ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no" \
+            --delete \
+            ./app-tmp/.next/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/medicalthermo/field-thermo-web/.next/
+
+      - name: Reiniciar aplicações no servidor
+        run: |
+          sshpass -p '${{ secrets.SSH_PASSWORD }}' ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "touch /home/medicalthermo/field-thermo/tmp/restart.txt && touch /home/medicalthermo/field-thermo-web/tmp/restart.txt"
