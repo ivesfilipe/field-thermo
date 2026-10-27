@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { api, mediaUrl } from "@/lib/api";
+import { api, mediaUrl, API_URL, getToken } from "@/lib/api";
 import { Alerta, Badge, Botao, Campo, Card, LinksMapa, Modal, PageHeader, Prioridade, Select, Textarea } from "@/components/ui";
 import { getModelo, camposPreenchidos, valorRotulo } from "@/lib/modelos";
 
@@ -254,6 +254,24 @@ export default function OsDetalhePage() {
     return `mailto:${os.cliente_email}?subject=${assunto}&body=${corpo}`;
   }
 
+  async function baixarPdf() {
+    if (!os?.relatorio) return;
+    setErro("");
+    try {
+      const res = await fetch(`${API_URL}/api/comercial/relatorios/${os.relatorio.id}/pdf`, {
+        headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {}
+      });
+      if (!res.ok) {
+        throw new Error("Não foi possível gerar o PDF do relatório");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (err) {
+      setErro((err as Error).message);
+    }
+  }
+
   const carregar = useCallback(() => {
     api.get<{ os: OS }>(`/api/gestor/os/${id}`).then((r) => setOs(r.os)).catch((e) => setErro(e.message));
     api.get<{ atividades: Atividade[] }>(`/api/gestor/atividades?os_id=${id}`).then((r) => setAtividades(r.atividades)).catch(() => setAtividades([]));
@@ -380,6 +398,9 @@ export default function OsDetalhePage() {
             )}
             {(os.status === "pendente" || os.status === "em_andamento") && (
               <Botao variante="perigo" onClick={cancelar}>Cancelar OS</Botao>
+            )}
+            {os.relatorio && os.relatorio.status === "aprovado" && (
+              <Botao variante="secundario" onClick={baixarPdf}>Baixar Relatório (PDF)</Botao>
             )}
             {["concluida", "cancelada"].includes(os.status) && (
               <Botao variante="secundario" onClick={() => {
@@ -691,7 +712,19 @@ export default function OsDetalhePage() {
       )}
 
       {os.relatorio && (
-        <Card title="Relatório técnico" acao={os.relatorio.conteudo ? <Botao variante="secundario" onClick={() => setMostrarRelatorio(true)}>Visualizar relatório completo</Botao> : undefined}>
+        <Card
+          title="Relatório técnico"
+          acao={
+            <div className="flex gap-2">
+              {os.relatorio.status === "aprovado" && (
+                <Botao variante="secundario" onClick={baixarPdf}>Baixar PDF</Botao>
+              )}
+              {Boolean(os.relatorio.conteudo) && (
+                <Botao variante="secundario" onClick={() => setMostrarRelatorio(true)}>Visualizar relatório completo</Botao>
+              )}
+            </div>
+          }
+        >
           <div className="flex flex-wrap items-center gap-3 text-sm">
             <Badge status={os.relatorio.status} />
             <span className="text-zinc-500">Validado em {os.relatorio.data_validacao?.slice(0, 16) || "-"}</span>

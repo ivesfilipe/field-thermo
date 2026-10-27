@@ -4,6 +4,7 @@ const path = require('path');
 const db = require('../../db');
 const { authenticate, requireRole } = require('../../middleware/auth');
 const { TIPOS_NECESSIDADE } = require('../../constantes');
+const config = require('../../config');
 
 const router = express.Router();
 
@@ -14,20 +15,24 @@ const RELATORIO_DETALHE = `
     r.enviado_comercial, r.enviado_comercial_em,
     r.aberto_por, r.aberto_em,
     o.id AS os_id, o.numero AS os_numero, o.servico AS os_servico, o.descricao AS os_descricao,
-    o.prioridade AS os_prioridade, o.data_agendada, o.responsavel_local,
-    c.nome AS cliente_nome, c.email AS cliente_email, c.telefone AS cliente_telefone,
-    l.nome AS local_nome, l.endereco AS local_endereco, l.responsavel_nome AS local_responsavel,
-    l.responsavel_telefone AS local_responsavel_telefone,
+    o.prioridade AS os_prioridade, o.data_agendada, o.hora_inicio, o.hora_fim, o.responsavel_local,
+    o.tipo_atendimento,
+    c.nome AS cliente_nome, c.email AS cliente_email, c.telefone AS cliente_telefone, c.documento AS cliente_documento,
+    l.nome AS local_nome, l.endereco AS local_endereco, l.cidade AS local_cidade, l.estado AS local_estado,
+    l.responsavel_nome AS local_responsavel, l.responsavel_telefone AS local_responsavel_telefone,
     e.nome AS equipamento_nome, e.modelo AS equipamento_modelo,
-    e.codigo_mt AS equipamento_codigo_mt,
+    e.codigo_mt AS equipamento_codigo_mt, e.fabricante AS equipamento_fabricante,
     e.numero_serie AS equipamento_serie, e.capacidade AS equipamento_capacidade,
-    e.patrimonio AS equipamento_patrimonio,
+    e.patrimonio AS equipamento_patrimonio, e.gas_refrigerante AS equipamento_gas,
+    e.tensao AS equipamento_tensao, e.local AS equipamento_local, e.ambiente AS equipamento_ambiente,
+    eq.nome AS equipe_nome,
     ex.diagnostico, ex.servico_executado, ex.observacoes, ex.fotos, ex.assinatura,
     ex.assinatura_nome, ex.assinatura_cargo,
     ex.condicao_sintomas, ex.condicao_equipamento, ex.condicao_observacoes,
     ex.causa, ex.medicoes, ex.atividades_executadas, ex.resultado,
     ex.pendencias, ex.recomendacoes AS recomendacoes_tecnico,
-    ex.necessidade_adicional, ex.necessidade_descricao, ex.concluida_em AS atendimento_concluido_em,
+    ex.necessidade_adicional, ex.necessidade_descricao,
+    ex.iniciada_em AS atendimento_iniciado_em, ex.concluida_em AS atendimento_concluido_em,
     t.nome AS tecnico_nome,
     g.nome AS gestor_nome,
     op.id AS oportunidade_id, op.tipo AS oportunidade_tipo,
@@ -41,6 +46,7 @@ const RELATORIO_DETALHE = `
   LEFT JOIN clientes c ON c.id = o.cliente_id
   LEFT JOIN locais l ON l.id = o.local_id
   LEFT JOIN equipamentos e ON e.id = o.equipamento_id
+  LEFT JOIN equipes eq ON eq.id = o.equipe_id
   LEFT JOIN execucoes ex ON ex.os_id = o.id
   LEFT JOIN usuarios t ON t.id = ex.tecnico_id
   LEFT JOIN usuarios g ON g.id = r.validado_por
@@ -105,7 +111,10 @@ router.get('/relatorios', (req, res) => {
 });
 
 router.get('/relatorios/:id', (req, res) => {
-  const relatorio = db.prepare(`${RELATORIO_DETALHE} WHERE r.id = ? AND r.status = 'aprovado' AND r.enviado_comercial = 1`).get(Number(req.params.id));
+  const filtroComercial = req.user.perfil === 'comercial' ? ' AND r.enviado_comercial = 1' : '';
+  const relatorio = db
+    .prepare(`${RELATORIO_DETALHE} WHERE r.id = ? AND r.status = 'aprovado'${filtroComercial}`)
+    .get(Number(req.params.id));
   if (!relatorio) {
     return res.status(404).json({ error: 'Relatório não encontrado' });
   }
@@ -173,12 +182,20 @@ function escapeHtml(v) {
 
 function formatarDataHora(d) {
   if (!d) return '-';
-  return d.slice(0, 16).replace('T', ' ');
+  const str = String(d).slice(0, 19).replace('T', ' ');
+  const [dataPart, horaPart] = str.split(' ');
+  if (!dataPart) return str;
+  const partes = dataPart.split('-');
+  if (partes.length !== 3) return str;
+  const [ano, mes, dia] = partes;
+  const hora = horaPart ? horaPart.slice(0, 5) : '';
+  return hora ? `${dia}/${mes}/${ano} às ${hora}` : `${dia}/${mes}/${ano}`;
 }
 
 function formatarData(d) {
   if (!d) return '-';
-  const [ano, mes, dia] = d.slice(0, 10).split('-');
+  const [ano, mes, dia] = String(d).slice(0, 10).split('-');
+  if (!ano || !mes || !dia) return d;
   return `${dia}/${mes}/${ano}`;
 }
 
@@ -188,7 +205,9 @@ function getLogo() {
   const caminhos = [
     path.join(__dirname, '../../../app-tmp/public/logo_original.png'),
     path.join(__dirname, '../../../logo_medicalthermo_herzog_transparente_cor.png'),
-    path.join(__dirname, '../../../app-tmp/public/logo.png')
+    path.join(__dirname, '../../../app-tmp/public/logo.png'),
+    path.join(__dirname, '../../public/logo_original.png'),
+    path.join(__dirname, '../../../public/logo_original.png')
   ];
   for (const caminho of caminhos) {
     try {
@@ -204,175 +223,1063 @@ function getLogo() {
   return logoBase64;
 }
 
+function resolverImagem(src, base) {
+  if (!src) return '';
+  if (src.startsWith('data:')) return src;
+  try {
+    const limpo = src.replace(/^\/uploads\//, '');
+    const localPath = path.join(config.UPLOADS_DIR, limpo);
+    if (fs.existsSync(localPath)) {
+      const ext = path.extname(localPath).toLowerCase().replace('.', '') || 'jpeg';
+      const mime = ext === 'png' ? 'image/png' : ext === 'svg' ? 'image/svg+xml' : 'image/jpeg';
+      const b64 = fs.readFileSync(localPath).toString('base64');
+      return `data:${mime};base64,${b64}`;
+    }
+  } catch {}
+  if (src.startsWith('http://') || src.startsWith('https://')) return src;
+  return `${base}${src.startsWith('/') ? '' : '/'}${src}`;
+}
+
+const RESULTADO_CONFIG = {
+  funcionando: { rotulo: 'Equipamento Funcionando', estilo: 'badge-sucesso' },
+  com_restricao: { rotulo: 'Funcionando com Restrição', estilo: 'badge-alerta' },
+  indisponivel: { rotulo: 'Equipamento Indisponível', estilo: 'badge-perigo' },
+  necessita_retorno: { rotulo: 'Necessita Retorno Técnico', estilo: 'badge-info' },
+  necessita_orcamento: { rotulo: 'Necessita Orçamento', estilo: 'badge-info' }
+};
+
+const PRIORIDADE_LABEL = {
+  baixa: 'Baixa',
+  media: 'Média',
+  alta: 'Alta',
+  urgente: 'Urgente'
+};
+
 router.get('/relatorios/:id/pdf', (req, res) => {
+  const filtroComercial = req.user.perfil === 'comercial' ? ' AND r.enviado_comercial = 1' : '';
   const relatorio = db
-    .prepare(`${RELATORIO_DETALHE} WHERE r.id = ? AND r.status = 'aprovado' AND r.enviado_comercial = 1`)
+    .prepare(`${RELATORIO_DETALHE} WHERE r.id = ? AND r.status = 'aprovado'${filtroComercial}`)
     .get(Number(req.params.id));
   if (!relatorio) {
     return res.status(404).json({ error: 'Relatório não encontrado' });
   }
+
   try {
     relatorio.fotos = JSON.parse(relatorio.fotos || '[]');
   } catch {
     relatorio.fotos = [];
   }
+  try {
+    relatorio.medicoes = JSON.parse(relatorio.medicoes || '[]');
+  } catch {
+    relatorio.medicoes = [];
+  }
+  try {
+    relatorio.atividades_executadas = JSON.parse(relatorio.atividades_executadas || '[]');
+  } catch {
+    relatorio.atividades_executadas = [];
+  }
+
   let conteudoIa = null;
   try {
     conteudoIa = relatorio.conteudo ? JSON.parse(relatorio.conteudo) : null;
   } catch {
     conteudoIa = null;
   }
+
   const anexos = db.prepare('SELECT * FROM anexos WHERE os_id = ? ORDER BY id').all(relatorio.os_id) || [];
-  const fotosParaPdf = anexos.filter((a) => a.categoria !== 'documento').map((a) => a.arquivo);
+  const fotosAnexos = anexos.filter((a) => a.categoria !== 'documento').map((a) => a.arquivo);
   const docsParaPdf = anexos.filter((a) => a.categoria === 'documento');
-  if (fotosParaPdf.length) relatorio.fotos = fotosParaPdf;
+  if (fotosAnexos.length > 0) {
+    relatorio.fotos = fotosAnexos;
+  }
+
   const e = escapeHtml;
   const base = `${req.protocol}://${req.get('host')}`;
-  const fotoTags = relatorio.fotos
-    .map((f) => `<figure class="foto-item"><img src="${e(base + f)}" alt="Foto do atendimento" /><figcaption>Foto do atendimento</figcaption></figure>`)
-    .join('');
 
-  const secao = (titulo, linhas) => {
-    const itens = linhas
-      .filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== '')
-      .map(([k, v]) => `<div class="campo"><span class="rotulo">${e(k)}</span><span class="valor">${e(v)}</span></div>`)
-      .join('');
-    return itens ? `<section class="bloco"><h2>${e(titulo)}</h2><div class="grade">${itens}</div></section>` : '';
+  const logoData = getLogo();
+  const logoHtml = logoData
+    ? `<img class="logo-img" src="data:image/png;base64,${logoData}" alt="MedicalThermo Herzog" />`
+    : `<div class="logo-fallback"><div class="logo-main">Medical<span>Thermo</span></div><div class="logo-sub">Herzog Engenharia</div></div>`;
+
+  const resultadoInfo = RESULTADO_CONFIG[relatorio.resultado] || {
+    rotulo: relatorio.resultado || 'Atendimento Concluído',
+    estilo: 'badge-sucesso'
   };
 
-  const identificacao = secao('Identificação', [
-    ['OS', relatorio.os_numero],
-    ['Cliente', relatorio.cliente_nome],
-    ['E-mail', relatorio.cliente_email],
-    ['Telefone', relatorio.cliente_telefone],
-    ['Localização/unidade', relatorio.local_nome],
-    ['Endereço', relatorio.local_endereco],
-    ['Responsável pelo local', relatorio.local_responsavel || relatorio.responsavel_local],
-    ['Contato do responsável', relatorio.local_responsavel_telefone],
-    ['Data do atendimento', formatarData(relatorio.data_agendada)],
-    ['Equipamento / serviço', relatorio.equipamento_codigo_mt ? `${relatorio.equipamento_codigo_mt} - ${relatorio.equipamento_nome || relatorio.os_servico}` : (relatorio.equipamento_nome || relatorio.os_servico)],
-    ['Técnico responsável', relatorio.tecnico_nome],
-    ['Atendimento concluído em', formatarDataHora(relatorio.atendimento_concluido_em)]
-  ]);
+  const prioridadeTexto = PRIORIDADE_LABEL[relatorio.os_prioridade] || relatorio.os_prioridade || 'Média';
 
-  const descricao = relatorio.servico_executado || relatorio.os_descricao
-    ? `<section class="bloco"><h2>Descrição do serviço realizado</h2><p class="paragrafo">${e(relatorio.servico_executado || relatorio.os_descricao)}</p></section>`
-    : '';
+  const enderecoCompleto = [
+    relatorio.local_endereco,
+    relatorio.local_cidade,
+    relatorio.local_estado
+  ]
+    .filter(Boolean)
+    .join(' — ') || relatorio.local_endereco || '-';
 
-  const diagnostico = relatorio.diagnostico
-    ? `<section class="bloco"><h2>Diagnóstico técnico</h2><p class="paragrafo">${e(relatorio.diagnostico)}</p></section>`
-    : '';
+  // Fotos em grid
+  let fotosHtml = '';
+  if (relatorio.fotos && relatorio.fotos.length > 0) {
+    const itensFotos = relatorio.fotos
+      .map((f, idx) => {
+        const imgSrc = resolverImagem(f, base);
+        return `
+          <div class="foto-card">
+            <div class="foto-wrap">
+              <img src="${e(imgSrc)}" alt="Registro fotográfico #${idx + 1}" />
+            </div>
+            <div class="foto-legenda">Registro fotográfico #${idx + 1}</div>
+          </div>
+        `;
+      })
+      .join('');
 
-  const modelo = conteudoIa && conteudoIa.modelo
-    ? `<section class="bloco"><h2>${e(conteudoIa.modelo.tipo || 'Modelo de atendimento')}</h2><ul class="docs">${conteudoIa.modelo.campos
-        .map((c) => `<li>${e(c)}</li>`)
-        .join('')}</ul></section>`
-    : '';
+    fotosHtml = `
+      <section class="secao page-break-avoid">
+        <div class="secao-titulo">
+          <span class="icone">📷</span>
+          <h2>Registro Fotográfico (${relatorio.fotos.length})</h2>
+        </div>
+        <div class="grade-fotos">
+          ${itensFotos}
+        </div>
+      </section>
+    `;
+  }
 
-  const observacoes = (relatorio.observacoes || relatorio.pendencias || relatorio.recomendacoes || relatorio.recomendacoes_tecnico)
-    ? `<section class="bloco"><h2>Observações</h2><p class="paragrafo">${[relatorio.observacoes, relatorio.pendencias ? `Pendências: ${relatorio.pendencias}` : '', relatorio.recomendacoes || relatorio.recomendacoes_tecnico ? `Recomendações: ${relatorio.recomendacoes || relatorio.recomendacoes_tecnico}` : ''].filter(Boolean).map(escapeHtml).join('\n\n')}</p></section>`
-    : '';
-  const fotos = relatorio.fotos.length
-    ? `<section class="bloco"><h2>Registro fotográfico (${relatorio.fotos.length})</h2><div class="fotos">${fotoTags}</div></section>`
-    : '';
-  const documentos = docsParaPdf.length
-    ? `<section class="bloco"><h2>Documentos vinculados (${docsParaPdf.length})</h2><ul class="docs">${docsParaPdf
-        .map((d) => `<li><a href="${e(base + d.arquivo)}" target="_blank">${e(d.nome_original || d.arquivo.split('/').pop())}</a></li>`)
-        .join('')}</ul></section>`
-    : '';
-  const assinaturaTecnico = relatorio.assinatura
-    ? `<section class="bloco"><h2>Assinatura do responsável pelo atendimento</h2><img class="assinatura" src="${e(base + relatorio.assinatura)}" alt="Assinatura" />${relatorio.assinatura_nome ? `<p class="paragrafo">${e(relatorio.assinatura_nome)}${relatorio.assinatura_cargo ? ` — ${e(relatorio.assinatura_cargo)}` : ''}</p>` : ''}</section>`
-    : '';
+  // Tabela de Medições
+  let medicoesHtml = '';
+  if (Array.isArray(relatorio.medicoes) && relatorio.medicoes.length > 0) {
+    const linhasMedicoes = relatorio.medicoes
+      .map(
+        (m) => `
+        <tr>
+          <td class="col-destaque">${e(m.tipo || m.nome || '-')}</td>
+          <td class="col-valor">${e(m.valor || '-')}</td>
+          <td class="col-unidade">${e(m.unidade || '-')}</td>
+          <td class="col-obs">${e(m.observacao || m.obs || '-')}</td>
+        </tr>
+      `
+      )
+      .join('');
 
-  const assinaturas = `
-    <section class="bloco assinaturas">
-      <div><span class="linha"></span><span>${e(relatorio.tecnico_nome || 'Técnico responsável')}</span><span class="cargo">Técnico responsável</span><span class="data">Data: ${e(formatarData(relatorio.atendimento_concluido_em || new Date().toISOString().slice(0, 10)))}</span></div>
-      <div><span class="linha"></span><span>${e(relatorio.cliente_nome || 'Cliente')}</span><span class="cargo">Cliente / responsável pelo local</span><span class="data">Data: ______/______/________</span></div>
-    </section>`;
+    medicoesHtml = `
+      <section class="secao page-break-avoid">
+        <div class="secao-titulo">
+          <span class="icone">📊</span>
+          <h2>Medições e Parâmetros Técnicos</h2>
+        </div>
+        <table class="tabela-padrao">
+          <thead>
+            <tr>
+              <th>Parâmetro / Medição</th>
+              <th style="width: 130px;">Valor</th>
+              <th style="width: 100px;">Unidade</th>
+              <th>Observações</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${linhasMedicoes}
+          </tbody>
+        </table>
+      </section>
+    `;
+  }
 
-  const logo = getLogo()
-    ? `<img class="logo" src="data:image/png;base64,${getLogo()}" alt="Thermo control" />`
-    : `<div class="logo-texto">FIELD <span>2.0</span></div>`;
+  // Tabela de Atividades Executadas
+  let atividadesHtml = '';
+  if (Array.isArray(relatorio.atividades_executadas) && relatorio.atividades_executadas.length > 0) {
+    const linhasAtv = relatorio.atividades_executadas
+      .map(
+        (a) => `
+        <tr>
+          <td class="col-destaque">${e(a.titulo || a.atividade || '-')}</td>
+          <td class="col-resultado"><span class="badge-mini">${e(a.resultado || 'Realizado')}</span></td>
+          <td class="col-obs">${e(a.observacao || '-')}</td>
+        </tr>
+      `
+      )
+      .join('');
+
+    atividadesHtml = `
+      <section class="secao page-break-avoid">
+        <div class="secao-titulo">
+          <span class="icone">✓</span>
+          <h2>Checklist de Atividades Executadas</h2>
+        </div>
+        <table class="tabela-padrao">
+          <thead>
+            <tr>
+              <th>Atividade / Item Verificado</th>
+              <th style="width: 140px;">Status</th>
+              <th>Observações Técnicas</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${linhasAtv}
+          </tbody>
+        </table>
+      </section>
+    `;
+  }
+
+  // Documentos vinculados
+  let docsHtml = '';
+  if (docsParaPdf.length > 0) {
+    docsHtml = `
+      <section class="secao page-break-avoid">
+        <div class="secao-titulo">
+          <span class="icone">📎</span>
+          <h2>Documentos Vinculados (${docsParaPdf.length})</h2>
+        </div>
+        <ul class="lista-docs">
+          ${docsParaPdf
+            .map(
+              (d) => `
+            <li>
+              <a href="${e(base + d.arquivo)}" target="_blank">
+                📄 ${e(d.nome_original || d.arquivo.split('/').pop())}
+              </a>
+            </li>
+          `
+            )
+            .join('')}
+        </ul>
+      </section>
+    `;
+  }
+
+  // Recomendações e Pendências
+  const recomendacoesGerais = [
+    relatorio.recomendacoes_tecnico ? `<strong>Recomendações do Técnico:</strong> ${e(relatorio.recomendacoes_tecnico)}` : '',
+    relatorio.recomendacoes ? `<strong>Validação da Gestão:</strong> ${e(relatorio.recomendacoes)}` : '',
+    relatorio.observacoes ? `<strong>Observações Adicionais:</strong> ${e(relatorio.observacoes)}` : ''
+  ]
+    .filter(Boolean)
+    .join('<br/><br/>');
+
+  let parecerHtml = '';
+  if (recomendacoesGerais || relatorio.pendencias || (relatorio.necessidade_adicional && relatorio.necessidade_adicional !== 'nao')) {
+    parecerHtml = `
+      <section class="secao page-break-avoid">
+        <div class="secao-titulo">
+          <span class="icone">📋</span>
+          <h2>Parecer Técnico e Recomendações</h2>
+        </div>
+        <div class="grade-parecer">
+          ${
+            recomendacoesGerais
+              ? `<div class="card-parecer card-recomendacao">
+                  <h4>Orientações e Recomendações</h4>
+                  <p>${recomendacoesGerais}</p>
+                </div>`
+              : ''
+          }
+          ${
+            relatorio.pendencias
+              ? `<div class="card-parecer card-pendencia">
+                  <h4>⚠️ Pendências Identificadas</h4>
+                  <p>${e(relatorio.pendencias)}</p>
+                </div>`
+              : ''
+          }
+          ${
+            relatorio.necessidade_adicional && relatorio.necessidade_adicional !== 'nao'
+              ? `<div class="card-parecer card-necessidade">
+                  <h4>Oportunidade de Melhoria / Ação Futura</h4>
+                  <p><strong>Tipo:</strong> ${e(TIPOS_NECESSIDADE[relatorio.necessidade_adicional] || relatorio.necessidade_adicional)}</p>
+                  ${relatorio.necessidade_descricao ? `<p>${e(relatorio.necessidade_descricao)}</p>` : ''}
+                </div>`
+              : ''
+          }
+        </div>
+      </section>
+    `;
+  }
+
+  // Assinatura do cliente
+  let assinaturaClienteImg = '';
+  if (relatorio.assinatura) {
+    const srcAss = resolverImagem(relatorio.assinatura, base);
+    assinaturaClienteImg = `<img class="img-assinatura" src="${e(srcAss)}" alt="Assinatura do responsável" />`;
+  }
+
+  const modeloHtml = conteudoIa && conteudoIa.modelo
+    ? `<section class="secao page-break-avoid">
+        <div class="secao-titulo">
+          <span class="icone">📑</span>
+          <h2>${e(conteudoIa.modelo.tipo || 'Modelo de Atendimento Técnico')}</h2>
+        </div>
+        <ul class="lista-docs">${conteudoIa.modelo.campos
+          .map((c) => `<li>${e(c)}</li>`)
+          .join('')}</ul>
+      </section>`
+    : '';
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Relatório de Atendimento ${e(relatorio.os_numero)} - Thermo control</title>
+<title>Relatório de Atendimento ${e(relatorio.os_numero)} - MedicalThermo</title>
 <style>
+  :root {
+    --primary: #047857;
+    --primary-dark: #064e3b;
+    --primary-light: #ecfdf5;
+    --primary-border: #a7f3d0;
+    --text-title: #0f172a;
+    --text-body: #334155;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --bg-card: #f8fafc;
+  }
+
   * { box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Arial, Helvetica, sans-serif; color: #1f2937; margin: 0; padding: 40px; font-size: 13px; line-height: 1.55; }
-  .cabecalho { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #1d4ed8; padding-bottom: 14px; margin-bottom: 6px; }
-  .logo { max-height: 52px; max-width: 220px; object-fit: contain; }
-  .logo-texto { font-size: 26px; font-weight: 800; color: #1d4ed8; }
-  .logo-texto span { color: #f59e0b; }
-  .titulo-doc { text-align: right; }
-  .titulo-doc h1 { font-size: 19px; margin: 0; color: #1d4ed8; letter-spacing: 0.5px; }
-  .titulo-doc p { margin: 2px 0 0; color: #6b7280; font-size: 12px; }
-  .linha-os { display: flex; justify-content: space-between; align-items: center; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 16px; margin: 14px 0 18px; }
-  .linha-os .os { font-size: 16px; font-weight: 800; color: #1e40af; }
-  .linha-os .os small { display: block; font-size: 10px; font-weight: 600; color: #6b7280; letter-spacing: 0.8px; }
-  .linha-os .cliente { font-size: 13px; color: #374151; font-weight: 600; }
-  .bloco { margin-top: 16px; page-break-inside: avoid; }
-  .bloco h2 { font-size: 13px; color: #1d4ed8; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin: 0 0 10px; }
-  .grade { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 28px; }
-  .campo { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px dotted #e5e7eb; }
-  .campo .rotulo { color: #6b7280; font-weight: 600; white-space: nowrap; }
-  .campo .valor { text-align: right; font-weight: 500; }
-  .paragrafo { margin: 0; white-space: pre-wrap; }
-  .recomendacao { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 10px 14px; }
-  .recomendacao h2 { border-bottom: 1px solid #fde68a; }
-  .fotos { display: flex; flex-wrap: wrap; gap: 10px; }
-  .foto-item { margin: 0; width: 200px; page-break-inside: avoid; }
-  .foto-item img { width: 100%; height: 140px; object-fit: cover; border: 1px solid #e5e7eb; border-radius: 6px; }
-  .foto-item figcaption { font-size: 10px; color: #9ca3af; text-align: center; margin-top: 3px; }
-  .docs { margin: 0; padding-left: 18px; }
-  .docs a { color: #1d4ed8; }
-  .assinatura { max-height: 100px; border: 1px solid #e5e7eb; border-radius: 6px; }
-  .assinaturas { display: flex; justify-content: space-between; gap: 28px; margin-top: 28px; }
-  .assinaturas div { flex: 1; text-align: center; font-size: 12px; }
-  .assinaturas .linha { display: block; border-top: 1px solid #374151; margin-bottom: 6px; }
-  .assinaturas .cargo { display: block; color: #9ca3af; font-size: 10px; }
-  .assinaturas .data { display: block; color: #9ca3af; font-size: 10px; margin-top: 2px; }
-  .nota { margin-top: 18px; padding: 8px 12px; background: #fef3c7; border: 1px solid #fde68a; border-radius: 6px; font-size: 11px; color: #92400e; }
-  .rodape { margin-top: 22px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 10px; color: #9ca3af; display: flex; justify-content: space-between; gap: 12px; }
-  @media print { body { padding: 0; } }
+  
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    color: var(--text-body);
+    background: #ffffff;
+    margin: 0;
+    padding: 30px 40px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Barra de ações para visualização em tela */
+  .no-print {
+    margin-bottom: 24px;
+    padding: 12px 18px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .btn-print {
+    background: #059669;
+    color: #ffffff;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+  .btn-print:hover { background: #047857; }
+  .btn-fechar {
+    background: transparent;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  /* Cabeçalho */
+  .cabecalho {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 3px solid var(--primary);
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+  }
+  .logo-container {
+    max-width: 250px;
+  }
+  .logo-img {
+    max-height: 58px;
+    max-width: 240px;
+    object-fit: contain;
+    display: block;
+  }
+  .logo-fallback {
+    font-family: inherit;
+  }
+  .logo-main {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--primary);
+    letter-spacing: -0.5px;
+  }
+  .logo-main span { color: #0f172a; }
+  .logo-sub {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .titulo-documento {
+    text-align: right;
+  }
+  .titulo-documento h1 {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--primary-dark);
+    margin: 0;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .titulo-documento .subtitulo {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 3px 0 0;
+  }
+  .titulo-documento .emissao {
+    font-size: 10.5px;
+    color: #94a3b8;
+    margin-top: 2px;
+  }
+
+  /* Faixa de Destaque da OS */
+  .faixa-resumo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--primary-light);
+    border: 1px solid var(--primary-border);
+    border-radius: 8px;
+    padding: 12px 18px;
+    margin-bottom: 20px;
+  }
+  .faixa-item {
+    display: flex;
+    flex-direction: column;
+  }
+  .faixa-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: 0.8px;
+  }
+  .faixa-os {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--primary-dark);
+    line-height: 1.2;
+  }
+  .faixa-servico {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-title);
+  }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .badge-sucesso { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+  .badge-alerta { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+  .badge-perigo { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+  .badge-info { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+  .badge-mt {
+    background: #047857;
+    color: #ffffff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+  .badge-mini {
+    display: inline-block;
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  /* Grid Geral */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  /* Seções */
+  .secao {
+    margin-top: 18px;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .secao-titulo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1.5px solid var(--border);
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+  }
+  .secao-titulo .icone {
+    color: var(--primary);
+    font-size: 14px;
+    font-weight: bold;
+  }
+  .secao-titulo h2 {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--primary-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin: 0;
+  }
+
+  /* Cards de Informações */
+  .card-bloco {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    height: 100%;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .card-bloco h3 {
+    margin: 0 0 10px 0;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--primary-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 5px;
+  }
+  .linha-campo {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px dotted #e2e8f0;
+    font-size: 11.5px;
+  }
+  .linha-campo:last-child { border-bottom: none; }
+  .campo-rotulo {
+    color: var(--text-muted);
+    font-weight: 600;
+    white-space: nowrap;
+    padding-right: 10px;
+  }
+  .campo-valor {
+    text-align: right;
+    font-weight: 500;
+    color: var(--text-title);
+  }
+
+  /* Parágrafos e Caixas de Texto */
+  .texto-caixa {
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--primary);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-title);
+    white-space: pre-wrap;
+    margin: 0 0 12px;
+  }
+
+  /* Tabelas */
+  .tabela-padrao {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 6px;
+    font-size: 11.5px;
+  }
+  .tabela-padrao th {
+    background: #f1f5f9;
+    color: #334155;
+    font-weight: 700;
+    text-align: left;
+    padding: 8px 10px;
+    border-top: 1px solid var(--border);
+    border-bottom: 2px solid var(--primary);
+    text-transform: uppercase;
+    font-size: 10.5px;
+    letter-spacing: 0.4px;
+  }
+  .tabela-padrao td {
+    padding: 7px 10px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: top;
+  }
+  .tabela-padrao tbody tr:nth-child(even) {
+    background: #f8fafc;
+  }
+  .col-destaque { font-weight: 600; color: var(--text-title); }
+  .col-valor { font-weight: 700; color: var(--primary-dark); }
+  .col-unidade { color: var(--text-muted); font-size: 11px; }
+  .col-obs { color: var(--text-muted); font-size: 11px; }
+
+  /* Parecer e Cards Especiais */
+  .grade-parecer {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .card-parecer {
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .card-parecer h4 {
+    margin: 0 0 4px;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .card-parecer p { margin: 0; }
+  .card-recomendacao {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #166534;
+  }
+  .card-pendencia {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+  }
+  .card-necessidade {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e40af;
+  }
+
+  /* Fotos */
+  .grade-fotos {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .foto-card {
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .foto-wrap {
+    height: 140px;
+    width: 100%;
+    background: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .foto-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .foto-legenda {
+    padding: 5px 8px;
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: center;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+  }
+
+  /* Documentos */
+  .lista-docs {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 11.5px;
+  }
+  .lista-docs li { margin-bottom: 4px; }
+  .lista-docs a { color: var(--primary); text-decoration: none; font-weight: 500; }
+
+  /* Assinaturas */
+  .assinaturas-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-top: 26px;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .bloco-assinatura {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 150px;
+  }
+  .assinatura-area {
+    min-height: 65px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+  .img-assinatura {
+    max-height: 60px;
+    max-width: 160px;
+    object-fit: contain;
+  }
+  .linha-vazia-ass {
+    width: 80%;
+    border-bottom: 1px solid #475569;
+    margin: 35px auto 5px;
+  }
+  .assinatura-nome {
+    font-weight: 700;
+    font-size: 11.5px;
+    color: var(--text-title);
+  }
+  .assinatura-cargo {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .assinatura-data {
+    font-size: 10px;
+    color: #94a3b8;
+    margin-top: 2px;
+  }
+  .carimbo-gestao {
+    border: 2px dashed #059669;
+    background: #ecfdf5;
+    border-radius: 6px;
+    padding: 10px 8px;
+    margin-top: 6px;
+  }
+  .carimbo-selo {
+    font-size: 11px;
+    font-weight: 800;
+    color: #065f46;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .carimbo-info {
+    font-size: 10px;
+    color: #047857;
+    margin-top: 3px;
+  }
+
+  /* Rodapé */
+  .rodape {
+    margin-top: 30px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-size: 9.5px;
+    color: #94a3b8;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  @media print {
+    body { padding: 0 !important; background: #fff !important; }
+    .no-print { display: none !important; }
+    .secao { page-break-inside: avoid; break-inside: avoid; }
+    .card-bloco { page-break-inside: avoid; break-inside: avoid; }
+    .foto-card { page-break-inside: avoid; break-inside: avoid; }
+    .assinaturas-container { page-break-inside: avoid; break-inside: avoid; }
+    @page {
+      size: A4 portrait;
+      margin: 10mm 12mm 12mm 12mm;
+    }
+  }
 </style>
 </head>
 <body>
-  <div class="cabecalho">
-    ${logo}
-    <div class="titulo-doc">
-      <h1>RELATÓRIO DE ATENDIMENTO</h1>
-      <p>Documento técnico de serviço</p>
+
+  <div class="no-print">
+    <div>
+      <strong style="color: #047857; font-size: 14px;">Relatório Técnico de Atendimento — MedicalThermo</strong>
+      <div style="font-size: 11px; color: #64748b;">Visualize o documento ou salve em PDF pelo botão ao lado.</div>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar como PDF</button>
+      <button class="btn-fechar" onclick="window.close()">Fechar</button>
     </div>
   </div>
 
-  <div class="linha-os">
-    <div class="os"><small>ORDEM DE SERVIÇO</small>${e(relatorio.os_numero)}</div>
-    <div class="cliente">${e(relatorio.cliente_nome)}</div>
+  <div class="cabecalho">
+    <div class="logo-container">
+      ${logoHtml}
+    </div>
+    <div class="titulo-documento">
+      <h1>RELATÓRIO TÉCNICO DE ATENDIMENTO</h1>
+      <div class="subtitulo">Gestão Operacional de Serviços Técnicos</div>
+      <div class="emissao">Emissão: ${e(formatarDataHora(new Date().toISOString()))}</div>
+    </div>
   </div>
 
-  ${identificacao}
-  ${descricao}
-  ${diagnostico}
-  ${modelo}
-  ${observacoes}
-  ${fotos}
-  ${documentos}
-  ${assinaturaTecnico}
-  ${assinaturas}
+  <div class="faixa-resumo">
+    <div class="faixa-item">
+      <span class="faixa-label">Ordem de Serviço</span>
+      <span class="faixa-os">${e(relatorio.os_numero)}</span>
+    </div>
+    <div class="faixa-item">
+      <span class="faixa-label">Serviço Realizado</span>
+      <span class="faixa-servico">${e(relatorio.os_servico || '-')}</span>
+    </div>
+    <div class="faixa-item">
+      <span class="faixa-label">Prioridade</span>
+      <div><span class="badge badge-info">${e(prioridadeTexto)}</span></div>
+    </div>
+    <div class="faixa-item" style="text-align: right;">
+      <span class="faixa-label">Status Operacional</span>
+      <div><span class="badge ${e(resultadoInfo.estilo)}">${e(resultadoInfo.rotulo)}</span></div>
+    </div>
+  </div>
 
+  <!-- Identificação do Cliente e do Equipamento -->
+  <div class="grid-2">
+    <div class="card-bloco">
+      <h3>Identificação do Cliente e Local</h3>
+      <div class="linha-campo">
+        <span class="campo-rotulo">Cliente:</span>
+        <span class="campo-valor">${e(relatorio.cliente_nome)}</span>
+      </div>
+      ${
+        relatorio.cliente_documento
+          ? `<div class="linha-campo">
+              <span class="campo-rotulo">Documento / CNPJ:</span>
+              <span class="campo-valor">${e(relatorio.cliente_documento)}</span>
+            </div>`
+          : ''
+      }
+      <div class="linha-campo">
+        <span class="campo-rotulo">Unidade / Local:</span>
+        <span class="campo-valor">${e(relatorio.local_nome || '-')}</span>
+      </div>
+      <div class="linha-campo">
+        <span class="campo-rotulo">Endereço:</span>
+        <span class="campo-valor">${e(enderecoCompleto)}</span>
+      </div>
+      <div class="linha-campo">
+        <span class="campo-rotulo">Responsável no Local:</span>
+        <span class="campo-valor">${e(relatorio.local_responsavel || relatorio.responsavel_local || '-')}</span>
+      </div>
+      <div class="linha-campo">
+        <span class="campo-rotulo">Contato:</span>
+        <span class="campo-valor">${e([relatorio.local_responsavel_telefone, relatorio.cliente_telefone, relatorio.cliente_email].filter(Boolean).join(' | ') || '-')}</span>
+      </div>
+    </div>
+
+    <div class="card-bloco">
+      <h3>Ficha do Equipamento</h3>
+      <div class="linha-campo">
+        <span class="campo-rotulo">Identificação MT:</span>
+        <span class="campo-valor"><span class="badge-mt">${e(relatorio.equipamento_codigo_mt || 'S/N')}</span></span>
+      </div>
+      <div class="linha-campo">
+        <span class="campo-rotulo">Equipamento:</span>
+        <span class="campo-valor">${e(relatorio.equipamento_nome || relatorio.os_servico || '-')}</span>
+      </div>
+      <div class="linha-campo">
+        <span class="campo-rotulo">Fabricante / Modelo:</span>
+        <span class="campo-valor">${e([relatorio.equipamento_fabricante, relatorio.equipamento_modelo].filter(Boolean).join(' / ') || '-')}</span>
+      </div>
+      <div class="linha-campo">
+        <span class="campo-rotulo">Nº de Série:</span>
+        <span class="campo-valor">${e(relatorio.equipamento_serie || '-')}</span>
+      </div>
+      <div class="linha-campo">
+        <span class="campo-rotulo">Patrimônio / Cap.:</span>
+        <span class="campo-valor">${e([relatorio.equipamento_patrimonio, relatorio.equipamento_capacidade].filter(Boolean).join(' | ') || '-')}</span>
+      </div>
+      <div class="linha-campo">
+        <span class="campo-rotulo">Fluido / Tensão:</span>
+        <span class="campo-valor">${e([relatorio.equipamento_gas, relatorio.equipamento_tensao].filter(Boolean).join(' | ') || '-')}</span>
+      </div>
+      <div class="linha-campo">
+        <span class="campo-rotulo">Local / Ambiente:</span>
+        <span class="campo-valor">${e([relatorio.equipamento_local, relatorio.equipamento_ambiente].filter(Boolean).join(' — ') || '-')}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Informações Operacionais da Execução -->
+  <div class="card-bloco" style="margin-bottom: 16px;">
+    <h3>Dados Operacionais do Atendimento</h3>
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+      <div class="linha-campo" style="flex-direction: column; align-items: flex-start;">
+        <span class="campo-rotulo">Equipe Responsável</span>
+        <span class="campo-valor" style="text-align: left; font-weight: 600;">${e(relatorio.equipe_nome || '-')}</span>
+      </div>
+      <div class="linha-campo" style="flex-direction: column; align-items: flex-start;">
+        <span class="campo-rotulo">Técnico Executor</span>
+        <span class="campo-valor" style="text-align: left; font-weight: 600;">${e(relatorio.tecnico_nome || '-')}</span>
+      </div>
+      <div class="linha-campo" style="flex-direction: column; align-items: flex-start;">
+        <span class="campo-rotulo">Data Agendada</span>
+        <span class="campo-valor" style="text-align: left;">${e(formatarData(relatorio.data_agendada))} ${relatorio.hora_inicio ? `(${e(relatorio.hora_inicio)})` : ''}</span>
+      </div>
+      <div class="linha-campo" style="flex-direction: column; align-items: flex-start;">
+        <span class="campo-rotulo">Conclusão do Atendimento</span>
+        <span class="campo-valor" style="text-align: left; font-weight: 700; color: var(--primary);">${e(formatarDataHora(relatorio.atendimento_concluido_em))}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Diagnóstico e Condição Inicial -->
+  ${
+    relatorio.condicao_sintomas || relatorio.condicao_equipamento || relatorio.causa || relatorio.diagnostico
+      ? `<section class="secao">
+          <div class="secao-titulo">
+            <span class="icone">🔍</span>
+            <h2>Condição Inicial e Diagnóstico Técnico</h2>
+          </div>
+          <div class="grid-2">
+            ${
+              relatorio.condicao_sintomas || relatorio.condicao_equipamento
+                ? `<div class="card-bloco">
+                    <h3>Estado Inicial Relatado</h3>
+                    ${relatorio.condicao_sintomas ? `<p style="margin: 0 0 6px;"><strong>Sintomas:</strong> ${e(relatorio.condicao_sintomas)}</p>` : ''}
+                    ${relatorio.condicao_equipamento ? `<p style="margin: 0 0 6px;"><strong>Condição do equipamento:</strong> ${e(relatorio.condicao_equipamento)}</p>` : ''}
+                    ${relatorio.condicao_observacoes ? `<p style="margin: 0; color: #64748b;">${e(relatorio.condicao_observacoes)}</p>` : ''}
+                  </div>`
+                : ''
+            }
+            ${
+              relatorio.diagnostico || relatorio.causa
+                ? `<div class="card-bloco">
+                    <h3>Diagnóstico e Causa</h3>
+                    ${relatorio.causa ? `<p style="margin: 0 0 6px;"><strong>Causa identificada:</strong> ${e(relatorio.causa)}</p>` : ''}
+                    ${relatorio.diagnostico ? `<p style="margin: 0;"><strong>Diagnóstico técnico:</strong> ${e(relatorio.diagnostico)}</p>` : ''}
+                  </div>`
+                : ''
+            }
+          </div>
+        </section>`
+      : ''
+  }
+
+  <!-- Descrição do Serviço Realizado -->
+  <section class="secao">
+    <div class="secao-titulo">
+      <span class="icone">🛠️</span>
+      <h2>Descrição do Serviço Realizado</h2>
+    </div>
+    <div class="texto-caixa">${e(relatorio.servico_executado || relatorio.os_descricao || 'Atendimento técnico executado conforme especificações.')}</div>
+  </section>
+
+  <!-- Modelo Técnico Específico (se houver) -->
+  ${modeloHtml}
+
+  <!-- Atividades Executadas (se houver) -->
+  ${atividadesHtml}
+
+  <!-- Medições Técnicas (se houver) -->
+  ${medicoesHtml}
+
+  <!-- Parecer Técnico e Recomendações -->
+  ${parecerHtml}
+
+  <!-- Registro Fotográfico (se houver) -->
+  ${fotosHtml}
+
+  <!-- Documentos Vinculados (se houver) -->
+  ${docsHtml}
+
+  <!-- Assinaturas e Validação -->
+  <section class="secao page-break-avoid">
+    <div class="secao-titulo">
+      <span class="icone">✍️</span>
+      <h2>Termo de Conclusão e Homologação Técnica</h2>
+    </div>
+
+    <div class="assinaturas-container">
+      <!-- Técnico Executor -->
+      <div class="bloco-assinatura">
+        <div>
+          <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Execução Técnica</span>
+        </div>
+        <div class="assinatura-area">
+          <div class="linha-vazia-ass"></div>
+        </div>
+        <div>
+          <div class="assinatura-nome">${e(relatorio.tecnico_nome || 'Técnico Responsável')}</div>
+          <div class="assinatura-cargo">${e(relatorio.equipe_nome || 'Equipe Técnica de Campo')}</div>
+          <div class="assinatura-data">Concluído em: ${e(formatarData(relatorio.atendimento_concluido_em || relatorio.data_agendada))}</div>
+        </div>
+      </div>
+
+      <!-- Responsável no Local (Cliente) -->
+      <div class="bloco-assinatura">
+        <div>
+          <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Aceite do Cliente / Local</span>
+        </div>
+        <div class="assinatura-area">
+          ${assinaturaClienteImg || '<div class="linha-vazia-ass"></div>'}
+        </div>
+        <div>
+          <div class="assinatura-nome">${e(relatorio.assinatura_nome || relatorio.local_responsavel || relatorio.cliente_nome || 'Responsável pelo Local')}</div>
+          <div class="assinatura-cargo">${e(relatorio.assinatura_cargo || 'Responsável no local')}</div>
+          <div class="assinatura-data">Data: ${e(formatarData(relatorio.atendimento_concluido_em || relatorio.data_agendada))}</div>
+        </div>
+      </div>
+
+      <!-- Validação da Gestão Técnica -->
+      <div class="bloco-assinatura">
+        <div>
+          <span style="font-size: 10px; font-weight: 700; color: #047857; text-transform: uppercase;">Validação Institucional</span>
+        </div>
+        <div class="assinatura-area">
+          <div class="carimbo-gestao">
+            <div class="carimbo-selo">✓ HOMOLOGADO</div>
+            <div class="carimbo-info">Validação Técnica</div>
+          </div>
+        </div>
+        <div>
+          <div class="assinatura-nome">${e(relatorio.gestor_nome || 'Gestão Operacional')}</div>
+          <div class="assinatura-cargo">Gestor Técnico Responsável</div>
+          <div class="assinatura-data">${relatorio.data_validacao ? `Aprovado em: ${e(formatarDataHora(relatorio.data_validacao))}` : 'Aprovado'}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Rodapé -->
   <div class="rodape">
-    <span>${e(relatorio.cliente_nome || '')}</span>
-    <span>Gerado em: ${e(formatarDataHora(new Date().toISOString()))}</span>
-    <span>Thermo control</span>
+    <div><strong>MedicalThermo Herzog</strong> — Engenharia Clínica e Refrigeração Técnica</div>
+    <div>Documento gerado pelo sistema FIELD 2.0</div>
+    <div>OS ${e(relatorio.os_numero)} • Via Oficial</div>
   </div>
 
-  <script>window.addEventListener('load', function () { window.focus(); window.print(); });</script>
+  <script>
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        window.focus();
+        window.print();
+      }, 350);
+    });
+  </script>
 </body>
 </html>`;
+
   res.type('html').send(html);
 });
 
