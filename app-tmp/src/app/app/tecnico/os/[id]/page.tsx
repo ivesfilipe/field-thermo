@@ -193,13 +193,11 @@ export default function ExecucaoOsPage() {
 
   const [form, setForm] = useState<{
     servico_executado: string;
-    observacoes: string;
     assinatura_nome: string;
     assinatura_cargo: string;
     dados_modelo: Record<string, string>;
   }>({
     servico_executado: "",
-    observacoes: "",
     assinatura_nome: "",
     assinatura_cargo: "",
     dados_modelo: {}
@@ -209,7 +207,6 @@ export default function ExecucaoOsPage() {
   const aplicarExecucao = useCallback((ex: Execucao | null) => {
     setForm({
       servico_executado: ex?.servico_executado || "",
-      observacoes: ex?.observacoes || "",
       assinatura_nome: ex?.assinatura_nome || "",
       assinatura_cargo: ex?.assinatura_cargo || "",
       dados_modelo: ex?.dados_modelo || {}
@@ -252,7 +249,6 @@ export default function ExecucaoOsPage() {
 
   function montarPayload() {
     const payload: Record<string, unknown> = {
-      observacoes: form.observacoes,
       assinatura_nome: form.assinatura_nome,
       assinatura_cargo: form.assinatura_cargo
     };
@@ -545,16 +541,6 @@ export default function ExecucaoOsPage() {
               </label>
             </div>
             <p className="mt-2 text-xs text-zinc-400">Adicione múltiplas fotos do atendimento. Elas ficam vinculadas à OS.</p>
-          </Card>
-
-          <Card title="3. Observações">
-            <Textarea
-              label="Pendências, recomendações ou informações adicionais (opcional)"
-              value={form.observacoes}
-              onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
-              rows={3}
-              placeholder="Ex.: Equipamento antigo; recomenda-se preventiva em 3 meses..."
-            />
           </Card>
 
           <Card title="4. Assinatura do responsável pelo local">
