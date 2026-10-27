@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
-import { Alerta, Badge, Botao, Campo, Card, EstadoVazio, LinksMapa, Modal, PageHeader, Select, Textarea } from "@/components/ui";
+import { Alerta, Badge, Botao, Campo, Card, EstadoVazio, LinksMapa, Modal, PageHeader, Select } from "@/components/ui";
 
 interface Registro {
   id: number;
