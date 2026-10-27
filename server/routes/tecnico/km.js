@@ -158,7 +158,7 @@ router.post('/km/:id/finalizar', (req, res) => {
   if (req.user.perfil === 'tecnico' && !equipesDoUsuario(req.user.id).includes(registro.equipe_id)) {
     return res.status(403).json({ error: 'Registro de outra equipe' });
   }
-  const { km_final, local_final, observacao } = req.body || {};
+  const { km_final, local_final } = req.body || {};
   const kmFinal = Number(km_final);
   if (!Number.isInteger(kmFinal) || kmFinal < 0) {
     return res.status(400).json({ error: 'KM final deve ser um número inteiro válido' });
@@ -171,10 +171,10 @@ router.post('/km/:id/finalizar', (req, res) => {
   const kmPercorrido = kmFinal - registro.km_inicial;
 
   db.prepare(
-    `UPDATE registros_km SET km_final = ?, local_final = ?, km_percorrido = ?, observacao = ?,
+    `UPDATE registros_km SET km_final = ?, local_final = ?, km_percorrido = ?,
        data_hora_fim = datetime('now'), status = 'finalizado', finalizado_por = ?
      WHERE id = ?`
-  ).run(kmFinal, localFinal, kmPercorrido, observacao ? String(observacao).trim().slice(0, 1000) : null, req.user.id, id);
+  ).run(kmFinal, localFinal, kmPercorrido, req.user.id, id);
 
   registrarHistorico({ usuario: req.user, tipo: 'km', registroId: id, campo: 'finalizacao', valorAnterior: 'em_utilizacao', valorNovo: `finalizado | ${kmPercorrido} km` });
   res.json({ registro: registroCompleto(id) });

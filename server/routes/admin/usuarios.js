@@ -168,6 +168,10 @@ router.delete('/usuarios/:id', (req, res) => {
   if (id === req.user.id) {
     return res.status(400).json({ error: 'Não é possível excluir o próprio usuário' });
   }
+  const execucoes = db.prepare('SELECT COUNT(*) AS n FROM execucoes WHERE tecnico_id = ?').get(id).n;
+  if (execucoes > 0) {
+    return res.status(400).json({ error: `Usuário possui ${execucoes} execução(ões) vinculada(s); desative-o em vez de excluir` });
+  }
   db.prepare('DELETE FROM usuarios_equipes WHERE usuario_id = ?').run(id);
   db.prepare('DELETE FROM usuarios WHERE id = ?').run(id);
   res.status(204).end();

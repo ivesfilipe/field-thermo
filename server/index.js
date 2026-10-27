@@ -9,6 +9,7 @@ const db = require('./db');
 fs.mkdirSync(config.UPLOADS_DIR, { recursive: true });
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
 const corsOrigins = (process.env.CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean);

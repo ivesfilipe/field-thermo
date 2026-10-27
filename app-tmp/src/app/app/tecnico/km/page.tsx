@@ -23,7 +23,6 @@ interface Registro {
   km_final: number | null;
   local_final: string | null;
   km_percorrido: number | null;
-  observacao: string | null;
   status: "em_utilizacao" | "finalizado";
 }
 
@@ -47,7 +46,7 @@ export default function KmTecnicoPage() {
   const [form, setForm] = useState(FORM_VAZIO);
   const [salvando, setSalvando] = useState(false);
   const [finalizandoId, setFinalizandoId] = useState<number | null>(null);
-  const [finForm, setFinForm] = useState({ km_final: "", local_final: "", observacao: "" });
+  const [finForm, setFinForm] = useState({ km_final: "", local_final: "" });
 
   const carregar = useCallback(() => {
     api
@@ -109,12 +108,11 @@ export default function KmTecnicoPage() {
     try {
       await api.post(`/api/tecnico/km/${id}/finalizar`, {
         km_final: Number(finForm.km_final),
-        local_final: finForm.local_final,
-        observacao: finForm.observacao || undefined
+        local_final: finForm.local_final
       });
       setMsg("Utilização finalizada.");
       setFinalizandoId(null);
-      setFinForm({ km_final: "", local_final: "", observacao: "" });
+setFinForm({ km_final: "", local_final: "" });
       carregar();
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : "Erro ao finalizar utilização");
@@ -204,10 +202,9 @@ export default function KmTecnicoPage() {
                     <LinksMapa endereco={`${r.local_inicial}${r.local_final && r.local_final !== r.local_inicial ? `, ${r.local_final}` : ""}`} espaco={false} />
                   </div>
                 )}
-                {r.observacao && <p className="mt-1 text-xs italic text-zinc-500">{r.observacao}</p>}
                 {r.status === "em_utilizacao" && (
                   <div className="mt-2">
-                    <Botao variante="sucesso" onClick={() => { setFinalizandoId(r.id); setFinForm({ km_final: "", local_final: "", observacao: "" }); }}>
+                    <Botao variante="sucesso" onClick={() => { setFinalizandoId(r.id); setFinForm({ km_final: "", local_final: "" }); }}>
                       Finalizar utilização
                     </Botao>
                   </div>
@@ -282,7 +279,6 @@ export default function KmTecnicoPage() {
               </p>
               <Campo label="KM final" type="number" required min={r.km_inicial} value={finForm.km_final} onChange={(e) => setFinForm({ ...finForm, km_final: e.target.value })} placeholder={`Mínimo: ${r.km_inicial}`} />
               <Campo label="Local final" required value={finForm.local_final} onChange={(e) => setFinForm({ ...finForm, local_final: e.target.value })} placeholder="Ex.: Cliente X" />
-              <Textarea label="Observação (opcional)" rows={2} value={finForm.observacao} onChange={(e) => setFinForm({ ...finForm, observacao: e.target.value })} />
               {finForm.km_final !== "" && Number(finForm.km_final) >= r.km_inicial && (
                 <p className="rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-800">
                   KM percorrido: <span className="font-bold">{Number(finForm.km_final) - r.km_inicial} km</span>

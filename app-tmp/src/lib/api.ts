@@ -23,13 +23,14 @@ export function setToken(token: string | null) {
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const token = getToken();
+  const exigeCorpo = method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE";
   const res = await fetch(`${API_URL}${path}`, {
     method,
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {})
     },
-    body: body !== undefined ? JSON.stringify(body) : undefined
+    body: body !== undefined ? JSON.stringify(body) : exigeCorpo ? "{}" : undefined
   });
   if (!res.ok) {
     const data = await res.json().catch(() => null);
