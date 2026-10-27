@@ -1,0 +1,33 @@
+name: Deploy Automático
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código do GitHub
+        uses: actions/checkout@v4
+
+      - name: Instalar sshpass
+        run: sudo apt-get update -y && sudo apt-get install -y sshpass rsync
+
+      - name: Sincronizar arquivos com servidor
+        run: |
+          rsync -avz -e "sshpass -p '${{ secrets.SSH_PASSWORD }}' ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no" \
+            --exclude='node_modules' \
+            --exclude='.env' \
+            --exclude='.git' \
+            --exclude='backups' \
+            --exclude='uploads' \
+            --exclude='*.log' \
+            --exclude='*.db*' \
+            --exclude='tmp' \
+            --exclude='.DS_Store' \
+            ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/medicalthermo/field-thermo/
+
+      - name: Reiniciar aplicação no servidor
+        run: |
+          sshpass -p '${{ secrets.SSH_PASSWORD }}' ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "touch /home/medicalthermo/field-thermo/tmp/restart.txt"
