@@ -23,10 +23,62 @@ function escapeHtml(v) {
     .replaceAll('"', '&quot;');
 }
 
+let cachedLogoBase64 = null;
+function obterLogoBase64() {
+  if (cachedLogoBase64 !== null) return cachedLogoBase64;
+  const caminhos = [
+    path.join(__dirname, '../logo.png'),
+    path.join(__dirname, '../../app-tmp/public/logo.png'),
+    '/home/medicalthermo/field-thermo-web/public/logo.png'
+  ];
+  for (const p of caminhos) {
+    try {
+      if (fs.existsSync(p)) {
+        cachedLogoBase64 = fs.readFileSync(p).toString('base64').replace(/(.{76})/g, '$1\r\n');
+        return cachedLogoBase64;
+      }
+    } catch {}
+  }
+  cachedLogoBase64 = '';
+  return cachedLogoBase64;
+}
+
 function montarMimeMessage({ fromName, fromEmail, toList, subject, html }) {
   const base64Html = Buffer.from(html, 'utf8')
     .toString('base64')
     .replace(/(.{76})/g, '$1\r\n');
+
+  const logoB64 = obterLogoBase64();
+  if (logoB64) {
+    const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    return [
+      `From: ${encodeHeader(fromName)} <${fromEmail}>`,
+      `Reply-To: ${fromEmail}`,
+      `To: ${toList.join(', ')}`,
+      `Subject: ${encodeHeader(subject)}`,
+      `Date: ${new Date().toUTCString()}`,
+      `Message-ID: <${Date.now()}.${Math.random().toString(36).slice(2)}@medicalthermo.com>`,
+      'MIME-Version: 1.0',
+      `Content-Type: multipart/related; boundary="${boundary}"`,
+      '',
+      `--${boundary}`,
+      'Content-Type: text/html; charset=UTF-8',
+      'Content-Transfer-Encoding: base64',
+      '',
+      base64Html,
+      '',
+      `--${boundary}`,
+      'Content-Type: image/png; name="logo.png"',
+      'Content-Transfer-Encoding: base64',
+      'Content-ID: <logo@medicalthermo.com>',
+      'Content-Disposition: inline; filename="logo.png"',
+      '',
+      logoB64,
+      '',
+      `--${boundary}--`,
+      ''
+    ].join('\r\n');
+  }
 
   return [
     `From: ${encodeHeader(fromName)} <${fromEmail}>`,
@@ -250,7 +302,7 @@ function montarHtmlAvaliacaoGoogle({ os_numero, cliente_nome, responsavel_nome, 
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background-color:#ffffff; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden;">
     <tr>
       <td style="background-color:#172554; padding:20px 24px; color:#ffffff;">
-        <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#93c5fd;">MedicalThermo Herzog</div>
+        <div style="margin-bottom:12px;"><img src="cid:logo@medicalthermo.com" alt="MedicalThermo Engenharia Herzog" width="210" style="display:block; max-width:210px; height:auto; border:0;" /></div>
         <div style="font-size:18px; font-weight:700; margin-top:4px;">Avalie nosso atendimento — OS ${e(os_numero)}</div>
       </td>
     </tr>
@@ -301,7 +353,7 @@ function montarHtmlRelatorioCliente({ os_numero, cliente_nome, local_nome, respo
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px; margin:0 auto; background-color:#ffffff; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden;">
     <tr>
       <td style="background-color:#172554; padding:20px 24px; color:#ffffff;">
-        <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#93c5fd;">MedicalThermo Herzog — Thermo control</div>
+        <div style="margin-bottom:12px;"><img src="cid:logo@medicalthermo.com" alt="MedicalThermo Engenharia Herzog" width="210" style="display:block; max-width:210px; height:auto; border:0;" /></div>
         <div style="font-size:18px; font-weight:700; margin-top:4px;">Relatório Técnico de Atendimento — OS ${e(os_numero)}</div>
       </td>
     </tr>
