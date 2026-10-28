@@ -70,9 +70,9 @@ export default function ImportarClientesModal({ onFechar, onImportado }: { onFec
                 <p className="text-xs text-zinc-500">Linhas</p>
                 <p className="text-lg font-bold text-zinc-900">{preview.resumo.total_linhas}</p>
               </div>
-              <div className="rounded-lg border border-green-200 bg-green-50 p-2 text-center">
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-2 text-center">
                 <p className="text-xs text-zinc-500">Novos</p>
-                <p className="text-lg font-bold text-green-700">{preview.resumo.novos}</p>
+                <p className="text-lg font-bold text-blue-700">{preview.resumo.novos}</p>
               </div>
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-center">
                 <p className="text-xs text-zinc-500">Duplicados no arquivo</p>

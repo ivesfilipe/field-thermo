@@ -382,7 +382,7 @@ export default function NovaOsPage() {
                 {localSelecionado?.latitude != null ? "Ajustar localização no mapa" : "Digitar localização no mapa"}
               </Botao>
             </div>
-            {msgLoc && <p className="mt-2 text-xs font-medium text-green-700">{msgLoc}</p>}
+            {msgLoc && <p className="mt-2 text-xs font-medium text-blue-700">{msgLoc}</p>}
             {localSelecionado?.latitude != null && localSelecionado?.longitude != null && (
               <div ref={previewRef} className="mt-2 h-44 w-full rounded-lg border border-zinc-300" />
             )}
