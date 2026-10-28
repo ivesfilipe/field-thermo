@@ -649,7 +649,7 @@ export default function OsDetalhePage() {
               onSubmit={(e) => { e.preventDefault(); criarAtividade(); }}
               className="grid gap-2 md:grid-cols-6"
             >
-              <Campo label="Título" required value={atvForm.titulo} onChange={(e) => setAtvForm({ ...atvForm, titulo: e.target.value })} />
+              <Campo label="Título" value={atvForm.titulo} onChange={(e) => setAtvForm({ ...atvForm, titulo: e.target.value })} />
               <Select label="Tipo" value={atvForm.tipo} onChange={(e) => setAtvForm({ ...atvForm, tipo: e.target.value })}>
                 {TIPOS_ATIVIDADE.map((t) => <option key={t} value={t}>{TIPO_LABEL[t]}</option>)}
               </Select>
@@ -830,7 +830,7 @@ export default function OsDetalhePage() {
       {mostrarAtividade && (
         <Modal titulo="Adicionar atividade" onFechar={() => setMostrarAtividade(false)}>
           <div className="grid gap-3 md:grid-cols-2">
-            <Campo label="Título" required value={atvForm.titulo} onChange={(e) => setAtvForm({ ...atvForm, titulo: e.target.value })} />
+            <Campo label="Título" value={atvForm.titulo} onChange={(e) => setAtvForm({ ...atvForm, titulo: e.target.value })} />
             <Select label="Tipo" value={atvForm.tipo} onChange={(e) => setAtvForm({ ...atvForm, tipo: e.target.value })}>
               {TIPOS_ATIVIDADE.map((t) => <option key={t} value={t}>{TIPO_LABEL[t]}</option>)}
             </Select>

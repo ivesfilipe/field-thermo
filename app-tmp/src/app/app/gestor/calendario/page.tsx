@@ -700,8 +700,8 @@ export default function CalendarioPage() {
           </div>
           {formNovo.tipo === "os" ? (
             <form onSubmit={(e) => { e.preventDefault(); criarOS(); }} className="grid gap-3 md:grid-cols-2">
-              <SelecionarCliente clientes={clientes} value={formNovo.cliente_id} onChange={(v) => setFormNovo({ ...formNovo, cliente_id: v })} required />
-              <Campo label="Serviço solicitado" required value={formNovo.servico} onChange={(e) => setFormNovo({ ...formNovo, servico: e.target.value })} placeholder="Ex.: Manutenção preventiva" />
+              <SelecionarCliente clientes={clientes} value={formNovo.cliente_id} onChange={(v) => setFormNovo({ ...formNovo, cliente_id: v })} />
+              <Campo label="Serviço solicitado" value={formNovo.servico} onChange={(e) => setFormNovo({ ...formNovo, servico: e.target.value })} placeholder="Ex.: Manutenção preventiva" />
               <Campo label="Data" type="date" value={formNovo.data} onChange={(e) => setFormNovo({ ...formNovo, data: e.target.value })} />
               <div className="grid grid-cols-2 gap-2">
                 <Campo label="Horário inicial" type="time" value={formNovo.hora_inicio} onChange={(e) => setFormNovo({ ...formNovo, hora_inicio: e.target.value })} />
@@ -728,7 +728,7 @@ export default function CalendarioPage() {
             </form>
           ) : (
             <form onSubmit={(e) => { e.preventDefault(); criarAtividade(formNovo.os_id); }} className="grid gap-3 md:grid-cols-2">
-              <Campo label="Título" required value={formNovo.titulo} onChange={(e) => setFormNovo({ ...formNovo, titulo: e.target.value })} />
+              <Campo label="Título" value={formNovo.titulo} onChange={(e) => setFormNovo({ ...formNovo, titulo: e.target.value })} />
               <Select label="Tipo" value={formNovo.tipo_atv} onChange={(e) => setFormNovo({ ...formNovo, tipo_atv: e.target.value })}>
                 {TIPOS_ATIVIDADE.map((t) => <option key={t.v} value={t.v}>{t.l}</option>)}
               </Select>

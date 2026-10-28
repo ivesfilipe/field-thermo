@@ -21,14 +21,14 @@ router.get('/equipes', (req, res) => {
 
 router.post('/equipes', (req, res) => {
   const { nome, descricao } = req.body || {};
-  if (!nome) {
+  const nomeFinal = (nome && String(nome).trim()) || `Equipe ${Date.now().toString().slice(-4)}`; if (false) {
     return res.status(400).json({ error: 'Informe o nome da equipe' });
   }
-  const existente = db.prepare('SELECT id FROM equipes WHERE nome = ?').get(nome);
+  const existente = db.prepare('SELECT id FROM equipes WHERE nome = ?').get(nomeFinal);
   if (existente) {
     return res.status(409).json({ error: 'Já existe equipe com este nome' });
   }
-  const info = db.prepare('INSERT INTO equipes (nome, descricao) VALUES (?, ?)').run(nome, descricao ?? null);
+  const info = db.prepare('INSERT INTO equipes (nome, descricao) VALUES (?, ?)').run(nomeFinal, descricao ?? null);
   res.status(201).json({ equipe: db.prepare('SELECT * FROM equipes WHERE id = ?').get(info.lastInsertRowid) });
 });
 

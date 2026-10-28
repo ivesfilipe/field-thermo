@@ -16,7 +16,7 @@ router.get('/veiculos', (req, res) => {
 });
 
 router.post('/veiculos', (req, res) => {
-  const placa = String(req.body?.placa || '').trim().toUpperCase();
+  const placa = String(req.body?.placa || '').trim().toUpperCase() || `VEI-${Date.now().toString().slice(-4)}`;
   if (!placa) return res.status(400).json({ error: 'Placa é obrigatória' });
   const existente = db.prepare('SELECT id FROM veiculos WHERE placa = ?').get(placa);
   if (existente) return res.status(409).json({ error: 'Já existe um veículo com esta placa' });
@@ -31,7 +31,7 @@ router.put('/veiculos/:id', (req, res) => {
   const id = Number(req.params.id);
   const veiculo = db.prepare('SELECT * FROM veiculos WHERE id = ?').get(id);
   if (!veiculo) return res.status(404).json({ error: 'Veículo não encontrado' });
-  const placa = String(req.body?.placa || '').trim().toUpperCase();
+  const placa = String(req.body?.placa || '').trim().toUpperCase() || `VEI-${Date.now().toString().slice(-4)}`;
   if (!placa) return res.status(400).json({ error: 'Placa é obrigatória' });
   const dup = db.prepare('SELECT id FROM veiculos WHERE placa = ? AND id != ?').get(placa, id);
   if (dup) return res.status(409).json({ error: 'Já existe um veículo com esta placa' });

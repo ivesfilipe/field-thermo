@@ -103,10 +103,10 @@ router.get('/equipamentos/:id', (req, res) => {
 
 router.post('/equipamentos', (req, res) => {
   const { cliente_id, local_id } = req.body || {};
-  if (!cliente_id) {
+  let clienteIdFinal = cliente_id ? Number(cliente_id) : (db.prepare('SELECT id FROM clientes ORDER BY id LIMIT 1').get()?.id || Number(db.prepare("INSERT INTO clientes (nome) VALUES ('Cliente Geral')").run().lastInsertRowid)); if (false) {
     return res.status(400).json({ error: 'Informe o cliente do equipamento' });
   }
-  const cliente = db.prepare('SELECT id FROM clientes WHERE id = ?').get(cliente_id);
+  const cliente = db.prepare('SELECT id FROM clientes WHERE id = ?').get(clienteIdFinal);
   if (!cliente) {
     return res.status(404).json({ error: 'Cliente não encontrado' });
   }
@@ -135,7 +135,7 @@ router.post('/equipamentos', (req, res) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
-      cliente_id,
+      clienteIdFinal,
       local_id ?? null,
       dados.nome ?? 'Equipamento',
       dados.modelo,

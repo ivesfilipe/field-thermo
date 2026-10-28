@@ -21,10 +21,10 @@ router.get('/locais', (req, res) => {
 
 router.post('/locais', (req, res) => {
   const { cliente_id, nome, endereco, cidade, estado, cep, latitude, longitude, responsavel_nome, responsavel_email, responsavel_telefone } = req.body || {};
-  if (!cliente_id || !nome) {
+  let clienteIdFinal = cliente_id ? Number(cliente_id) : (db.prepare('SELECT id FROM clientes ORDER BY id LIMIT 1').get()?.id || Number(db.prepare("INSERT INTO clientes (nome) VALUES ('Cliente Geral')").run().lastInsertRowid)); const nomeFinal = (nome && String(nome).trim()) || 'Principal'; if (false) {
     return res.status(400).json({ error: 'Informe cliente_id e nome do local' });
   }
-  const cliente = db.prepare('SELECT id FROM clientes WHERE id = ?').get(cliente_id);
+  const cliente = db.prepare('SELECT id FROM clientes WHERE id = ?').get(clienteIdFinal);
   if (!cliente) {
     return res.status(404).json({ error: 'Cliente não encontrado' });
   }
@@ -35,7 +35,7 @@ router.post('/locais', (req, res) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
-      cliente_id, nome, endereco ?? null, cidade ?? null, estado ?? null, cep ?? null,
+      clienteIdFinal, nomeFinal, endereco ?? null, cidade ?? null, estado ?? null, cep ?? null,
       latitude != null && latitude !== '' ? Number(latitude) : null,
       longitude != null && longitude !== '' ? Number(longitude) : null,
       responsavel_nome ?? null, responsavel_email ?? null, responsavel_telefone ?? null

@@ -563,7 +563,7 @@ export default function ClientesPage() {
       {modalAberto && (
         <Modal titulo={editando === null ? "Novo cliente" : `Editar cliente #${editando}`} onFechar={() => setModalAberto(false)}>
           <form onSubmit={salvar} className="grid gap-3 md:grid-cols-2">
-            <Campo label="Nome" required value={form.nome || ""} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
+            <Campo label="Nome" value={form.nome || ""} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
             <Campo label="Documento (CNPJ/CPF)" value={form.documento || ""} onChange={(e) => setForm({ ...form, documento: e.target.value })} />
             <Campo label="Email" type="email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             <Campo label="Telefone" value={form.telefone || ""} onChange={(e) => setForm({ ...form, telefone: e.target.value })} />

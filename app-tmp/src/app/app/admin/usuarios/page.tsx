@@ -145,16 +145,16 @@ export default function UsuariosPage() {
       {modalAberto && (
         <Modal titulo={editando === null ? "Novo usuário" : `Editar usuário #${editando}`} onFechar={() => setModalAberto(false)}>
           <form onSubmit={salvar} className="grid gap-3 md:grid-cols-2">
-            <Campo label="Nome" required value={form.nome || ""} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
-            <Campo label="Email" type="email" required value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            <Campo label="Nome" value={form.nome || ""} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
+            <Campo label="Email" type="email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             <Campo
               label={editando === null ? "Senha" : "Nova senha (opcional)"}
               type="password"
-              required={editando === null}
+              required={false}
               value={form.senha || ""}
               onChange={(e) => setForm({ ...form, senha: e.target.value })}
             />
-            <Select label="Perfil" required value={form.perfil || ""} onChange={(e) => setForm({ ...form, perfil: e.target.value as Perfil })}>
+            <Select label="Perfil" value={form.perfil || ""} onChange={(e) => setForm({ ...form, perfil: e.target.value as Perfil })}>
               <option value="">Selecione...</option>
               {(Object.keys(PERFIS) as Perfil[]).map((p) => (
                 <option key={p} value={p}>{PERFIS[p]}</option>

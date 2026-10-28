@@ -123,10 +123,10 @@ export default function VeiculosPage() {
       {modalAberto && (
         <Modal titulo={editando ? "Editar veículo" : "Novo veículo"} onFechar={() => setModalAberto(false)}>
           <div className="grid gap-3">
-            <Campo label="Placa" required value={form.placa} onChange={(e) => setForm({ ...form, placa: e.target.value.toUpperCase() })} placeholder="Ex.: ABC-1234" />
+            <Campo label="Placa" value={form.placa} onChange={(e) => setForm({ ...form, placa: e.target.value.toUpperCase() })} placeholder="Ex.: ABC-1234" />
             <Campo label="Descrição" value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} placeholder="Ex.: Fiorino branco" />
             <div className="flex gap-2">
-              <Botao disabled={salvando || !form.placa.trim()} onClick={salvar}>
+              <Botao disabled={salvando} onClick={salvar}>
                 {salvando ? "Salvando..." : editando ? "Salvar alterações" : "Cadastrar"}
               </Botao>
               <Botao variante="secundario" onClick={() => setModalAberto(false)}>Cancelar</Botao>

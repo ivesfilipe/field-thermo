@@ -31,7 +31,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-blue-950 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-blue-600 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
           <div className="mb-4 flex items-center justify-center">

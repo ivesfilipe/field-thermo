@@ -101,7 +101,7 @@ export default function EquipesPage() {
       {modalAberto && (
         <Modal titulo={editando === null ? "Nova equipe" : `Editar equipe #${editando}`} onFechar={() => setModalAberto(false)}>
           <form onSubmit={salvar} className="grid gap-3">
-            <Campo label="Nome" required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
+            <Campo label="Nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
             <Textarea label="Descrição" value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} />
             <div className="flex gap-2">
               <Botao tipo="submit">{editando === null ? "Criar equipe" : "Salvar"}</Botao>

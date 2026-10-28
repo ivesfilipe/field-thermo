@@ -390,7 +390,7 @@ export default function RelatorioDetalhePage({ params }: { params: Promise<{ id:
         <Card title="Registro comercial (informações separadas do relatório técnico)">
           {ehComercial ? (
             <form onSubmit={salvarComercial} className="grid gap-3 md:grid-cols-3">
-            <Select label="Status comercial" required value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+            <Select label="Status comercial" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
               {STATUS_COMERCIAL.map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
             </Select>
             <Campo label="Valor da oportunidade (R$)" type="number" step="0.01" value={form.valor_estimado} onChange={(e) => setForm({ ...form, valor_estimado: e.target.value })} />

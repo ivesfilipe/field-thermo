@@ -253,8 +253,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const iniciais = usuario.nome.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
 
   const sidebar = (
-    <aside className="flex h-full w-64 flex-col bg-blue-950">
-      <div className="flex flex-col gap-2 border-b border-blue-900 px-4 py-4">
+    <aside className="flex h-full w-64 flex-col bg-blue-700">
+      <div className="flex flex-col gap-2 border-b border-blue-600 px-4 py-4">
         <Image src="/logo.png" alt="Logo MedicalThermo Herzog" width={224} height={59} className="h-auto w-full object-contain" />
         <div className="min-w-0">
           <p className="truncate text-sm font-bold text-white">Thermo control</p>
@@ -265,7 +265,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
         {(NAV[perfil] || []).map((secao) => (
           <div key={secao.titulo} className="space-y-1">
-            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-blue-400/80">{secao.titulo}</p>
+            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-blue-200/90">{secao.titulo}</p>
             {secao.itens.map((item) => {
               const ativo = pathname === item.href || (item.href !== "/app" && pathname.startsWith(item.href));
               return (
@@ -273,7 +273,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   key={item.href}
                   href={item.href}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                    ativo ? "bg-blue-600 text-white shadow-sm" : "text-blue-100 hover:bg-blue-900"
+                    ativo ? "bg-sky-500 text-white shadow-sm" : "text-blue-50 hover:bg-blue-600"
                   }`}
                 >
                   <span className="shrink-0">{ICONES[item.icone]}</span>
@@ -292,7 +292,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         ))}
       </nav>
 
-      <div className="border-t border-blue-900 p-3">
+      <div className="border-t border-blue-600 p-3">
         <div className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-800 text-xs font-bold text-white">
             {iniciais}
@@ -304,7 +304,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
         <button
           onClick={logout}
-          className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-blue-700 px-3 py-2 text-sm font-medium text-blue-100 transition-colors hover:bg-blue-900"
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-blue-500 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -320,7 +320,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="sticky top-0 hidden h-screen shrink-0 lg:block">
         <div className={`h-full transition-all duration-200 ${recolhida ? "w-16" : "w-64"}`}>
           {recolhida ? (
-            <aside className="flex h-full w-16 flex-col bg-blue-950">
+            <aside className="flex h-full w-16 flex-col bg-blue-700">
               <div className="flex justify-center border-b border-blue-900 py-4">
                 <div className="flex justify-center px-2 py-4">
                 <Image src="/logo.png" alt="Logo" width={64} height={17} className="h-auto w-16 object-contain" />
@@ -337,7 +337,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                           href={item.href}
                           title={item.label}
                           className={`flex items-center justify-center rounded-lg p-2.5 text-sm transition-colors ${
-                            ativo ? "bg-blue-600 text-white" : "text-blue-100 hover:bg-blue-900"
+                            ativo ? "bg-sky-500 text-white" : "text-blue-50 hover:bg-blue-600"
                           }`}
                         >
                           <span className="relative">
@@ -391,7 +391,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-blue-900 bg-blue-950/95 px-4 py-3 backdrop-blur md:px-6">
+        <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-blue-600 bg-blue-700/95 px-4 py-3 backdrop-blur md:px-6">
           <button
             onClick={() => setMenuAberto(true)}
             className="rounded-lg border border-blue-700 p-2 text-blue-100 hover:bg-blue-900 lg:hidden"

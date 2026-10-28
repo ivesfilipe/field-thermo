@@ -135,7 +135,7 @@ export default function EquipamentosPage() {
       {modalAberto && (
         <Modal titulo={editando === null ? "Novo equipamento" : `Editar equipamento #${editando}`} onFechar={() => setModalAberto(false)} largura="max-w-2xl">
           <form onSubmit={salvar} className="grid gap-3 md:grid-cols-2">
-            <Select label="Cliente" required value={form.cliente_id ?? ""} onChange={(e) => { const v = Number(e.target.value); setForm({ ...form, cliente_id: v, local_id: undefined }); }}>
+            <Select label="Cliente" value={form.cliente_id ?? ""} onChange={(e) => { const v = Number(e.target.value); setForm({ ...form, cliente_id: v, local_id: undefined }); }}>
               <option value="">Selecione...</option>
               {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </Select>
@@ -143,7 +143,7 @@ export default function EquipamentosPage() {
               <option value="">Sem local</option>
               {locaisDoCliente.map((l) => <option key={l.id} value={l.id}>{l.nome}</option>)}
             </Select>
-            <Campo label="Nome" required value={form.nome || ""} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
+            <Campo label="Nome" value={form.nome || ""} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
             <Campo label="Modelo" value={form.modelo || ""} onChange={(e) => setForm({ ...form, modelo: e.target.value })} />
             <Campo label="Fabricante" value={form.fabricante || ""} onChange={(e) => setForm({ ...form, fabricante: e.target.value })} />
             <Campo label="Nº de série" value={form.numero_serie || ""} onChange={(e) => setForm({ ...form, numero_serie: e.target.value })} />

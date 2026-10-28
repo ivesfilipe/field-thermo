@@ -517,9 +517,9 @@ router.post('/os/:id/concluir', (req, res) => {
     }
   }
   const listaAssinaturas = normalizarAssinaturas(execucao);
-  const temAssinaturaValida = listaAssinaturas.some((a) => a.arquivo && String(a.nome || execucao.assinatura_nome || '').trim()) || (!!execucao.assinatura_nome && !!execucao.assinatura);
+  const temAssinaturaValida = listaAssinaturas.some((a) => !!a.arquivo) || !!execucao.assinatura;
   if (!temAssinaturaValida) {
-    return res.status(400).json({ error: 'Registre o nome e a assinatura de pelo menos um responsável' });
+    return res.status(400).json({ error: 'Registre a assinatura de pelo menos um responsável' });
   }
 
   const tinhaComplemento = !!execucao.complemento_solicitado;

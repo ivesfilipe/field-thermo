@@ -338,7 +338,7 @@ export default function NovaOsPage() {
             clientes={clientes}
             value={form.cliente_id}
             onChange={(v) => setForm({ ...form, cliente_id: v, local_id: "", equipamento_id: "" })}
-            required
+            required={false}
           />
           <Select label="Equipamento (MT)" value={form.equipamento_id} onChange={(e) => setForm({ ...form, equipamento_id: e.target.value })}>
             <option value="">Sem equipamento</option>
@@ -352,7 +352,7 @@ export default function NovaOsPage() {
             {locaisFiltrados.map((l) => <option key={l.id} value={l.id}>{l.nome}{l.endereco ? ` — ${l.endereco}` : ""}{l.cidade ? ` (${l.cidade})` : ""}</option>)}
           </Select>
           <Campo label="Responsável pelo local" value={form.responsavel_local} onChange={(e) => setForm({ ...form, responsavel_local: e.target.value })} />
-          <Campo label="Serviço a realizar" required value={form.servico} onChange={(e) => setForm({ ...form, servico: e.target.value })} placeholder="Ex.: Manutenção preventiva" />
+          <Campo label="Serviço a realizar" value={form.servico} onChange={(e) => setForm({ ...form, servico: e.target.value })} placeholder="Ex.: Manutenção preventiva" />
           <Select label="Tipo de atendimento" value={form.tipo_atendimento} onChange={(e) => setForm({ ...form, tipo_atendimento: e.target.value })}>
             <option value="">Padrão (sem modelo)</option>
             {Object.entries(MODELOS).map(([v, m]) => <option key={v} value={v}>{m.rotulo}</option>)}

@@ -228,7 +228,7 @@ router.post('/atividades', (req, res) => {
     titulo, tipo, os_id, cliente_id, local_id, responsavel, equipe_id, tecnico_id,
     data, hora_inicio, hora_fim, observacoes, status, ignorar_conflitos
   } = req.body || {};
-  if (!titulo) {
+  const tituloFinal = (titulo && String(titulo).trim()) || 'Atividade agendada'; if (false) {
     return res.status(400).json({ error: 'Informe o título da atividade' });
   }
   if (tipo && !TIPOS_ATIVIDADE[tipo]) {
@@ -268,12 +268,12 @@ router.post('/atividades', (req, res) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
-      titulo, tipo || 'outro', os_id ?? null, cliente_id ?? null, local_id ?? null,
+      tituloFinal, tipo || 'outro', os_id ?? null, cliente_id ?? null, local_id ?? null,
       responsavel ?? null, equipe_id ?? null, tecnico_id ?? null,
       data ?? null, hora_inicio ?? null, hora_fim ?? null, observacoes ?? null,
       status || 'agendada', req.user.id
     );
-  registrarHistorico({ usuario: req.user, tipo: 'atividade', registroId: info.lastInsertRowid, campo: 'criacao', valorNovo: titulo });
+  registrarHistorico({ usuario: req.user, tipo: 'atividade', registroId: info.lastInsertRowid, campo: 'criacao', valorNovo: tituloFinal });
   if (os_id) {
     registrarHistorico({ usuario: req.user, tipo: 'os', registroId: os_id, campo: 'atividade', valorNovo: `Atividade #${info.lastInsertRowid} vinculada` });
   }

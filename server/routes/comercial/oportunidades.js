@@ -37,7 +37,7 @@ router.get('/oportunidades', (req, res) => {
 
 router.post('/oportunidades', (req, res) => {
   const { relatorio_id, descricao, valor_estimado, status, data_contato, resultado_contato, proposta_vinculada, previsao_fechamento } = req.body || {};
-  if (!relatorio_id || !descricao) {
+  const descricaoFinal = (descricao && String(descricao).trim()) || 'Oportunidade comercial'; if (!relatorio_id) {
     return res.status(400).json({ error: 'Informe relatorio_id e descricao' });
   }
   const relatorio = db
@@ -60,11 +60,11 @@ router.post('/oportunidades', (req, res) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
-      relatorio_id, 'outro_servico', descricao, valor_estimado ?? null, status || 'novo',
+      relatorio_id, 'outro_servico', descricaoFinal, valor_estimado ?? null, status || 'novo',
       req.user.id, data_contato ?? null, resultado_contato ?? null, proposta_vinculada ?? null,
       previsao_fechamento ?? null, req.user.id
     );
-  registrarHistorico({ usuario: req.user, tipo: 'oportunidade', registroId: info.lastInsertRowid, campo: 'criacao', valorNovo: descricao });
+  registrarHistorico({ usuario: req.user, tipo: 'oportunidade', registroId: info.lastInsertRowid, campo: 'criacao', valorNovo: descricaoFinal });
   res.status(201).json({ oportunidade: db.prepare('SELECT * FROM oportunidades WHERE id = ?').get(info.lastInsertRowid) });
 });
 

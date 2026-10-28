@@ -121,11 +121,11 @@ export default function LocaisPage() {
       {modalAberto && (
         <Modal titulo={editando === null ? "Novo local" : `Editar local #${editando}`} onFechar={() => setModalAberto(false)}>
           <form onSubmit={salvar} className="grid gap-3 md:grid-cols-2">
-            <Select label="Cliente" required value={form.cliente_id ?? ""} onChange={(e) => setForm({ ...form, cliente_id: Number(e.target.value) })}>
+            <Select label="Cliente" value={form.cliente_id ?? ""} onChange={(e) => setForm({ ...form, cliente_id: Number(e.target.value) })}>
               <option value="">Selecione...</option>
               {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </Select>
-            <Campo label="Nome do local" required value={form.nome || ""} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
+            <Campo label="Nome do local" value={form.nome || ""} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
             <div className="md:col-span-2">
               <Campo label="Endereço" value={form.endereco || ""} onChange={(e) => setForm({ ...form, endereco: e.target.value })} />
             </div>

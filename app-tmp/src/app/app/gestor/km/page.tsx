@@ -245,7 +245,7 @@ export default function KmGestorPage() {
             <Select label="Veículo" value={ajusteForm.veiculo_id} onChange={(e) => setAjusteForm({ ...ajusteForm, veiculo_id: e.target.value })}>
               {veiculos.map((v) => <option key={v.id} value={v.id}>{v.placa}</option>)}
             </Select>
-            <Select label="Motorista" required value={ajusteForm.motorista_id} onChange={(e) => setAjusteForm({ ...ajusteForm, motorista_id: e.target.value, motorista_nome: "" })}>
+            <Select label="Motorista" value={ajusteForm.motorista_id} onChange={(e) => setAjusteForm({ ...ajusteForm, motorista_id: e.target.value, motorista_nome: "" })}>
               <option value="">Selecione o motorista...</option>
               {membros.map((m) => (
                 <option key={m.id} value={m.id}>{m.nome}</option>
@@ -255,16 +255,16 @@ export default function KmGestorPage() {
             {ajusteForm.motorista_id === "custom" && (
               <Campo
                 label="Nome do motorista"
-                required
+                required={false}
                 value={ajusteForm.motorista_nome}
                 onChange={(e) => setAjusteForm({ ...ajusteForm, motorista_nome: e.target.value })}
                 placeholder="Digite o nome do motorista"
               />
             )}
-            <Campo label="KM inicial" type="number" required min={0} value={ajusteForm.km_inicial} onChange={(e) => setAjusteForm({ ...ajusteForm, km_inicial: e.target.value })} />
-            <Campo label="Local inicial" required value={ajusteForm.local_inicial} onChange={(e) => setAjusteForm({ ...ajusteForm, local_inicial: e.target.value })} />
+            <Campo label="KM inicial" type="number" min={0} value={ajusteForm.km_inicial} onChange={(e) => setAjusteForm({ ...ajusteForm, km_inicial: e.target.value })} />
+            <Campo label="Local inicial" value={ajusteForm.local_inicial} onChange={(e) => setAjusteForm({ ...ajusteForm, local_inicial: e.target.value })} />
             <div className="flex gap-2">
-              <Botao disabled={salvando || ajusteForm.km_inicial === "" || !ajusteForm.local_inicial || (ajusteForm.motorista_id !== "custom" ? !ajusteForm.motorista_id : !ajusteForm.motorista_nome.trim())} onClick={salvarAjuste}>
+              <Botao disabled={salvando} onClick={salvarAjuste}>
                 {salvando ? "Salvando..." : "Salvar ajuste"}
               </Botao>
               <Botao variante="secundario" onClick={() => setAjustando(null)}>Cancelar</Botao>

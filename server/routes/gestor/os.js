@@ -145,27 +145,35 @@ router.post('/os', (req, res) => {
     cliente_id, local_id, responsavel_local, equipamento_id, servico, descricao,
     prioridade, data_agendada, hora_inicio, hora_fim, equipe_id, tipo_atendimento
   } = req.body || {};
-  if (!cliente_id || !servico) {
-    return res.status(400).json({ error: 'Informe cliente e serviço' });
+  let clienteIdFinal = cliente_id ? Number(cliente_id) : null;
+  if (!clienteIdFinal) {
+    const primeiroCliente = db.prepare('SELECT id FROM clientes ORDER BY id LIMIT 1').get();
+    if (primeiroCliente) {
+      clienteIdFinal = primeiroCliente.id;
+    } else {
+      const infoCli = db.prepare("INSERT INTO clientes (nome) VALUES ('Cliente Geral')").run();
+      clienteIdFinal = Number(infoCli.lastInsertRowid);
+    }
   }
+  const servicoFinal = (servico && String(servico).trim()) || 'Atendimento técnico';
   if (!equipe_id) {
-    return res.status(400).json({ error: 'Informe a equipe responsável' });
+    return res.status(400).json({ error: 'Informe a equipe / técnico responsável' });
   }
   if (tipo_atendimento && !MODELOS[tipo_atendimento]) {
     return res.status(400).json({ error: 'Tipo de atendimento inválido' });
   }
-  const cliente = db.prepare('SELECT id FROM clientes WHERE id = ?').get(cliente_id);
+  const cliente = db.prepare('SELECT id FROM clientes WHERE id = ?').get(clienteIdFinal);
   if (!cliente) {
     return res.status(404).json({ error: 'Cliente não encontrado' });
   }
   if (local_id) {
-    const local = db.prepare('SELECT id FROM locais WHERE id = ? AND cliente_id = ?').get(local_id, cliente_id);
+    const local = db.prepare('SELECT id FROM locais WHERE id = ? AND cliente_id = ?').get(local_id, clienteIdFinal);
     if (!local) {
       return res.status(400).json({ error: 'Local não pertence ao cliente informado' });
     }
   }
   if (equipamento_id) {
-    const equip = db.prepare('SELECT id FROM equipamentos WHERE id = ? AND cliente_id = ?').get(equipamento_id, cliente_id);
+    const equip = db.prepare('SELECT id FROM equipamentos WHERE id = ? AND cliente_id = ?').get(equipamento_id, clienteIdFinal);
     if (!equip) {
       return res.status(400).json({ error: 'Equipamento não pertence ao cliente informado' });
     }
@@ -191,8 +199,8 @@ router.post('/os', (req, res) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
-      numero, cliente_id, local_id ?? null, responsavel_local ?? null, equipamento_id ?? null,
-      servico, descricao ?? null, prioridade || 'media', data_agendada ?? null,
+      numero, clienteIdFinal, local_id ?? null, responsavel_local ?? null, equipamento_id ?? null,
+      servicoFinal, descricao ?? null, prioridade || 'media', data_agendada ?? null,
       hora_inicio ?? null, hora_fim ?? null,
       equipe_id, req.user.id,
       tipo_atendimento || null

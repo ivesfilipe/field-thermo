@@ -175,7 +175,7 @@ export default function OportunidadesPage() {
       {modalAberto && (
         <Modal titulo={editando === null ? "Nova oportunidade" : `Editar oportunidade #${editando}`} onFechar={() => setModalAberto(false)} largura="max-w-2xl">
           <form onSubmit={salvar} className="grid gap-3 md:grid-cols-2">
-            <Select label="Relatório técnico recebido" required value={form.relatorio_id} onChange={(e) => setForm({ ...form, relatorio_id: e.target.value })}>
+            <Select label="Relatório técnico recebido" value={form.relatorio_id} onChange={(e) => setForm({ ...form, relatorio_id: e.target.value })}>
               <option value="">Selecione...</option>
               {relatorios.map((r) => <option key={r.id} value={r.id}>{r.os_numero} — {r.cliente_nome}</option>)}
             </Select>
@@ -188,7 +188,7 @@ export default function OportunidadesPage() {
             <Campo label="Proposta vinculada" value={form.proposta_vinculada} onChange={(e) => setForm({ ...form, proposta_vinculada: e.target.value })} placeholder="Ex.: PRO-2026-001" />
             <Campo label="Resultado do contato" value={form.resultado_contato} onChange={(e) => setForm({ ...form, resultado_contato: e.target.value })} />
             <div className="md:col-span-2">
-              <Textarea label="Descrição / observações" required value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} rows={3} />
+              <Textarea label="Descrição / observações" value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} rows={3} />
             </div>
             <div className="flex gap-2 md:col-span-2">
               <Botao tipo="submit">{editando === null ? "Criar oportunidade" : "Salvar"}</Botao>
