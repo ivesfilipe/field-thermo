@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { api, mediaUrl } from "@/lib/api";
-import { Alerta, Badge, Botao, Campo, Card, LinksMapa, PageHeader, Prioridade, Select, Textarea } from "@/components/ui";
+import { Alerta, Badge, Botao, Campo, Card, GaleriaFotos, LinksMapa, PageHeader, Prioridade, Select, Textarea } from "@/components/ui";
 import { getModelo } from "@/lib/modelos";
 
 interface AssinaturaItem {
@@ -625,8 +625,10 @@ export default function ExecucaoOsPage() {
             <div className="flex flex-wrap gap-2">
               {fotos.map((f) => (
                 <div key={f.id} className="group relative">
-                  <Image src={mediaUrl(f.arquivo)} alt={`Anexo ${CATEGORIA_LABEL[f.categoria] || f.categoria}`} width={96} height={96} className="h-24 w-24 rounded-md border border-zinc-200 object-cover" />
-                  <button onClick={() => removerAnexo(f.id)} className="absolute -top-1.5 -right-1.5 hidden h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs text-white group-hover:flex" title="Remover">×</button>
+                  <a href={mediaUrl(f.arquivo)} target="_blank" rel="noopener noreferrer" title="Clique para abrir a foto">
+                    <Image src={mediaUrl(f.arquivo)} alt={`Anexo ${CATEGORIA_LABEL[f.categoria] || f.categoria}`} width={96} height={96} className="h-24 w-24 rounded-md border border-zinc-200 object-cover transition hover:border-blue-600" />
+                  </a>
+                  <button type="button" onClick={() => removerAnexo(f.id)} className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs text-white shadow" title="Remover">×</button>
                   <p className="mt-0.5 text-center text-[10px] text-zinc-400">{CATEGORIA_LABEL[f.categoria] || f.categoria}</p>
                 </div>
               ))}
@@ -734,6 +736,17 @@ export default function ExecucaoOsPage() {
             </Botao>
           </div>
         </>
+      )}
+
+      {(os.status === "aguardando_validacao" || os.status === "concluida") && fotos.length > 0 && (
+        <Card title={`Fotos enviadas (${fotos.length}) — Clique na foto para abrir`}>
+          <GaleriaFotos
+            fotos={fotos.map((f, idx) => ({
+              src: mediaUrl(f.arquivo),
+              legenda: `${CATEGORIA_LABEL[f.categoria] || "Foto"} #${idx + 1}`
+            }))}
+          />
+        </Card>
       )}
 
       {os.status === "aguardando_validacao" && (

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { api, mediaUrl, API_URL, getToken } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Alerta, Badge, Botao, Campo, Card, LinksMapa, Select, Textarea } from "@/components/ui";
+import { Alerta, Badge, Botao, Campo, Card, GaleriaFotos, LinksMapa, Select, Textarea } from "@/components/ui";
 
 interface Oportunidade {
   id: number;
@@ -436,11 +436,17 @@ export default function RelatorioDetalhePage({ params }: { params: Promise<{ id:
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card title={`Fotos e evidências (${relatorio.fotos.length})`}>
-          <div className="flex flex-wrap gap-2">
-            {relatorio.fotos.map((f) => <Image key={f} src={mediaUrl(f)} alt="Foto" width={112} height={112} className="h-28 w-28 rounded-md border border-zinc-200 object-cover" />)}
-            {relatorio.fotos.length === 0 && <p className="text-sm text-zinc-400">Nenhuma foto.</p>}
-          </div>
+        <Card title={`Fotos e evidências (${relatorio.fotos.length}) — Clique para abrir`}>
+          {relatorio.fotos.length > 0 ? (
+            <GaleriaFotos
+              fotos={relatorio.fotos.map((f, idx) => ({
+                src: mediaUrl(f),
+                legenda: `Evidência fotográfica #${idx + 1}`
+              }))}
+            />
+          ) : (
+            <p className="text-sm text-zinc-400">Nenhuma foto.</p>
+          )}
           {relatorio.anexos && relatorio.anexos.filter((a) => a.categoria === "documento").length > 0 && (
             <div className="mt-3 border-t border-zinc-100 pt-3">
               <p className="mb-1 text-xs font-medium text-zinc-500">Documentos vinculados</p>

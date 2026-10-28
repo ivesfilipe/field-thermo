@@ -85,6 +85,8 @@ router.get('/relatorios/publico/:token', (req, res) => {
     }];
   }
   relatorio.anexos = db.prepare('SELECT * FROM anexos WHERE os_id = ? ORDER BY id').all(relatorio.os_id) || [];
+  const fotosAnexosPub = relatorio.anexos.filter((a) => a.categoria !== 'documento').map((a) => a.arquivo);
+  relatorio.fotos = Array.from(new Set([...(Array.isArray(relatorio.fotos) ? relatorio.fotos : []), ...fotosAnexosPub]));
   const aval = db.prepare('SELECT token, status FROM avaliacoes WHERE os_id = ?').get(relatorio.os_id);
   relatorio.avaliacao_token = aval ? aval.token : null;
   relatorio.avaliacao_status = aval ? aval.status : null;
@@ -224,6 +226,8 @@ router.get('/relatorios/:id', (req, res) => {
     }];
   }
   relatorio.anexos = db.prepare('SELECT * FROM anexos WHERE os_id = ? ORDER BY id').all(relatorio.os_id) || [];
+  const fotosAnexosDet = relatorio.anexos.filter((a) => a.categoria !== 'documento').map((a) => a.arquivo);
+  relatorio.fotos = Array.from(new Set([...(Array.isArray(relatorio.fotos) ? relatorio.fotos : []), ...fotosAnexosDet]));
   relatorio.tipo_necessidade_label = TIPOS_NECESSIDADE[relatorio.necessidade_adicional] || relatorio.necessidade_adicional;
   relatorio.oportunidade = relatorio.oportunidade_id
     ? {
@@ -377,9 +381,7 @@ function enviarPdfHtml(relatorio, req, res) {
   const anexos = db.prepare('SELECT * FROM anexos WHERE os_id = ? ORDER BY id').all(relatorio.os_id) || [];
   const fotosAnexos = anexos.filter((a) => a.categoria !== 'documento').map((a) => a.arquivo);
   const docsParaPdf = anexos.filter((a) => a.categoria === 'documento');
-  if (fotosAnexos.length > 0) {
-    relatorio.fotos = fotosAnexos;
-  }
+  relatorio.fotos = Array.from(new Set([...(Array.isArray(relatorio.fotos) ? relatorio.fotos : []), ...fotosAnexos]));
 
   const e = escapeHtml;
   const base = `${req.protocol}://${req.get('host')}`;
@@ -411,11 +413,11 @@ function enviarPdfHtml(relatorio, req, res) {
       .map((f, idx) => {
         const imgSrc = resolverImagem(f, base);
         return `
-          <div class="foto-card">
+          <div class="foto-card" style="cursor: pointer;" onclick="abrirModalFoto(this.querySelector('img').src, 'Registro fotográfico #${idx + 1}')" title="Clique para ampliar a foto">
             <div class="foto-wrap">
               <img src="${e(imgSrc)}" alt="Registro fotográfico #${idx + 1}" />
             </div>
-            <div class="foto-legenda">Registro fotográfico #${idx + 1}</div>
+            <div class="foto-legenda">Registro fotográfico #${idx + 1} <span class="no-print" style="color: #1e3a8a; font-weight: 600;">(Clique para abrir)</span></div>
           </div>
         `;
       })
@@ -1380,7 +1382,37 @@ function enviarPdfHtml(relatorio, req, res) {
     <div>OS ${e(relatorio.os_numero)} • Via Oficial</div>
   </div>
 
+  <!-- Modal de Visualização de Foto (no-print) -->
+  <div id="modal-foto" class="no-print" onclick="fecharModalFoto()" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,0.88); align-items:center; justify-content:center; padding:24px; flex-direction:column;">
+    <div onclick="event.stopPropagation()" style="max-width:92vw; max-height:88vh; display:flex; flex-direction:column; align-items:center; gap:12px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; width:100%; gap:16px; color:#fff;">
+        <span id="modal-foto-legenda" style="font-size:14px; font-weight:700;">Visualização da Foto</span>
+        <div style="display:flex; gap:8px;">
+          <a id="modal-foto-link" href="#" target="_blank" rel="noopener noreferrer" style="background:#1e3a8a; color:#fff; text-decoration:none; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:600;">Abrir em nova guia</a>
+          <button type="button" onclick="fecharModalFoto()" style="background:#ef4444; color:#fff; border:none; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">Fechar ✕</button>
+        </div>
+      </div>
+      <img id="modal-foto-img" src="" alt="Foto ampliada" style="max-width:90vw; max-height:78vh; object-fit:contain; border-radius:8px; background:#fff; box-shadow:0 20px 40px rgba(0,0,0,0.5);" />
+    </div>
+  </div>
+
   <script>
+    function abrirModalFoto(src, legenda) {
+      var m = document.getElementById('modal-foto');
+      var img = document.getElementById('modal-foto-img');
+      var leg = document.getElementById('modal-foto-legenda');
+      var lnk = document.getElementById('modal-foto-link');
+      if (m && img) {
+        img.src = src;
+        if (leg) leg.textContent = legenda || 'Registro fotográfico';
+        if (lnk) lnk.href = src;
+        m.style.display = 'flex';
+      }
+    }
+    function fecharModalFoto() {
+      var m = document.getElementById('modal-foto');
+      if (m) m.style.display = 'none';
+    }
     window.addEventListener('load', function () {
       setTimeout(function () {
         window.focus();

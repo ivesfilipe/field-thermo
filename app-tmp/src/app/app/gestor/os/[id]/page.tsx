@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { api, mediaUrl, API_URL, getToken } from "@/lib/api";
-import { Alerta, Badge, Botao, Campo, Card, LinksMapa, Modal, PageHeader, Prioridade, Select, Textarea } from "@/components/ui";
+import { Alerta, Badge, Botao, Campo, Card, GaleriaFotos, LinksMapa, Modal, PageHeader, Prioridade, Select, Textarea } from "@/components/ui";
 import { getModelo, camposPreenchidos, valorRotulo } from "@/lib/modelos";
 
 interface Execucao {
@@ -639,8 +639,14 @@ export default function OsDetalhePage() {
           {exec.recomendacoes && <p className="mt-2 text-sm text-zinc-600"><strong className="text-zinc-500">Recomendações:</strong> {exec.recomendacoes}</p>}
           {exec.observacoes && <p className="mt-2 text-sm text-zinc-600"><strong className="text-zinc-500">Observações:</strong> {exec.observacoes}</p>}
           {fotos.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {fotos.map((f) => <Image key={f.id} src={mediaUrl(f.arquivo)} alt={`Anexo ${CATEGORIA_LABEL[f.categoria] || ""}`} width={80} height={80} className="h-20 w-20 rounded-lg border border-zinc-200 object-cover" />)}
+            <div className="mt-3">
+              <p className="mb-1.5 text-xs font-semibold text-zinc-600">Fotos anexadas ({fotos.length}) — clique para abrir:</p>
+              <GaleriaFotos
+                fotos={fotos.map((f, idx) => ({
+                  src: mediaUrl(f.arquivo),
+                  legenda: `${CATEGORIA_LABEL[f.categoria] || "Foto"} #${idx + 1}`
+                }))}
+              />
             </div>
           )}
           {os.anexos && os.anexos.filter((a) => a.categoria === "documento").length > 0 && (
@@ -995,8 +1001,20 @@ export default function OsDetalhePage() {
                   {c.necessidade_adicional && (
                     <div><h5 className="mb-1 font-semibold text-zinc-900">Necessidade adicional</h5><p>{c.necessidade_adicional.tipo}{c.necessidade_adicional.descricao ? ` — ${c.necessidade_adicional.descricao}` : ""}</p></div>
                   )}
-                  {c.evidencia_fotografica.length > 0 && (
-                    <div><h5 className="mb-1 font-semibold text-zinc-900">Evidências</h5><ul className="list-inside list-disc">{c.evidencia_fotografica.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
+                  {(c.evidencia_fotografica.length > 0 || fotos.length > 0) && (
+                    <div>
+                      <h5 className="mb-1.5 font-semibold text-zinc-900">Evidências fotográficas ({fotos.length}) — clique na foto para abrir</h5>
+                      {fotos.length > 0 ? (
+                        <GaleriaFotos
+                          fotos={fotos.map((f, idx) => ({
+                            src: mediaUrl(f.arquivo),
+                            legenda: `${CATEGORIA_LABEL[f.categoria] || "Foto"} #${idx + 1}`
+                          }))}
+                        />
+                      ) : (
+                        <ul className="list-inside list-disc">{c.evidencia_fotografica.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                      )}
+                    </div>
                   )}
                   {c.assinatura.nome && (
                     <div><h5 className="mb-1 font-semibold text-zinc-900">Assinatura do responsável</h5><p>{c.assinatura.nome}{c.assinatura.cargo ? ` (${c.assinatura.cargo})` : ""}{c.assinatura.data_hora ? ` — ${c.assinatura.data_hora}` : ""}</p></div>

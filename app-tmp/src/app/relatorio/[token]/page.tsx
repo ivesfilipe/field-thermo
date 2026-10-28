@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { api, API_URL, mediaUrl, ApiError } from "@/lib/api";
-import { Alerta, Badge, Botao, Card } from "@/components/ui";
+import { Alerta, Badge, Botao, Card, GaleriaFotos } from "@/components/ui";
 
 interface RelatorioPublico {
   id: number;
@@ -43,6 +43,7 @@ interface RelatorioPublico {
   assinatura_nome: string | null;
   assinatura_cargo: string | null;
   assinaturas?: Array<{ id: number; nome: string; cargo: string; arquivo: string; criado_em?: string | null }> | null;
+  fotos?: string[];
   anexos: Array<{ id: number; categoria: string; arquivo: string; nome_original: string | null }>;
   avaliacao_token?: string | null;
   avaliacao_status?: string | null;
@@ -74,7 +75,15 @@ export default function RelatorioPublicoPage() {
     window.open(`${API_URL}/api/comercial/relatorios/publico/${token}/pdf`, "_blank");
   }
 
-  const fotos = (relatorio?.anexos || []).filter((a) => a.categoria !== "documento");
+  const fotosLista = Array.from(
+    new Set([
+      ...(relatorio?.fotos || []),
+      ...(relatorio?.anexos || []).filter((a) => a.categoria !== "documento").map((a) => a.arquivo)
+    ])
+  ).map((arq, idx) => ({
+    src: mediaUrl(arq),
+    legenda: `Registro fotográfico #${idx + 1}`
+  }));
 
   return (
     <div className="min-h-screen bg-zinc-50 pb-12 text-zinc-900">
@@ -181,15 +190,9 @@ export default function RelatorioPublicoPage() {
               )}
             </Card>
 
-            {fotos.length > 0 && (
-              <Card title={`Registro Fotográfico (${fotos.length})`}>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {fotos.map((f) => (
-                    <a key={f.id} href={mediaUrl(f.arquivo)} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-zinc-200">
-                      <Image src={mediaUrl(f.arquivo)} alt="Foto do atendimento" width={320} height={240} className="h-36 w-full object-cover" />
-                    </a>
-                  ))}
-                </div>
+            {fotosLista.length > 0 && (
+              <Card title={`Registro Fotográfico (${fotosLista.length}) — Clique na foto para abrir`}>
+                <GaleriaFotos fotos={fotosLista} tamanho="lg" />
               </Card>
             )}
 
@@ -221,3 +224,4 @@ export default function RelatorioPublicoPage() {
     </div>
   );
 }
+

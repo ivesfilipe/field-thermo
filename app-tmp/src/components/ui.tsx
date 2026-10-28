@@ -45,7 +45,7 @@ export function Botao({
   className = ""
 }: {
   children: React.ReactNode;
-  onClick?: () => void | Promise<unknown>;
+  onClick?: () => unknown;
   tipo?: "button" | "submit";
   variante?: "primario" | "secundario" | "perigo" | "sucesso";
   disabled?: boolean;
@@ -358,5 +358,116 @@ export function Modal({ titulo, onFechar, children, largura = "max-w-lg" }: { ti
         <div className="p-5">{children}</div>
       </div>
     </div>
+  );
+}
+
+export function GaleriaFotos({
+  fotos,
+  tamanho = "md"
+}: {
+  fotos: Array<{ src: string; legenda?: string }>;
+  tamanho?: "sm" | "md" | "lg";
+}) {
+  const [indiceAtivo, setIndiceAtivo] = useState<number | null>(null);
+
+  if (!fotos || fotos.length === 0) return null;
+
+  const fotoAtual = indiceAtivo !== null ? fotos[indiceAtivo] : null;
+  const classesThumb =
+    tamanho === "sm"
+      ? "h-24 w-24"
+      : tamanho === "lg"
+      ? "h-40 w-full"
+      : "h-28 w-28 sm:h-32 sm:w-32";
+
+  return (
+    <>
+      <div className={tamanho === "lg" ? "grid grid-cols-2 gap-3 sm:grid-cols-3" : "flex flex-wrap gap-2.5"}>
+        {fotos.map((f, idx) => (
+          <button
+            key={`${f.src}-${idx}`}
+            type="button"
+            onClick={() => setIndiceAtivo(idx)}
+            className="group relative overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 text-left shadow-sm transition hover:border-blue-600 hover:shadow-md focus:outline-none"
+            title="Clique para abrir e ampliar a foto"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={f.src}
+              alt={f.legenda || `Foto ${idx + 1}`}
+              className={`${classesThumb} object-cover transition duration-200 group-hover:scale-105`}
+            />
+            <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-blue-950/75 px-1.5 py-1 text-[11px] font-semibold text-white">
+              🔍 Abrir foto
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {fotoAtual && indiceAtivo !== null && (
+        <div
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-950/90 p-3 sm:p-6"
+          onClick={() => setIndiceAtivo(null)}
+        >
+          <div
+            className="flex w-full max-w-4xl flex-col items-center gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex w-full flex-wrap items-center justify-between gap-2 rounded-xl bg-blue-950 px-4 py-2.5 text-white shadow-lg">
+              <div className="text-sm font-semibold">
+                {fotoAtual.legenda || `Foto ${indiceAtivo + 1}`}
+                <span className="ml-2 text-xs font-normal text-blue-200">
+                  ({indiceAtivo + 1} de {fotos.length})
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {fotos.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIndiceAtivo((indiceAtivo - 1 + fotos.length) % fotos.length)}
+                      className="rounded-lg bg-blue-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-800"
+                    >
+                      ◀ Anterior
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIndiceAtivo((indiceAtivo + 1) % fotos.length)}
+                      className="rounded-lg bg-blue-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-800"
+                    >
+                      Próxima ▶
+                    </button>
+                  </>
+                )}
+                <a
+                  href={fotoAtual.src}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-blue-950 hover:bg-blue-50"
+                >
+                  Abrir em nova guia ↗
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setIndiceAtivo(null)}
+                  className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+                >
+                  Fechar ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="flex max-h-[80vh] w-full items-center justify-center overflow-auto rounded-xl bg-black/40 p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={fotoAtual.src}
+                alt={fotoAtual.legenda || `Foto ${indiceAtivo + 1}`}
+                className="max-h-[76vh] max-w-full rounded-lg bg-white object-contain shadow-2xl"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
