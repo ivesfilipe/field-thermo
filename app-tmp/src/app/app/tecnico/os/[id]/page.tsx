@@ -94,10 +94,28 @@ function Item({ rotulo, valor }: { rotulo: string; valor: React.ReactNode }) {
   );
 }
 
-function PadAssinatura({ onSalvar }: { onSalvar: (blob: Blob) => void }) {
+function PadAssinatura({
+  onSalvar,
+  extratorRef
+}: {
+  onSalvar: (blob: Blob) => Promise<void> | void;
+  extratorRef?: React.MutableRefObject<(() => Promise<Blob | null>) | null>;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const desenhando = useRef(false);
+  const temDesenhoRef = useRef(false);
   const [temDesenho, setTemDesenho] = useState(false);
+
+  const limpar = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.clientWidth || canvas.width, canvas.clientHeight || canvas.height);
+    temDesenhoRef.current = false;
+    setTemDesenho(false);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -118,6 +136,21 @@ function PadAssinatura({ onSalvar }: { onSalvar: (blob: Blob) => void }) {
     ctx.fillRect(0, 0, largura, altura);
   }, []);
 
+  useEffect(() => {
+    if (!extratorRef) return;
+    extratorRef.current = () =>
+      new Promise<Blob | null>((resolve) => {
+        if (!temDesenhoRef.current || !canvasRef.current) {
+          resolve(null);
+          return;
+        }
+        canvasRef.current.toBlob((blob) => {
+          limpar();
+          resolve(blob || null);
+        }, "image/png");
+      });
+  }, [extratorRef, limpar]);
+
   const posicao = (e: React.PointerEvent) => {
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
@@ -127,12 +160,17 @@ function PadAssinatura({ onSalvar }: { onSalvar: (blob: Blob) => void }) {
   const iniciar = (e: React.PointerEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    canvas.setPointerCapture(e.pointerId);
+    try {
+      canvas.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
     desenhando.current = true;
     const { x, y } = posicao(e);
     const ctx = canvas.getContext("2d")!;
     ctx.beginPath();
     ctx.moveTo(x, y);
+    temDesenhoRef.current = true;
     setTemDesenho(true);
   };
 
@@ -146,16 +184,15 @@ function PadAssinatura({ onSalvar }: { onSalvar: (blob: Blob) => void }) {
     ctx.stroke();
   };
 
-  const parar = () => {
+  const parar = (e?: React.PointerEvent) => {
     desenhando.current = false;
-  };
-
-  const limpar = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d")!;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setTemDesenho(false);
+    if (e && canvasRef.current) {
+      try {
+        canvasRef.current.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+    }
   };
 
   return (
@@ -167,7 +204,8 @@ function PadAssinatura({ onSalvar }: { onSalvar: (blob: Blob) => void }) {
           onPointerDown={iniciar}
           onPointerMove={mover}
           onPointerUp={parar}
-          onPointerLeave={parar}
+          onPointerCancel={parar}
+          onPointerLeave={() => { desenhando.current = false; }}
         />
       </div>
       <div className="mt-2 flex flex-wrap gap-2">
@@ -175,15 +213,14 @@ function PadAssinatura({ onSalvar }: { onSalvar: (blob: Blob) => void }) {
         <Botao
           className="px-3 py-1.5 text-sm"
           disabled={!temDesenho}
-          onClick={() => {
+          onClick={async () => {
             const canvas = canvasRef.current;
             if (!canvas) return;
-            canvas.toBlob((blob) => {
-              if (blob) {
-                onSalvar(blob);
-                limpar();
-              }
-            }, "image/png");
+            const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+            if (blob) {
+              limpar();
+              await onSalvar(blob);
+            }
           }}
         >
           ✓ Adicionar assinatura
@@ -217,30 +254,37 @@ export default function ExecucaoOsPage() {
     dados_modelo: {}
   });
   const [categoriaAnexo, setCategoriaAnexo] = useState("durante");
+  const extratorAssinaturaRef = useRef<(() => Promise<Blob | null>) | null>(null);
 
-  const aplicarExecucao = useCallback((ex: Execucao | null) => {
-    const listaAss: AssinaturaItem[] = Array.isArray(ex?.assinaturas) && ex!.assinaturas.length > 0
+  const extrairListaAssinaturas = useCallback((ex: Execucao | null): AssinaturaItem[] => {
+    return Array.isArray(ex?.assinaturas) && ex!.assinaturas.length > 0
       ? ex!.assinaturas
       : ex?.assinatura
       ? [{ id: 1, nome: ex.assinatura_nome || "", cargo: ex.assinatura_cargo || "", arquivo: ex.assinatura, criado_em: ex.concluida_em }]
       : [];
-    setForm({
-      servico_executado: ex?.servico_executado || "",
-      assinatura_nome: "",
-      assinatura_cargo: "",
-      assinaturas: listaAss,
-      dados_modelo: ex?.dados_modelo || {}
-    });
   }, []);
 
-  const carregar = useCallback(() => {
+  const aplicarExecucao = useCallback((ex: Execucao | null, preservarCampos = false) => {
+    const listaAss = extrairListaAssinaturas(ex);
+    setForm((atual) => ({
+      servico_executado: preservarCampos ? atual.servico_executado : (ex?.servico_executado || ""),
+      assinatura_nome: preservarCampos ? atual.assinatura_nome : "",
+      assinatura_cargo: preservarCampos ? atual.assinatura_cargo : "",
+      assinaturas: listaAss,
+      dados_modelo: preservarCampos ? atual.dados_modelo : (ex?.dados_modelo || {})
+    }));
+  }, [extrairListaAssinaturas]);
+
+  const carregar = useCallback((preservarCampos = false) => {
     api.get<{ os: OS }>(`/api/tecnico/os/${id}`).then((r) => {
       setOs(r.os);
-      aplicarExecucao(r.os.execucao);
+      aplicarExecucao(r.os.execucao, preservarCampos);
     }).catch((e) => setErro(e.message));
   }, [id, aplicarExecucao]);
 
-  useEffect(carregar, [carregar]);
+  useEffect(() => {
+    carregar(false);
+  }, [carregar]);
 
   const podeExecutar = os && ["em_andamento", "pendente", "em_deslocamento"].includes(os.status);
   const precisaComplemento = !!os?.execucao?.complemento_solicitado;
@@ -299,8 +343,20 @@ export default function ExecucaoOsPage() {
     setSalvando(true);
     try {
       await api.put(`/api/tecnico/os/${id}/execucao`, montarPayload());
+      if (extratorAssinaturaRef.current) {
+        const blobPendente = await extratorAssinaturaRef.current();
+        if (blobPendente) {
+          const file = new File([blobPendente], "assinatura.png", { type: "image/png" });
+          const fd = new FormData();
+          fd.append("assinatura", file);
+          fd.append("nome", form.assinatura_nome.trim());
+          fd.append("cargo", form.assinatura_cargo.trim());
+          await api.uploadForm(`/api/tecnico/os/${id}/assinatura`, fd);
+          setForm((f) => ({ ...f, assinatura_nome: "", assinatura_cargo: "" }));
+        }
+      }
       setMsg("Rascunho salvo.");
-      carregar();
+      carregar(true);
     } catch (err) {
       setErro((err as Error).message);
     } finally {
@@ -317,7 +373,7 @@ export default function ExecucaoOsPage() {
       fd.append("categoria", categoriaAnexo);
       for (const f of files) fd.append("arquivos", f);
       await api.uploadForm(`/api/tecnico/os/${id}/anexos`, fd);
-      carregar();
+      carregar(true);
     } catch (err) {
       setErro((err as Error).message);
     }
@@ -326,10 +382,9 @@ export default function ExecucaoOsPage() {
 
   async function removerAnexo(anexoId: number) {
     setErro("");
-    if (!confirm("Remover este anexo?")) return;
     try {
       await api.del(`/api/tecnico/os/${id}/anexos/${anexoId}`);
-      carregar();
+      carregar(true);
     } catch (err) {
       setErro((err as Error).message);
     }
@@ -341,16 +396,15 @@ export default function ExecucaoOsPage() {
     setErro("");
     setMsg("");
     try {
-      if (form.assinaturas.length > 0) {
-        await api.put(`/api/tecnico/os/${id}/execucao`, montarPayload());
-      }
+      await api.put(`/api/tecnico/os/${id}/execucao`, montarPayload());
       const fd = new FormData();
       fd.append("assinatura", file);
       fd.append("nome", form.assinatura_nome.trim());
       fd.append("cargo", form.assinatura_cargo.trim());
       await api.uploadForm(`/api/tecnico/os/${id}/assinatura`, fd);
+      setForm((f) => ({ ...f, assinatura_nome: "", assinatura_cargo: "" }));
       setMsg("Assinatura adicionada.");
-      carregar();
+      carregar(true);
     } catch (err) {
       setErro((err as Error).message);
     }
@@ -361,17 +415,16 @@ export default function ExecucaoOsPage() {
     setErro("");
     setMsg("");
     try {
-      if (form.assinaturas.length > 0) {
-        await api.put(`/api/tecnico/os/${id}/execucao`, montarPayload());
-      }
+      await api.put(`/api/tecnico/os/${id}/execucao`, montarPayload());
       const file = new File([blob], "assinatura.png", { type: "image/png" });
       const fd = new FormData();
       fd.append("assinatura", file);
       fd.append("nome", form.assinatura_nome.trim());
       fd.append("cargo", form.assinatura_cargo.trim());
       await api.uploadForm(`/api/tecnico/os/${id}/assinatura`, fd);
+      setForm((f) => ({ ...f, assinatura_nome: "", assinatura_cargo: "" }));
       setMsg("Assinatura adicionada.");
-      carregar();
+      carregar(true);
     } catch (err) {
       setErro((err as Error).message);
     }
@@ -379,11 +432,10 @@ export default function ExecucaoOsPage() {
 
   async function removerAssinatura(assId: number) {
     setErro("");
-    if (!confirm("Remover esta assinatura?")) return;
     try {
       await api.del(`/api/tecnico/os/${id}/assinaturas/${assId}`);
       setMsg("Assinatura removida.");
-      carregar();
+      carregar(true);
     } catch (err) {
       setErro((err as Error).message);
     }
@@ -399,12 +451,23 @@ export default function ExecucaoOsPage() {
       setErro(`Preencha os campos obrigatórios: ${faltando.join(", ")}`);
       return;
     }
-    if (!confirm("Concluir a execução e enviar para validação do gestor?")) return;
     setEnviando(true);
     try {
       await api.put(`/api/tecnico/os/${id}/execucao`, montarPayload());
+      if (extratorAssinaturaRef.current) {
+        const blobPendente = await extratorAssinaturaRef.current();
+        if (blobPendente) {
+          const file = new File([blobPendente], "assinatura.png", { type: "image/png" });
+          const fd = new FormData();
+          fd.append("assinatura", file);
+          fd.append("nome", form.assinatura_nome.trim());
+          fd.append("cargo", form.assinatura_cargo.trim());
+          await api.uploadForm(`/api/tecnico/os/${id}/assinatura`, fd);
+          setForm((f) => ({ ...f, assinatura_nome: "", assinatura_cargo: "" }));
+        }
+      }
       await api.post(`/api/tecnico/os/${id}/concluir`);
-      carregar();
+      carregar(false);
       setMsg("OS enviada para validação do gestor.");
     } catch (err) {
       setErro((err as Error).message);
@@ -649,7 +712,7 @@ export default function ExecucaoOsPage() {
               <div className="mt-3">
                 <p className="mb-1 text-sm font-medium text-zinc-700">Desenhe a assinatura abaixo e clique em &ldquo;✓ Adicionar assinatura&rdquo;</p>
                 <div className="mt-2">
-                  <PadAssinatura onSalvar={salvarAssinaturaPad} />
+                  <PadAssinatura onSalvar={salvarAssinaturaPad} extratorRef={extratorAssinaturaRef} />
                 </div>
                 <div className="mt-3 border-t border-zinc-200 pt-3">
                   <label className="cursor-pointer text-sm font-medium text-blue-600 underline hover:text-blue-800">

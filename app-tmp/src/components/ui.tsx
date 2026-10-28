@@ -1,5 +1,7 @@
 "use client";
 
+import { useRef, useState } from "react";
+
 const COR_BOLINHA: Record<string, string> = {
   sky: "bg-sky-500",
   emerald: "bg-emerald-500",
@@ -40,19 +42,70 @@ export function Botao({
   className = ""
 }: {
   children: React.ReactNode;
-  onClick?: () => void;
+  onClick?: () => void | Promise<unknown>;
   tipo?: "button" | "submit";
   variante?: "primario" | "secundario" | "perigo" | "sucesso";
   disabled?: boolean;
   className?: string;
 }) {
+  const [ocupado, setOcupado] = useState(false);
+  const executandoRef = useRef(false);
+  const disparadoNoTapRef = useRef(false);
+  const pointerAtivoRef = useRef(false);
+
+  const disparar = () => {
+    if (disabled || executandoRef.current || !onClick) return;
+    try {
+      const res = onClick();
+      if (res && typeof (res as Promise<unknown>).then === "function") {
+        executandoRef.current = true;
+        setOcupado(true);
+        (res as Promise<unknown>).finally(() => {
+          executandoRef.current = false;
+          setOcupado(false);
+        });
+      }
+    } catch (e) {
+      executandoRef.current = false;
+      setOcupado(false);
+      throw e;
+    }
+  };
+
   return (
     <button
       type={tipo}
-      onClick={onClick}
-      disabled={disabled}
-      className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${BOTAO_ESTILOS[variante]} ${className}`}
+      disabled={disabled || ocupado}
+      onPointerDown={(e) => {
+        if (e.button === 0 && tipo === "button" && onClick) {
+          pointerAtivoRef.current = true;
+          disparadoNoTapRef.current = false;
+        }
+      }}
+      onPointerCancel={() => {
+        pointerAtivoRef.current = false;
+      }}
+      onPointerUp={(e) => {
+        if (pointerAtivoRef.current && e.button === 0 && tipo === "button" && onClick) {
+          pointerAtivoRef.current = false;
+          setTimeout(() => {
+            if (!disparadoNoTapRef.current) {
+              disparadoNoTapRef.current = true;
+              disparar();
+            }
+          }, 40);
+        }
+      }}
+      onClick={() => {
+        disparadoNoTapRef.current = true;
+        pointerAtivoRef.current = false;
+        disparar();
+      }}
+      className={`inline-flex cursor-pointer select-none touch-manipulation items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${BOTAO_ESTILOS[variante]} ${className}`}
     >
+      {ocupado && (
+        <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" />
+      )}
       {children}
     </button>
   );

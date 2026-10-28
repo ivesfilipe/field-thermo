@@ -46,6 +46,16 @@ export default function SelecionarCliente({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, clientes.length]);
 
+  useEffect(() => {
+    function aoClicarFora(e: PointerEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setAberta(false);
+      }
+    }
+    document.addEventListener("pointerdown", aoClicarFora);
+    return () => document.removeEventListener("pointerdown", aoClicarFora);
+  }, []);
+
   const termo = semAcento(texto).trim();
   const filtrados = (() => {
     if (!termo) return clientes.slice(0, LIMITE_LISTA);
@@ -110,7 +120,6 @@ export default function SelecionarCliente({
         onChange={(e) => digitar(e.target.value)}
         onFocus={() => setAberta(true)}
         onKeyDown={teclar}
-        onBlur={() => setTimeout(() => setAberta(false), 150)}
         placeholder={placeholder}
         autoComplete="off"
       />
@@ -134,7 +143,8 @@ export default function SelecionarCliente({
                 <button
                   key={c.id}
                   type="button"
-                  onMouseDown={(e) => { e.preventDefault(); escolher(c); }}
+                  onPointerDown={(e) => { e.preventDefault(); escolher(c); }}
+                  onClick={() => escolher(c)}
                   onMouseEnter={() => setDestaque(i)}
                   className={`block w-full px-3 py-2 text-left text-sm ${i === destaque ? "bg-blue-700 text-white" : "text-zinc-800 hover:bg-zinc-100"}`}
                 >

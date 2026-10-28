@@ -223,9 +223,8 @@ router.post('/os/:id/iniciar', (req, res) => {
     if (execucao && execucao.tecnico_id !== req.user.id) {
       db.prepare('UPDATE execucoes SET tecnico_id = ? WHERE id = ?').run(req.user.id, execucao.id);
       registrarHistorico({ usuario: req.user, tipo: 'os', registroId: os.id, campo: 'assumiu_atendimento', valorNovo: `técnico assumiu o atendimento` });
-      return res.json({ os: getMinhaOS(req, os.id), execucao: getExecucao(os.id) });
     }
-    return res.status(400).json({ error: 'Somente OS pendente pode ser iniciada' });
+    return res.json({ os: getMinhaOS(req, os.id), execucao: getExecucao(os.id) });
   }
   if (os.status !== 'pendente' && os.status !== 'em_deslocamento') {
     return res.status(400).json({ error: 'Somente OS pendente pode ser iniciada' });

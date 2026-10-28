@@ -121,7 +121,7 @@ export default function MinhaAgendaPage() {
               <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">{fmtData(data)}</p>
               <div className="space-y-2">
                 {itens.map((item) => {
-                  const podeIniciar = item.kind === "os" && ["pendente", "em_andamento"].includes(item.status);
+                  const podeIniciar = item.kind === "os" && ["pendente", "em_deslocamento", "em_andamento"].includes(item.status);
                   const continuar = item.kind === "os" && item.status === "em_andamento";
                   return (
                     <div
