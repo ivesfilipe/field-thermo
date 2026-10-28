@@ -92,7 +92,7 @@ function enviarViaSmtpSocket({ host, port, user, pass, fromEmail, toList, rawMim
       finalizado = true;
       clearTimeout(timeout);
       if (socket) {
-        try { socket.end(); } catch {}
+        try { socket.end(); } catch { }
       }
       if (err) reject(err);
       else resolve(res);
@@ -163,7 +163,7 @@ function enviarViaSmtpSocket({ host, port, user, pass, fromEmail, toList, rawMim
         await comando('DATA');
         socket.write(`${rawMime}\r\n.\r\n`);
         await aguardarResposta();
-        try { socket.write('QUIT\r\n'); } catch {}
+        try { socket.write('QUIT\r\n'); } catch { }
         concluir(null, { ok: true, metodo: 'smtp' });
       } catch (err) {
         concluir(err);

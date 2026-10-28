@@ -893,7 +893,7 @@ export default function OsDetalhePage() {
       {os.status === "concluida" && (
         <Card title="Avaliação no Google"><div className="flex flex-wrap items-center justify-between gap-3 text-sm">{exec?.avaliacao_google_enviada_em ? (<div className="flex items-center gap-2 text-emerald-700"><span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold">✓</span><span>Link de avaliação do Google enviado por e-mail em <strong>{exec.avaliacao_google_enviada_em.slice(0, 16)}</strong></span></div>) : (<span className="text-slate-600">E-mail destinatário: <strong>{os.local_responsavel_email || os.cliente_email || "Não cadastrado"}</strong></span>)}<Botao variante={exec?.avaliacao_google_enviada_em ? "secundario" : "sucesso"} className="px-3 py-1.5 text-xs" onClick={enviarEmailAvaliacao}>{exec?.avaliacao_google_enviada_em ? "Reenviar avaliação do Google" : "Enviar avaliação do Google"}</Botao></div></Card>
       )}
-      {false && os.status === "concluida" && (
+      {os.status === "avaliacao_interna_desativada" && (
         <Card title="Oculto">
           {os.avaliacao?.status === "respondida" ? (
             <div className="space-y-3 text-sm">
