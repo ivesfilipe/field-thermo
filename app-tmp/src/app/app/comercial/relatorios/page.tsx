@@ -197,17 +197,10 @@ export default function RelatoriosPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={(e) => enviarWhatsApp(e, r)}
+                      onClick={(e) => enviarEmail(e, r)}
                       className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
                     >
-                      WhatsApp
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => enviarEmail(e, r)}
-                      className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-900 hover:bg-blue-100"
-                    >
-                      E-mail
+                      Enviar E-mail
                     </button>
                     <button
                       type="button"

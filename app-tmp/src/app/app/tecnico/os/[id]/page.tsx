@@ -781,9 +781,8 @@ export default function ExecucaoOsPage() {
             <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
               <div className="text-slate-600">
                 <p>Envie o link de avaliação do Google apenas se considerar apropriado para este atendimento.</p>
-                <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-500">
-                  <span>WhatsApp: <strong>{os.local_responsavel_telefone || os.cliente_telefone || "Não cadastrado"}</strong></span>
-                  <span>E-mail: <strong>{os.local_responsavel_email || os.cliente_email || "Não cadastrado"}</strong></span>
+                <div className="mt-1 text-xs text-slate-500">
+                  <span>E-mail destinatário: <strong>{os.local_responsavel_email || os.cliente_email || "Não cadastrado"}</strong></span>
                 </div>
               </div>
               {os.execucao?.avaliacao_google_enviada_em ? (
@@ -795,36 +794,19 @@ export default function ExecucaoOsPage() {
                     variante="secundario"
                     className="px-3 py-1.5 text-xs"
                     disabled={enviandoGoogle}
-                    onClick={() => enviarAvaliacaoGoogle("whatsapp", true)}
-                  >
-                    Reenviar WhatsApp
-                  </Botao>
-                  <Botao
-                    variante="secundario"
-                    className="px-3 py-1.5 text-xs"
-                    disabled={enviandoGoogle}
                     onClick={() => enviarAvaliacaoGoogle("email", true)}
                   >
-                    Reenviar E-mail
+                    {enviandoGoogle ? "Enviando..." : "Reenviar avaliação do Google"}
                   </Botao>
                 </div>
               ) : (
-                <div className="flex flex-wrap items-center gap-2">
-                  <Botao
-                    variante="sucesso"
-                    disabled={enviandoGoogle}
-                    onClick={() => enviarAvaliacaoGoogle("whatsapp", false)}
-                  >
-                    {enviandoGoogle ? "Enviando..." : "Enviar avaliação por WhatsApp"}
-                  </Botao>
-                  <Botao
-                    variante="secundario"
-                    disabled={enviandoGoogle}
-                    onClick={() => enviarAvaliacaoGoogle("email", false)}
-                  >
-                    {enviandoGoogle ? "Enviando..." : "Enviar avaliação por E-mail"}
-                  </Botao>
-                </div>
+                <Botao
+                  variante="sucesso"
+                  disabled={enviandoGoogle}
+                  onClick={() => enviarAvaliacaoGoogle("email", false)}
+                >
+                  {enviandoGoogle ? "Enviando..." : "Enviar avaliação do Google"}
+                </Botao>
               )}
             </div>
           </Card>
@@ -838,73 +820,45 @@ export default function ExecucaoOsPage() {
               <div className="flex items-center gap-2 text-emerald-700">
                 <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold">✓</span>
                 <span>
-                  Link de avaliação do Google enviado em <strong>{os.execucao.avaliacao_google_enviada_em.slice(0, 16)}</strong>
+                  Link de avaliação do Google enviado por e-mail em <strong>{os.execucao.avaliacao_google_enviada_em.slice(0, 16)}</strong>
                 </span>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Botao
-                  variante="secundario"
-                  className="px-3 py-1.5 text-xs"
-                  disabled={enviandoGoogle}
-                  onClick={() => enviarAvaliacaoGoogle("whatsapp", true)}
-                >
-                  Reenviar WhatsApp
-                </Botao>
-                <Botao
-                  variante="secundario"
-                  className="px-3 py-1.5 text-xs"
-                  disabled={enviandoGoogle}
-                  onClick={() => enviarAvaliacaoGoogle("email", true)}
-                >
-                  Reenviar E-mail
-                </Botao>
-              </div>
+              <Botao
+                variante="secundario"
+                className="px-3 py-1.5 text-xs"
+                disabled={enviandoGoogle}
+                onClick={() => enviarAvaliacaoGoogle("email", true)}
+              >
+                {enviandoGoogle ? "Enviando..." : "Reenviar avaliação do Google"}
+              </Botao>
             </div>
           ) : dispensouGoogle ? (
             <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
               <span>Envio da avaliação do Google dispensado para este atendimento.</span>
-              <div className="flex flex-wrap gap-2">
-                <Botao
-                  variante="secundario"
-                  className="px-3 py-1.5 text-xs"
-                  disabled={enviandoGoogle}
-                  onClick={() => enviarAvaliacaoGoogle("whatsapp", false)}
-                >
-                  Enviar por WhatsApp
-                </Botao>
-                <Botao
-                  variante="secundario"
-                  className="px-3 py-1.5 text-xs"
-                  disabled={enviandoGoogle}
-                  onClick={() => enviarAvaliacaoGoogle("email", false)}
-                >
-                  Enviar por E-mail
-                </Botao>
-              </div>
+              <Botao
+                variante="secundario"
+                className="px-3 py-1.5 text-xs"
+                disabled={enviandoGoogle}
+                onClick={() => enviarAvaliacaoGoogle("email", false)}
+              >
+                {enviandoGoogle ? "Enviando..." : "Enviar avaliação do Google"}
+              </Botao>
             </div>
           ) : (
             <div className="space-y-3 text-sm">
               <p className="text-slate-700">
-                Atendimento concluído! Caso considere que o cliente ficou satisfeito e vale a pena solicitar uma avaliação no Google, escolha o canal de envio:
+                Atendimento concluído! Caso considere que o cliente ficou satisfeito e vale a pena solicitar uma avaliação no Google:
               </p>
-              <div className="flex flex-wrap gap-4 text-xs text-slate-500">
-                <span>WhatsApp: <strong>{os.local_responsavel_telefone || os.cliente_telefone || "Não cadastrado"}</strong></span>
-                <span>E-mail: <strong>{os.local_responsavel_email || os.cliente_email || "Não cadastrado"}</strong></span>
+              <div className="text-xs text-slate-500">
+                <span>E-mail destinatário: <strong>{os.local_responsavel_email || os.cliente_email || "Não cadastrado"}</strong></span>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Botao
                   variante="sucesso"
                   disabled={enviandoGoogle}
-                  onClick={() => enviarAvaliacaoGoogle("whatsapp", false)}
-                >
-                  {enviandoGoogle ? "Enviando..." : "Enviar avaliação por WhatsApp"}
-                </Botao>
-                <Botao
-                  variante="primario"
-                  disabled={enviandoGoogle}
                   onClick={() => enviarAvaliacaoGoogle("email", false)}
                 >
-                  {enviandoGoogle ? "Enviando..." : "Enviar avaliação por E-mail"}
+                  {enviandoGoogle ? "Enviando..." : "Enviar avaliação do Google"}
                 </Botao>
                 <Botao
                   variante="secundario"

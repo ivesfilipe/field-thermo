@@ -869,10 +869,10 @@ export default function OsDetalhePage() {
                     className="w-full rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-mono text-xs text-slate-700 sm:w-72"
                   />
                   <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={copiarLinkRelatorio}>Copiar link</Botao>
-                  <Botao variante="sucesso" className="px-3 py-1.5 text-xs" onClick={() => window.open(linkWhatsAppRelatorio(), "_blank")}>
-                    WhatsApp
+                  {/* WhatsApp oculto */}
+                    <Botao variante="sucesso" className="px-3 py-1.5 text-xs" onClick={enviarEmailRelatorio}>{/*
                   </Botao>
-                  <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={enviarEmailRelatorio}>
+                  */}
                     E-mail
                   </Botao>
                   <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={() => window.open(urlRelatorio(), "_blank")}>
@@ -932,11 +932,11 @@ export default function OsDetalhePage() {
                       className="w-full rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-mono text-xs text-slate-700 sm:w-72"
                     />
                     <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={copiarLink}>Copiar link</Botao>
-                    <Botao variante="sucesso" className="px-3 py-1.5 text-xs" onClick={() => window.open(linkWhatsApp(), "_blank")}>
-                      WhatsApp
+                    <Botao variante="sucesso" className="px-3 py-1.5 text-xs" onClick={enviarEmailAvaliacao}>{/*
+                      <Botao variante="sucesso" className="px-3 py-1.5 text-xs" onClick={enviarEmailRelatorio}>{/*
                     </Botao>
-                    <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={enviarEmailAvaliacao}>
-                      E-mail
+                    */}
+                      Enviar por E-mail
                     </Botao>
                   </>
                 ) : (

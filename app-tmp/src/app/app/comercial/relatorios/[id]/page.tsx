@@ -319,10 +319,10 @@ export default function RelatorioDetalhePage({ params }: { params: Promise<{ id:
                   className="w-full rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-mono text-xs text-slate-700 sm:w-64"
                 />
                 <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={copiarLinkRelatorio}>Copiar link</Botao>
-                <Botao variante="sucesso" className="px-3 py-1.5 text-xs" onClick={() => window.open(linkWhatsAppRelatorio(), "_blank")}>
+                <Botao variante="sucesso" className="px-3 py-1.5 text-xs" onClick={enviarEmailRelatorio}>{/*
                   WhatsApp
                 </Botao>
-                <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={enviarEmailRelatorio}>
+                */}
                   E-mail
                 </Botao>
                 <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={() => window.open(urlRelatorio(), "_blank")}>

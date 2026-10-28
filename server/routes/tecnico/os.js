@@ -578,7 +578,7 @@ router.post('/os/:id/avaliacao-google', async (req, res) => {
     return res.status(500).json({ error: 'Link oficial de avaliação do Google não configurado no servidor.' });
   }
 
-  const canal = req.body?.canal === 'email' ? 'email' : 'whatsapp';
+  const canal = 'email';
   const mensagem = [
     'Olá! 😊 Obrigado por confiar em nosso trabalho. Se você ficou satisfeito com o atendimento, gostaríamos muito de contar com sua avaliação no Google. Sua opinião é muito importante para nós!',
     '',
