@@ -159,14 +159,14 @@ export default function AppHome() {
             href={a.href}
             className={`group flex flex-col justify-between rounded-xl border p-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
               a.destaque
-                ? "border-blue-600 bg-blue-600 text-white hover:bg-blue-700"
-                : "border-blue-100 bg-white text-slate-800 hover:border-blue-300"
+                ? "border-blue-950 bg-blue-950 text-white hover:bg-blue-900"
+                : "border-zinc-200 bg-white text-zinc-800 hover:border-blue-300"
             }`}
           >
-            <span className={`text-sm font-bold ${a.destaque ? "text-white" : "text-blue-700 group-hover:text-blue-800"}`}>
+            <span className={`text-sm font-bold ${a.destaque ? "text-white" : "text-blue-900 group-hover:text-blue-950"}`}>
               {a.label}
             </span>
-            <span className={`mt-1 text-xs leading-snug ${a.destaque ? "text-blue-100" : "text-slate-500"}`}>
+            <span className={`mt-1 text-xs leading-snug ${a.destaque ? "text-blue-200" : "text-zinc-500"}`}>
               {a.desc}
             </span>
           </Link>

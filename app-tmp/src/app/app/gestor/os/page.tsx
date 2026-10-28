@@ -84,7 +84,7 @@ export default function OsPage() {
         acoes={<Botao onClick={() => router.push("/app/gestor/os/nova")}>+ Nova OS</Botao>}
       />
 
-      <div className="rounded-xl border border-blue-100 bg-white p-3 shadow-sm">
+      <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap gap-1.5">
             {ABAS_STATUS.map((aba) => {
@@ -95,7 +95,7 @@ export default function OsPage() {
                   type="button"
                   onClick={() => setFiltro({ ...filtro, status: aba.v })}
                   className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                    ativo ? "bg-blue-600 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    ativo ? "bg-blue-900 text-white shadow-sm" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
                   }`}
                 >
                   {aba.l}

@@ -16,22 +16,22 @@ const COR_BOLINHA: Record<string, string> = {
 
 export function Card({ title, children, acao }: { title: string; children: React.ReactNode; acao?: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-blue-100/80 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/60 px-4 py-3">
-        <h2 className="flex items-center gap-2 text-sm font-bold tracking-tight text-slate-800">
-          <span className="h-3.5 w-1 rounded-full bg-blue-600" />
+    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 bg-white px-4 py-3">
+        <h2 className="flex items-center gap-2 text-sm font-bold tracking-tight text-blue-950">
+          <span className="h-3.5 w-1 rounded-full bg-blue-900" />
           {title}
         </h2>
         {acao}
       </div>
-      <div className="p-4">{children}</div>
+      <div className="p-4 text-zinc-900">{children}</div>
     </div>
   );
 }
 
 const BOTAO_ESTILOS: Record<string, string> = {
-  primario: "bg-blue-600 text-white shadow-sm hover:bg-blue-700",
-  secundario: "border border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50",
+  primario: "bg-blue-900 text-white shadow-sm hover:bg-blue-950",
+  secundario: "border border-zinc-300 bg-white text-zinc-700 shadow-sm hover:bg-zinc-50",
   perigo: "bg-red-600 text-white shadow-sm hover:bg-red-700",
   sucesso: "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
 };
@@ -295,22 +295,22 @@ export function EstadoVazio({ texto }: { texto: string }) {
 
 export function PageHeader({ titulo, descricao, acoes }: { titulo: string; descricao?: string; acoes?: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-400/30 bg-gradient-to-r from-blue-600 to-sky-500 px-5 py-4 shadow-sm">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-5 py-4 shadow-sm">
       <div>
-        <h1 className="text-lg font-bold tracking-tight text-white md:text-xl">{titulo}</h1>
-        {descricao && <p className="mt-0.5 text-xs text-blue-50 md:text-sm">{descricao}</p>}
+        <h1 className="text-lg font-bold tracking-tight text-blue-950 md:text-xl">{titulo}</h1>
+        {descricao && <p className="mt-0.5 text-xs text-zinc-500 md:text-sm">{descricao}</p>}
       </div>
-      {acoes && <div className="flex flex-wrap items-center gap-2 [&_button]:shadow-sm">{acoes}</div>}
+      {acoes && <div className="flex flex-wrap items-center gap-2">{acoes}</div>}
     </div>
   );
 }
 
-export function KPI({ label, valor, cor = "text-blue-700", icone }: { label: string; valor: number | string; cor?: string; icone?: React.ReactNode }) {
+export function KPI({ label, valor, cor = "text-blue-900", icone }: { label: string; valor: number | string; cor?: string; icone?: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-blue-100/80 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
-      {icone && <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">{icone}</div>}
+    <div className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+      {icone && <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-900">{icone}</div>}
       <div className="min-w-0">
-        <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
+        <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{label}</p>
         <p className={`mt-0.5 truncate text-2xl font-bold leading-tight ${cor}`}>{valor}</p>
       </div>
     </div>

@@ -31,27 +31,27 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-blue-600 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-blue-950 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
           <div className="mb-4 flex items-center justify-center">
             <Image src="/logo.png" alt="Logo MedicalThermo Herzog" width={224} height={59} priority className="h-auto w-56 max-w-full object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-white">Thermo control</h1>
-          <p className="mt-1 text-sm text-blue-100/80">Gestão de serviços técnicos</p>
+          <p className="mt-1 text-sm text-blue-200">Gestão de serviços técnicos</p>
         </div>
-        <Alerta tipo="erro" msg={erro} onClose={() => setErro("")} />
-        <form onSubmit={onSubmit} className="flex flex-col gap-4">
-          <Campo label="Email" labelClasse="text-white" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" />
-          <Campo label="Senha" labelClasse="text-white" type="password" required value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="••••••" />
-          <Botao tipo="submit" disabled={carregando} className="w-full py-2.5">
-            {carregando ? "Entrando..." : "Entrar"}
-          </Botao>
-        </form>
+        <div className="rounded-2xl border border-blue-900/60 bg-white p-6 text-zinc-900 shadow-2xl">
+          <Alerta tipo="erro" msg={erro} onClose={() => setErro("")} />
+          <form onSubmit={onSubmit} className="flex flex-col gap-4">
+            <Campo label="Email" labelClasse="text-zinc-700" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" />
+            <Campo label="Senha" labelClasse="text-zinc-700" type="password" required value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="••••••" />
+            <Botao tipo="submit" disabled={carregando} className="w-full py-2.5">
+              {carregando ? "Entrando..." : "Entrar"}
+            </Botao>
+          </form>
+        </div>
         <p className="mt-6 text-center text-xs text-blue-200/70">
           Admin / Gestor / Técnico / Comercial
-          <br />
-          Use os usuários criados pelo <code className="rounded bg-white/10 px-1 text-white">npm run seed</code>
         </p>
       </div>
     </div>
