@@ -511,12 +511,14 @@ router.post('/os/:id/avaliacao/enviar-email', async (req, res) => {
       assunto: `Avalie o atendimento da OS ${os.numero} - MedicalThermo Herzog`,
       html
     });
+    const agora = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    db.prepare('UPDATE execucoes SET avaliacao_google_enviada_em = ?, avaliacao_google_enviada_por = ? WHERE os_id = ?').run(agora, req.user.id, id);
     registrarHistorico({
       usuario: req.user,
       tipo: 'os',
       registroId: id,
-      campo: 'avaliacao',
-      valorNovo: `Link de avaliação enviado por e-mail (${envio.remetente} -> ${envio.enviados.join(', ')})`
+      campo: 'avaliacao_google',
+      valorNovo: `Link de avaliação do Google enviado por e-mail (${envio.remetente} -> ${envio.enviados.join(', ')})`
     });
     res.json({ ok: true, destinatarios: envio.enviados, remetente: envio.remetente });
   } catch (err) {

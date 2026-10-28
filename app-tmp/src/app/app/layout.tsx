@@ -109,8 +109,7 @@ const NAV: Record<Perfil, { titulo: string; itens: { href: string; label: string
     {
       titulo: "Qualidade",
       itens: [
-        { href: "/app/comercial/relatorios", label: "Relatórios Técnicos", icone: "relatorios" },
-        { href: "/app/gestor/avaliacoes", label: "Avaliações", icone: "avaliacoes" }
+        { href: "/app/comercial/relatorios", label: "Relatórios Técnicos", icone: "relatorios" }
       ]
     },
     {
@@ -149,8 +148,7 @@ const NAV: Record<Perfil, { titulo: string; itens: { href: string; label: string
     {
       titulo: "Qualidade",
       itens: [
-        { href: "/app/comercial/relatorios", label: "Relatórios Técnicos", icone: "relatorios" },
-        { href: "/app/gestor/avaliacoes", label: "Avaliações", icone: "avaliacoes" }
+        { href: "/app/comercial/relatorios", label: "Relatórios Técnicos", icone: "relatorios" }
       ]
     }
   ],
@@ -181,8 +179,7 @@ const NAV: Record<Perfil, { titulo: string; itens: { href: string; label: string
       titulo: "Comercial",
       itens: [
         { href: "/app/comercial/relatorios", label: "Relatórios Recebidos", icone: "relatorios" },
-        { href: "/app/comercial/oportunidades", label: "Oportunidades", icone: "oportunidades" },
-        { href: "/app/comercial/avaliacoes", label: "Avaliações", icone: "avaliacoes" }
+        { href: "/app/comercial/oportunidades", label: "Oportunidades", icone: "oportunidades" }
       ]
     }
   ]

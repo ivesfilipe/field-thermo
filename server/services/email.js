@@ -268,7 +268,7 @@ function montarHtmlAvaliacaoGoogle({ os_numero, cliente_nome, responsavel_nome, 
           <a href="${e(link)}" target="_blank" style="display:inline-block; background-color:#1e3a8a; color:#ffffff; text-decoration:none; font-weight:700; font-size:15px; padding:14px 28px; border-radius:8px; margin:4px;">
             ⭐ Avaliar Atendimento no Google
           </a>
-          ${url_avaliacao ? `
+          ${false ? `
           <a href="${e(url_avaliacao)}" target="_blank" style="display:inline-block; background-color:#059669; color:#ffffff; text-decoration:none; font-weight:700; font-size:14px; padding:14px 24px; border-radius:8px; margin:4px;">
             Avaliação Interna do Atendimento
           </a>` : ''}
@@ -362,7 +362,7 @@ function montarHtmlRelatorioCliente({ os_numero, cliente_nome, local_nome, respo
           <a href="${e(url_pdf)}" target="_blank" style="display:inline-block; background-color:#0f172a; color:#ffffff; text-decoration:none; font-weight:600; font-size:13px; padding:12px 20px; border-radius:6px; margin:4px;">
             Baixar PDF
           </a>` : ''}
-          ${url_avaliacao ? `
+          ${false ? `
           <a href="${e(url_avaliacao)}" target="_blank" style="display:inline-block; background-color:#059669; color:#ffffff; text-decoration:none; font-weight:600; font-size:13px; padding:12px 20px; border-radius:6px; margin:4px;">
             Avaliar Atendimento
           </a>` : ''}
