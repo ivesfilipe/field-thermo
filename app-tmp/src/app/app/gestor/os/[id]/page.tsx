@@ -47,6 +47,7 @@ interface Anexo {
 
 interface Relatorio {
   id: number;
+  token?: string | null;
   status: string;
   recomendacoes: string | null;
   data_validacao: string | null;
@@ -121,6 +122,8 @@ interface OS {
   local_endereco: string | null;
   local_endereco_completo?: string | null;
   local_responsavel: string | null;
+  local_responsavel_telefone?: string | null;
+  local_responsavel_email?: string | null;
   responsavel_local: string | null;
   equipamento_nome: string | null;
   equipamento_modelo: string | null;
@@ -210,11 +213,20 @@ export default function OsDetalhePage() {
   const [mostrarRelatorio, setMostrarRelatorio] = useState(false);
   const [linkAvaliacao, setLinkAvaliacao] = useState<string | null>(null);
   const [gerandoLink, setGerandoLink] = useState(false);
+  const [linkRelatorio, setLinkRelatorio] = useState<string | null>(null);
+  const [gerandoLinkRelatorio, setGerandoLinkRelatorio] = useState(false);
 
   const RESOLVEU_LABEL: Record<string, string> = { sim: "Sim", parcialmente: "Parcialmente", nao: "Não" };
 
+  const caminhoAvaliacao = linkAvaliacao || (os?.avaliacao?.token ? `/avaliacao/${os.avaliacao.token}` : null);
+  const caminhoRelatorio = linkRelatorio || (os?.relatorio?.token ? `/relatorio/${os.relatorio.token}` : null);
+
   function urlAvaliacao(): string {
-    return `${window.location.origin}${linkAvaliacao}`;
+    return `${window.location.origin}${caminhoAvaliacao || ""}`;
+  }
+
+  function urlRelatorio(): string {
+    return `${window.location.origin}${caminhoRelatorio || ""}`;
   }
 
   async function gerarLinkAvaliacao() {
@@ -224,6 +236,7 @@ export default function OsDetalhePage() {
     try {
       const r = await api.post<{ avaliacao: { link: string } }>(`/api/gestor/os/${id}/avaliacao/link`);
       setLinkAvaliacao(r.avaliacao.link);
+      setMsg("Link de avaliação pronto para envio.");
       carregar();
     } catch (err) {
       setErro((err as Error).message);
@@ -232,27 +245,72 @@ export default function OsDetalhePage() {
     }
   }
 
+  async function gerarLinkRelatorio() {
+    setErro("");
+    setMsg("");
+    setGerandoLinkRelatorio(true);
+    try {
+      const r = await api.post<{ relatorio: { link: string } }>(`/api/gestor/os/${id}/relatorio/link`);
+      setLinkRelatorio(r.relatorio.link);
+      setMsg("Link do relatório técnico pronto para envio ao responsável do local.");
+      carregar();
+    } catch (err) {
+      setErro((err as Error).message);
+    } finally {
+      setGerandoLinkRelatorio(false);
+    }
+  }
+
   async function copiarLink() {
     try {
       await navigator.clipboard.writeText(urlAvaliacao());
-      setMsg("Link copiado para a área de transferência.");
+      setMsg("Link de avaliação copiado para a área de transferência.");
     } catch {
       setErro("Não foi possível copiar o link automaticamente.");
     }
   }
 
-  function linkWhatsApp(): string | null {
-    const tel = os?.cliente_telefone?.replace(/\D/g, "");
-    if (!tel) return null;
-    const texto = encodeURIComponent(`Olá! Concluímos o atendimento da OS ${os?.numero}. Gostaríamos de saber sua opinião: ${urlAvaliacao()}`);
-    return `https://wa.me/${tel}?text=${texto}`;
+  async function copiarLinkRelatorio() {
+    try {
+      await navigator.clipboard.writeText(urlRelatorio());
+      setMsg("Link do relatório copiado para a área de transferência.");
+    } catch {
+      setErro("Não foi possível copiar o link automaticamente.");
+    }
   }
 
-  function linkEmail(): string | null {
-    if (!os?.cliente_email) return null;
+  function linkWhatsApp(): string {
+    const telRaw = (os?.local_responsavel_telefone || os?.cliente_telefone || "").replace(/\D/g, "");
+    const tel = telRaw ? (telRaw.length <= 11 ? `55${telRaw}` : telRaw) : "";
+    const resp = os?.local_responsavel || os?.responsavel_local || os?.cliente_nome || "";
+    const saudacao = resp ? `Olá, ${resp}!` : "Olá!";
+    const texto = encodeURIComponent(`${saudacao} Concluímos o atendimento da OS ${os?.numero}. Gostaríamos de saber sua opinião: ${urlAvaliacao()}`);
+    return tel ? `https://wa.me/${tel}?text=${texto}` : `https://wa.me/?text=${texto}`;
+  }
+
+  function linkEmail(): string {
+    const email = os?.local_responsavel_email || os?.cliente_email || "";
     const assunto = encodeURIComponent(`Avalie o atendimento da OS ${os?.numero}`);
     const corpo = encodeURIComponent(`Olá! Concluímos o atendimento da OS ${os?.numero}. Gostaríamos de saber sua opinião: ${urlAvaliacao()}`);
-    return `mailto:${os.cliente_email}?subject=${assunto}&body=${corpo}`;
+    return `mailto:${email}?subject=${assunto}&body=${corpo}`;
+  }
+
+  function linkWhatsAppRelatorio(): string {
+    const telRaw = (os?.local_responsavel_telefone || os?.cliente_telefone || "").replace(/\D/g, "");
+    const tel = telRaw ? (telRaw.length <= 11 ? `55${telRaw}` : telRaw) : "";
+    const resp = os?.local_responsavel || os?.responsavel_local || os?.cliente_nome || "";
+    const saudacao = resp ? `Olá, ${resp}!` : "Olá!";
+    const texto = encodeURIComponent(`${saudacao} Segue o relatório técnico do atendimento da OS ${os?.numero} (${os?.local_nome || os?.cliente_nome || "Thermo Control"}): ${urlRelatorio()}`);
+    return tel ? `https://wa.me/${tel}?text=${texto}` : `https://wa.me/?text=${texto}`;
+  }
+
+  function linkEmailRelatorio(): string {
+    const email = os?.local_responsavel_email || os?.cliente_email || "";
+    const resp = os?.local_responsavel || os?.responsavel_local || os?.cliente_nome || "";
+    const saudacao = resp ? `Olá, ${resp}!` : "Olá!";
+    const assunto = encodeURIComponent(`Relatório Técnico - OS ${os?.numero}`);
+    const corpo = encodeURIComponent(`${saudacao}\n\nSegue o link para acessar e baixar o relatório técnico da OS ${os?.numero} (${os?.servico || ""}):\n${urlRelatorio()}`);
+    return `mailto:${email}?subject=${assunto}&body=${corpo}`;
   }
 
   async function baixarPdf() {
@@ -733,9 +791,9 @@ export default function OsDetalhePage() {
 
       {os.relatorio && (
         <Card
-          title="Relatório técnico"
+          title="Relatório técnico — Envio ao responsável do local"
           acao={
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {os.relatorio.status === "aprovado" && (
                 <Botao variante="secundario" onClick={baixarPdf}>Baixar PDF</Botao>
               )}
@@ -745,15 +803,62 @@ export default function OsDetalhePage() {
             </div>
           }
         >
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <Badge status={os.relatorio.status} />
-            <span className="text-zinc-500">Validado em {os.relatorio.data_validacao?.slice(0, 16) || "-"}</span>
-            {os.relatorio.enviado_comercial === 1 && <span className="text-xs text-emerald-600">✓ Enviado ao comercial</span>}
-            {os.relatorio.status === "reprovado" && os.relatorio.complemento_motivo && (
-              <span className="text-xs text-red-600">Complemento solicitado: {os.relatorio.complemento_motivo}</span>
+          <div className="space-y-3 text-sm">
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge status={os.relatorio.status} />
+              <span className="text-zinc-500">Validado em {os.relatorio.data_validacao?.slice(0, 16) || "-"}</span>
+              {os.relatorio.enviado_comercial === 1 && <span className="text-xs text-emerald-600">✓ Enviado ao comercial</span>}
+              {os.relatorio.status === "reprovado" && os.relatorio.complemento_motivo && (
+                <span className="text-xs text-red-600">Complemento solicitado: {os.relatorio.complemento_motivo}</span>
+              )}
+            </div>
+            {os.relatorio.recomendacoes && <p className="text-sm text-zinc-600">{os.relatorio.recomendacoes}</p>}
+
+            {(os.local_responsavel || os.responsavel_local || os.local_responsavel_telefone || os.cliente_telefone) && (
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
+                <span className="font-semibold text-zinc-800">Responsável do local:</span>{" "}
+                {os.local_responsavel || os.responsavel_local || os.cliente_nome}{" "}
+                {(os.local_responsavel_telefone || os.cliente_telefone) && `• Tel/WhatsApp: ${os.local_responsavel_telefone || os.cliente_telefone}`}{" "}
+                {(os.local_responsavel_email || os.cliente_email) && `• E-mail: ${os.local_responsavel_email || os.cliente_email}`}
+              </div>
             )}
+
+            {caminhoRelatorio && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5">
+                <p className="mb-1 text-xs font-semibold text-blue-900">Link do relatório para o responsável do local</p>
+                <p className="break-all font-mono text-xs text-blue-800">{urlRelatorio()}</p>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              <Botao onClick={gerarLinkRelatorio} disabled={gerandoLinkRelatorio}>
+                {gerandoLinkRelatorio ? "Gerando..." : caminhoRelatorio ? "Atualizar link do relatório" : "Gerar link do relatório"}
+              </Botao>
+              {caminhoRelatorio && (
+                <>
+                  <Botao variante="secundario" onClick={copiarLinkRelatorio}>Copiar link</Botao>
+                  <Botao
+                    variante="sucesso"
+                    onClick={() => window.open(linkWhatsAppRelatorio(), "_blank")}
+                  >
+                    Enviar por WhatsApp
+                  </Botao>
+                  <Botao
+                    variante="secundario"
+                    onClick={() => window.open(linkEmailRelatorio(), "_blank")}
+                  >
+                    Enviar por e-mail
+                  </Botao>
+                  <Botao
+                    variante="secundario"
+                    onClick={() => window.open(urlRelatorio(), "_blank")}
+                  >
+                    Abrir página do relatório
+                  </Botao>
+                </>
+              )}
+            </div>
           </div>
-          {os.relatorio.recomendacoes && <p className="mt-2 text-sm text-zinc-600">{os.relatorio.recomendacoes}</p>}
         </Card>
       )}
 
@@ -790,7 +895,7 @@ export default function OsDetalhePage() {
                 <Badge status="pendente" />
                 <span className="text-zinc-500">Aguardando avaliação do cliente</span>
               </div>
-              {linkAvaliacao && (
+              {caminhoAvaliacao && (
                 <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5">
                   <p className="mb-1 text-xs font-semibold text-blue-800">Link exclusivo desta OS</p>
                   <p className="break-all font-mono text-xs text-blue-700">{urlAvaliacao()}</p>
@@ -798,30 +903,26 @@ export default function OsDetalhePage() {
               )}
               <div className="flex flex-wrap gap-2">
                 <Botao onClick={gerarLinkAvaliacao} disabled={gerandoLink}>
-                  {gerandoLink ? "Gerando..." : linkAvaliacao ? "Gerar novo link" : "Gerar link de avaliação"}
+                  {gerandoLink ? "Gerando..." : caminhoAvaliacao ? "Gerar novo link" : "Gerar link de avaliação"}
                 </Botao>
-                {linkAvaliacao && (
+                {caminhoAvaliacao && (
                   <>
                     <Botao variante="secundario" onClick={copiarLink}>Copiar link</Botao>
                     <Botao
                       variante="sucesso"
-                      onClick={() => { const u = linkWhatsApp(); if (u) window.open(u, "_blank"); else setErro("Cadastre o telefone do cliente para enviar por WhatsApp."); }}
-                      disabled={!linkWhatsApp()}
+                      onClick={() => window.open(linkWhatsApp(), "_blank")}
                     >
                       Enviar por WhatsApp
                     </Botao>
                     <Botao
                       variante="secundario"
-                      onClick={() => { const u = linkEmail(); if (u) window.open(u, "_blank"); else setErro("Cadastre o e-mail do cliente para enviar por e-mail."); }}
-                      disabled={!linkEmail()}
+                      onClick={() => window.open(linkEmail(), "_blank")}
                     >
                       Enviar por e-mail
                     </Botao>
                   </>
                 )}
               </div>
-              {!os.cliente_telefone && <p className="text-xs text-zinc-400">Cliente sem telefone cadastrado — WhatsApp indisponível.</p>}
-              {!os.cliente_email && <p className="text-xs text-zinc-400">Cliente sem e-mail cadastrado — e-mail indisponível.</p>}
             </div>
           )}
         </Card>

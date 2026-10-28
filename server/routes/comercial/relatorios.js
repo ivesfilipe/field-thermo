@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const db = require('../../db');
@@ -8,10 +9,15 @@ const config = require('../../config');
 
 const router = express.Router();
 
-router.use(authenticate, requireRole('comercial', 'gestor', 'admin'));
+function garantirTokenRelatorio(id, tokenAtual) {
+  if (tokenAtual) return tokenAtual;
+  const novo = crypto.randomBytes(16).toString('hex');
+  db.prepare('UPDATE relatorios SET token = ? WHERE id = ?').run(novo, id);
+  return novo;
+}
 
 const RELATORIO_DETALHE = `
-  SELECT r.id, r.status, r.data_validacao, r.recomendacoes, r.criado_em, r.conteudo,
+  SELECT r.id, r.token, r.status, r.data_validacao, r.recomendacoes, r.criado_em, r.conteudo,
     r.enviado_comercial, r.enviado_comercial_em,
     r.aberto_por, r.aberto_em,
     o.id AS os_id, o.numero AS os_numero, o.servico AS os_servico, o.descricao AS os_descricao,
@@ -19,7 +25,7 @@ const RELATORIO_DETALHE = `
     o.tipo_atendimento,
     c.nome AS cliente_nome, c.email AS cliente_email, c.telefone AS cliente_telefone, c.documento AS cliente_documento,
     l.nome AS local_nome, l.endereco AS local_endereco, l.cidade AS local_cidade, l.estado AS local_estado,
-    l.responsavel_nome AS local_responsavel, l.responsavel_telefone AS local_responsavel_telefone,
+    l.responsavel_nome AS local_responsavel, l.responsavel_telefone AS local_responsavel_telefone, l.responsavel_email AS local_responsavel_email,
     e.nome AS equipamento_nome, e.modelo AS equipamento_modelo,
     e.codigo_mt AS equipamento_codigo_mt, e.fabricante AS equipamento_fabricante,
     e.numero_serie AS equipamento_serie, e.capacidade AS equipamento_capacidade,
@@ -54,20 +60,66 @@ const RELATORIO_DETALHE = `
   LEFT JOIN usuarios oc ON oc.id = op.responsavel_id
 `;
 
+router.get('/relatorios/publico/:token', (req, res) => {
+  const relatorio = db
+    .prepare(`${RELATORIO_DETALHE} WHERE r.token = ?`)
+    .get(String(req.params.token || '').trim());
+  if (!relatorio) {
+    return res.status(404).json({ error: 'Link do relatório não encontrado' });
+  }
+  try { relatorio.fotos = JSON.parse(relatorio.fotos || '[]'); } catch { relatorio.fotos = []; }
+  try { relatorio.medicoes = JSON.parse(relatorio.medicoes || '[]'); } catch { relatorio.medicoes = []; }
+  try { relatorio.atividades_executadas = JSON.parse(relatorio.atividades_executadas || '[]'); } catch { relatorio.atividades_executadas = []; }
+  try { relatorio.conteudo = JSON.parse(relatorio.conteudo || 'null'); } catch { relatorio.conteudo = null; }
+  try {
+    const p = JSON.parse(relatorio.assinaturas || '[]');
+    relatorio.assinaturas = Array.isArray(p) ? p : [];
+  } catch { relatorio.assinaturas = []; }
+  if (!relatorio.assinaturas.length && relatorio.assinatura) {
+    relatorio.assinaturas = [{
+      id: 1,
+      nome: relatorio.assinatura_nome || '',
+      cargo: relatorio.assinatura_cargo || '',
+      arquivo: relatorio.assinatura,
+      criado_em: relatorio.atendimento_concluido_em || null
+    }];
+  }
+  relatorio.anexos = db.prepare('SELECT * FROM anexos WHERE os_id = ? ORDER BY id').all(relatorio.os_id) || [];
+  const aval = db.prepare('SELECT token, status FROM avaliacoes WHERE os_id = ?').get(relatorio.os_id);
+  relatorio.avaliacao_token = aval ? aval.token : null;
+  relatorio.avaliacao_status = aval ? aval.status : null;
+  res.json({ relatorio });
+});
+
+router.get('/relatorios/publico/:token/pdf', (req, res) => {
+  const relatorio = db
+    .prepare(`${RELATORIO_DETALHE} WHERE r.token = ?`)
+    .get(String(req.params.token || '').trim());
+  if (!relatorio) {
+    return res.status(404).json({ error: 'Link do relatório não encontrado' });
+  }
+  return enviarPdfHtml(relatorio, req, res);
+});
+
+router.use(authenticate, requireRole('comercial', 'gestor', 'admin'));
+
 router.get('/relatorios', (req, res) => {
   const { cliente_id, data_inicio, data_fim, tipo, prioridade, status } = req.query;
+  const filtroComercial = req.user.perfil === 'comercial' ? ' AND r.enviado_comercial = 1' : '';
   let sql = `
-    SELECT r.id, r.data_validacao, r.recomendacoes, r.enviado_comercial_em,
-      o.numero AS os_numero, o.servico AS os_servico, o.prioridade AS os_prioridade,
-      c.id AS cliente_id, c.nome AS cliente_nome,
+    SELECT r.id, r.token, r.data_validacao, r.recomendacoes, r.enviado_comercial_em,
+      o.id AS os_id, o.numero AS os_numero, o.servico AS os_servico, o.prioridade AS os_prioridade, o.responsavel_local,
+      c.id AS cliente_id, c.nome AS cliente_nome, c.telefone AS cliente_telefone, c.email AS cliente_email,
+      l.nome AS local_nome, l.responsavel_nome AS local_responsavel, l.responsavel_telefone AS local_responsavel_telefone, l.responsavel_email AS local_responsavel_email,
       ex.necessidade_adicional,
       op.id AS oportunidade_id, op.tipo AS oportunidade_tipo, op.status AS oportunidade_status
     FROM relatorios r
     JOIN ordens_servico o ON o.id = r.os_id
     LEFT JOIN clientes c ON c.id = o.cliente_id
+    LEFT JOIN locais l ON l.id = o.local_id
     LEFT JOIN execucoes ex ON ex.os_id = o.id
     LEFT JOIN oportunidades op ON op.relatorio_id = r.id
-    WHERE r.status = 'aprovado' AND r.enviado_comercial = 1`;
+    WHERE r.status = 'aprovado'${filtroComercial}`;
   const params = [];
   if (cliente_id) {
     sql += ' AND o.cliente_id = ?';
@@ -96,6 +148,7 @@ router.get('/relatorios', (req, res) => {
   sql += ' ORDER BY r.data_validacao DESC';
   const relatorios = db.prepare(sql).all(...params);
   for (const r of relatorios) {
+    r.token = garantirTokenRelatorio(r.id, r.token);
     r.tipo_necessidade_label = TIPOS_NECESSIDADE[r.necessidade_adicional] || r.necessidade_adicional;
   }
   const clientes = db
@@ -103,11 +156,24 @@ router.get('/relatorios', (req, res) => {
       `SELECT DISTINCT c.id, c.nome FROM relatorios r
        JOIN ordens_servico o ON o.id = r.os_id
        JOIN clientes c ON c.id = o.cliente_id
-       WHERE r.status = 'aprovado' AND r.enviado_comercial = 1
+       WHERE r.status = 'aprovado'${filtroComercial}
        ORDER BY c.nome`
     )
     .all();
   res.json({ relatorios, clientes });
+});
+
+router.post('/relatorios/:id/link', (req, res) => {
+  const id = Number(req.params.id);
+  const relatorio = db.prepare('SELECT * FROM relatorios WHERE id = ?').get(id);
+  if (!relatorio) {
+    return res.status(404).json({ error: 'Relatório não encontrado' });
+  }
+  relatorio.token = garantirTokenRelatorio(relatorio.id, relatorio.token);
+  const token = (!relatorio.token || req.body?.novo)
+    ? garantirTokenRelatorio(id, null)
+    : relatorio.token;
+  res.json({ relatorio: { id, token, status: relatorio.status, link: `/relatorio/${token}` } });
 });
 
 router.get('/relatorios/:id', (req, res) => {
@@ -118,6 +184,7 @@ router.get('/relatorios/:id', (req, res) => {
   if (!relatorio) {
     return res.status(404).json({ error: 'Relatório não encontrado' });
   }
+  relatorio.token = garantirTokenRelatorio(relatorio.id, relatorio.token);
   db.prepare("UPDATE relatorios SET aberto_por = COALESCE(aberto_por, ?), aberto_em = COALESCE(aberto_em, datetime('now')) WHERE id = ?").run(req.user.id, relatorio.id);
   relatorio.aberto_por = relatorio.aberto_por || req.user.id;
   relatorio.aberto_em = relatorio.aberto_em || new Date().toISOString().slice(0, 19).replace('T', ' ');
@@ -278,6 +345,11 @@ router.get('/relatorios/:id/pdf', (req, res) => {
   if (!relatorio) {
     return res.status(404).json({ error: 'Relatório não encontrado' });
   }
+  return enviarPdfHtml(relatorio, req, res);
+});
+
+function enviarPdfHtml(relatorio, req, res) {
+  relatorio.token = garantirTokenRelatorio(relatorio.id, relatorio.token);
 
   try {
     relatorio.fotos = JSON.parse(relatorio.fotos || '[]');
@@ -1320,6 +1392,6 @@ router.get('/relatorios/:id/pdf', (req, res) => {
 </html>`;
 
   res.type('html').send(html);
-});
+}
 
 module.exports = router;

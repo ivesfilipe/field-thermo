@@ -100,13 +100,13 @@ db.prepare(
 ).run();
 
 const colunasRel = colunasDaTabela('relatorios');
-for (const col of ['enviado_comercial_em', 'aberto_por', 'aberto_em', 'complemento_motivo', 'conteudo']) {
+for (const col of ['enviado_comercial_em', 'aberto_por', 'aberto_em', 'complemento_motivo', 'conteudo', 'token']) {
   if (!colunasRel.includes(col)) {
     db.prepare(`ALTER TABLE relatorios ADD COLUMN ${col} ${col === 'aberto_por' ? 'INTEGER' : 'TEXT'}`).run();
   }
 }
 
-const colunasEquip = colunasDaTabela('equipamentos');
+const colunasEquip = colunasDaTabela('equipamentos'); const cryptoDb = require('crypto'); for (const r of db.prepare("SELECT id FROM relatorios WHERE token IS NULL OR token = ''").all()) { db.prepare('UPDATE relatorios SET token = ? WHERE id = ?').run(cryptoDb.randomBytes(16).toString('hex'), r.id); }
 for (const col of ['capacidade', 'patrimonio']) {
   if (!colunasEquip.includes(col)) {
     db.prepare(`ALTER TABLE equipamentos ADD COLUMN ${col} TEXT`).run();

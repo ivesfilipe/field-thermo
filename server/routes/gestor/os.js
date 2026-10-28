@@ -23,6 +23,7 @@ const OS_BASE = `
     c.nome AS cliente_nome,
     c.email AS cliente_email, c.telefone AS cliente_telefone,
     l.nome AS local_nome, l.endereco AS local_endereco, l.responsavel_nome AS local_responsavel,
+    l.responsavel_telefone AS local_responsavel_telefone, l.responsavel_email AS local_responsavel_email,
     ${sqlEnderecoCompleto('l')},
     e.nome AS equipamento_nome, e.modelo AS equipamento_modelo,
     e.capacidade AS equipamento_capacidade, e.patrimonio AS equipamento_patrimonio,
@@ -50,6 +51,11 @@ function getOS(id) {
      WHERE ex.os_id = ?`
   ).get(id) || null;
   os.relatorio = db.prepare('SELECT * FROM relatorios WHERE os_id = ?').get(id) || null;
+  if (os.relatorio && !os.relatorio.token) {
+    const tk = crypto.randomBytes(16).toString('hex');
+    db.prepare('UPDATE relatorios SET token = ? WHERE id = ?').run(tk, os.relatorio.id);
+    os.relatorio.token = tk;
+  }
   os.avaliacao = db.prepare('SELECT id, os_id, token, status, nota, resolveu_necessidade, comentario, respondida_em, criado_em FROM avaliacoes WHERE os_id = ?').get(id) || null;
   os.anexos = db.prepare('SELECT * FROM anexos WHERE os_id = ? ORDER BY id').all(id) || [];
   if (os.execucao) {
@@ -383,15 +389,16 @@ router.patch('/os/:id/validar', (req, res) => {
   }
 
   const status = 'aprovado';
+  const novoTokenRel = crypto.randomBytes(16).toString('hex');
   if (relatorioExistente) {
     db.prepare(
       `UPDATE relatorios SET status = ?, validado_por = ?, data_validacao = datetime('now'),
-         recomendacoes = ?, complemento_motivo = NULL WHERE os_id = ?`
-    ).run(status, req.user.id, recomendacoes ?? null, id);
+         recomendacoes = ?, complemento_motivo = NULL, token = COALESCE(token, ?) WHERE os_id = ?`
+    ).run(status, req.user.id, recomendacoes ?? null, novoTokenRel, id);
   } else {
     db.prepare(
-      'INSERT INTO relatorios (os_id, status, validado_por, data_validacao, recomendacoes) VALUES (?, ?, ?, datetime(\'now\'), ?)'
-    ).run(id, status, req.user.id, recomendacoes ?? null);
+      'INSERT INTO relatorios (os_id, status, validado_por, data_validacao, recomendacoes, token) VALUES (?, ?, ?, datetime(\'now\'), ?, ?)'
+    ).run(id, status, req.user.id, recomendacoes ?? null, novoTokenRel);
   }
   const relatorio = db.prepare('SELECT * FROM relatorios WHERE os_id = ?').get(id);
   const temOportunidade = enviar_comercial === true || (execucao.necessidade_adicional && execucao.necessidade_adicional !== 'nao');
@@ -447,6 +454,27 @@ router.post('/os/:id/avaliacao/link', (req, res) => {
   }
   const link = `/avaliacao/${avaliacao.token}`;
   res.json({ avaliacao: { id: avaliacao.id, token: avaliacao.token, status: avaliacao.status, link } });
+});
+
+router.post('/os/:id/relatorio/link', (req, res) => {
+  const id = Number(req.params.id);
+  const os = db.prepare('SELECT * FROM ordens_servico WHERE id = ?').get(id);
+  if (!os) {
+    return res.status(404).json({ error: 'Ordem de serviço não encontrada' });
+  }
+  let relatorio = db.prepare('SELECT * FROM relatorios WHERE os_id = ?').get(id);
+  if (!relatorio) {
+    const token = crypto.randomBytes(16).toString('hex');
+    const info = db.prepare("INSERT INTO relatorios (os_id, status, token) VALUES (?, 'aprovado', ?)").run(id, token);
+    relatorio = db.prepare('SELECT * FROM relatorios WHERE id = ?').get(info.lastInsertRowid);
+  } else if (!relatorio.token || req.body?.novo) {
+    const token = crypto.randomBytes(16).toString('hex');
+    db.prepare('UPDATE relatorios SET token = ? WHERE id = ?').run(token, relatorio.id);
+    relatorio = db.prepare('SELECT * FROM relatorios WHERE id = ?').get(relatorio.id);
+  }
+  registrarHistorico({ usuario: req.user, tipo: 'os', registroId: id, campo: 'relatorio', valorNovo: 'link do relatório gerado para envio' });
+  const link = `/relatorio/${relatorio.token}`;
+  res.json({ relatorio: { id: relatorio.id, token: relatorio.token, status: relatorio.status, link } });
 });
 
 router.patch('/os/:id/reabrir', (req, res) => {

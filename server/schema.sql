@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS relatorios (
   enviado_comercial_em TEXT,
   aberto_por INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
   aberto_em TEXT,
-  complemento_motivo TEXT,
+  complemento_motivo TEXT, token TEXT,
   criado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

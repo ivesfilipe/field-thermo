@@ -21,6 +21,7 @@ interface Oportunidade {
 
 interface Relatorio {
   id: number;
+  token?: string | null;
   status: string;
   data_validacao: string | null;
   recomendacoes: string | null;
@@ -41,6 +42,7 @@ interface Relatorio {
   local_endereco: string | null;
   local_responsavel: string | null;
   local_responsavel_telefone: string | null;
+  local_responsavel_email?: string | null;
   equipamento_nome: string | null;
   equipamento_modelo: string | null;
   equipamento_serie: string | null;
@@ -137,6 +139,58 @@ export default function RelatorioDetalhePage({ params }: { params: Promise<{ id:
   const [msg, setMsg] = useState("");
   const [form, setForm] = useState({ status: "novo", valor_estimado: "", data_contato: "", resultado_contato: "", proposta_vinculada: "", previsao_fechamento: "", descricao: "" });
   const [salvando, setSalvando] = useState(false);
+  const [linkRelatorio, setLinkRelatorio] = useState<string | null>(null);
+  const [gerandoLink, setGerandoLink] = useState(false);
+
+  const caminhoRelatorio = linkRelatorio || (relatorio?.token ? `/relatorio/${relatorio.token}` : null);
+
+  function urlRelatorio(): string {
+    return `${window.location.origin}${caminhoRelatorio || ""}`;
+  }
+
+  async function gerarLinkRelatorio() {
+    if (!relatorio) return;
+    setErro("");
+    setMsg("");
+    setGerandoLink(true);
+    try {
+      const r = await api.post<{ relatorio: { link: string } }>(`/api/comercial/relatorios/${relatorio.id}/link`);
+      setLinkRelatorio(r.relatorio.link);
+      setMsg("Link do relatório pronto para envio ao responsável do local.");
+      carregar();
+    } catch (err) {
+      setErro((err as Error).message);
+    } finally {
+      setGerandoLink(false);
+    }
+  }
+
+  async function copiarLinkRelatorio() {
+    try {
+      await navigator.clipboard.writeText(urlRelatorio());
+      setMsg("Link do relatório copiado para a área de transferência.");
+    } catch {
+      setErro("Não foi possível copiar o link automaticamente.");
+    }
+  }
+
+  function linkWhatsAppRelatorio(): string {
+    const telRaw = (relatorio?.local_responsavel_telefone || relatorio?.cliente_telefone || "").replace(/\D/g, "");
+    const tel = telRaw ? (telRaw.length <= 11 ? `55${telRaw}` : telRaw) : "";
+    const resp = relatorio?.local_responsavel || relatorio?.responsavel_local || relatorio?.cliente_nome || "";
+    const saudacao = resp ? `Olá, ${resp}!` : "Olá!";
+    const texto = encodeURIComponent(`${saudacao} Segue o relatório técnico do atendimento da OS ${relatorio?.os_numero} (${relatorio?.local_nome || relatorio?.cliente_nome || "Thermo Control"}): ${urlRelatorio()}`);
+    return tel ? `https://wa.me/${tel}?text=${texto}` : `https://wa.me/?text=${texto}`;
+  }
+
+  function linkEmailRelatorio(): string {
+    const email = relatorio?.local_responsavel_email || relatorio?.cliente_email || "";
+    const resp = relatorio?.local_responsavel || relatorio?.responsavel_local || relatorio?.cliente_nome || "";
+    const saudacao = resp ? `Olá, ${resp}!` : "Olá!";
+    const assunto = encodeURIComponent(`Relatório Técnico - OS ${relatorio?.os_numero}`);
+    const corpo = encodeURIComponent(`${saudacao}\n\nSegue o link para acessar e baixar o relatório técnico da OS ${relatorio?.os_numero} (${relatorio?.os_servico || ""}):\n${urlRelatorio()}`);
+    return `mailto:${email}?subject=${assunto}&body=${corpo}`;
+  }
 
   const carregar = useCallback(() => {
     params.then(({ id }) =>
@@ -215,17 +269,57 @@ export default function RelatorioDetalhePage({ params }: { params: Promise<{ id:
       <Alerta tipo="erro" msg={erro} onClose={() => setErro("")} />
       <Alerta tipo="sucesso" msg={msg} onClose={() => setMsg("")} />
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold">Relatório {relatorio.os_numero}</h1>
+          <h1 className="text-2xl font-bold text-blue-950">Relatório {relatorio.os_numero}</h1>
           <Badge status="aprovado" />
           {relatorio.oportunidade && <Badge status={relatorio.oportunidade.status} />}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Botao variante="secundario" onClick={baixarPdf}>Baixar PDF</Botao>
           <Botao variante="secundario" onClick={() => router.push("/app/comercial/relatorios")}>Voltar</Botao>
         </div>
       </div>
+
+      <Card title="Enviar relatório ao responsável do local">
+        <div className="space-y-3 text-sm">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
+            <span className="font-semibold text-zinc-800">Responsável:</span>
+            <span>{relatorio.local_responsavel || relatorio.responsavel_local || relatorio.cliente_nome}</span>
+            {(relatorio.local_responsavel_telefone || relatorio.cliente_telefone) && (
+              <span>• Tel/WhatsApp: {relatorio.local_responsavel_telefone || relatorio.cliente_telefone}</span>
+            )}
+            {(relatorio.local_responsavel_email || relatorio.cliente_email) && (
+              <span>• E-mail: {relatorio.local_responsavel_email || relatorio.cliente_email}</span>
+            )}
+          </div>
+          {caminhoRelatorio && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5">
+              <p className="mb-1 text-xs font-semibold text-blue-900">Link exclusivo do relatório para o responsável do local</p>
+              <p className="break-all font-mono text-xs text-blue-800">{urlRelatorio()}</p>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Botao onClick={gerarLinkRelatorio} disabled={gerandoLink}>
+              {gerandoLink ? "Gerando..." : caminhoRelatorio ? "Atualizar link do relatório" : "Gerar link do relatório"}
+            </Botao>
+            {caminhoRelatorio && (
+              <>
+                <Botao variante="secundario" onClick={copiarLinkRelatorio}>Copiar link</Botao>
+                <Botao variante="sucesso" onClick={() => window.open(linkWhatsAppRelatorio(), "_blank")}>
+                  Enviar por WhatsApp
+                </Botao>
+                <Botao variante="secundario" onClick={() => window.open(linkEmailRelatorio(), "_blank")}>
+                  Enviar por e-mail
+                </Botao>
+                <Botao variante="secundario" onClick={() => window.open(urlRelatorio(), "_blank")}>
+                  Abrir página do relatório
+                </Botao>
+              </>
+            )}
+          </div>
+        </div>
+      </Card>
 
       <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
         Conteúdo técnico protegido — este relatório é somente leitura. As informações comerciais ficam registradas em campos próprios abaixo.
