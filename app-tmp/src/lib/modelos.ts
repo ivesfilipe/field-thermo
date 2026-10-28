@@ -65,22 +65,6 @@ export const MODELOS: Record<string, Modelo> = {
         ]
       }
     ]
-  },
-  pmoc: {
-    rotulo: "Levantamento PMOC",
-    campos: [
-      {
-        chave: "condicao_geral", rotulo: "Condição geral", tipo: "select", obrigatorio: true,
-        opcoes: [
-          { v: "boa", l: "Boa" },
-          { v: "regular", l: "Regular" },
-          { v: "ruim", l: "Ruim" },
-          { v: "critica", l: "Crítica" }
-        ]
-      },
-      { chave: "estado_conservacao", rotulo: "Estado de conservação", tipo: "textarea", obrigatorio: true },
-      { chave: "recomendacoes", rotulo: "Recomendações", tipo: "textarea" }
-    ]
   }
 };
 
