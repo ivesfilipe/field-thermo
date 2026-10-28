@@ -269,61 +269,58 @@ export default function RelatorioDetalhePage({ params }: { params: Promise<{ id:
       <Alerta tipo="erro" msg={erro} onClose={() => setErro("")} />
       <Alerta tipo="sucesso" msg={msg} onClose={() => setMsg("")} />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-blue-950">Relatório {relatorio.os_numero}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+        <div className="flex items-center gap-2.5">
+          <h1 className="text-lg font-bold text-slate-900 md:text-xl">Relatório {relatorio.os_numero}</h1>
           <Badge status="aprovado" />
           {relatorio.oportunidade && <Badge status={relatorio.oportunidade.status} />}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Botao variante="secundario" onClick={baixarPdf}>Baixar PDF</Botao>
+          <Botao variante="secundario" onClick={baixarPdf}>Imprimir / PDF</Botao>
           <Botao variante="secundario" onClick={() => router.push("/app/comercial/relatorios")}>Voltar</Botao>
         </div>
       </div>
 
-      <Card title="Enviar relatório ao responsável do local">
-        <div className="space-y-3 text-sm">
-          <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
-            <span className="font-semibold text-zinc-800">Responsável:</span>
+      <Card title="Envio ao responsável do local">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0 text-xs text-slate-600">
+            <span className="font-semibold text-slate-800">Destinatário: </span>
             <span>{relatorio.local_responsavel || relatorio.responsavel_local || relatorio.cliente_nome}</span>
             {(relatorio.local_responsavel_telefone || relatorio.cliente_telefone) && (
-              <span>• Tel/WhatsApp: {relatorio.local_responsavel_telefone || relatorio.cliente_telefone}</span>
+              <span className="ml-2 text-slate-500">• {relatorio.local_responsavel_telefone || relatorio.cliente_telefone}</span>
             )}
             {(relatorio.local_responsavel_email || relatorio.cliente_email) && (
-              <span>• E-mail: {relatorio.local_responsavel_email || relatorio.cliente_email}</span>
+              <span className="ml-2 text-slate-500">• {relatorio.local_responsavel_email || relatorio.cliente_email}</span>
             )}
           </div>
-          {caminhoRelatorio && (
-            <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5">
-              <p className="mb-1 text-xs font-semibold text-blue-900">Link exclusivo do relatório para o responsável do local</p>
-              <p className="break-all font-mono text-xs text-blue-800">{urlRelatorio()}</p>
-            </div>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <Botao onClick={gerarLinkRelatorio} disabled={gerandoLink}>
-              {gerandoLink ? "Gerando..." : caminhoRelatorio ? "Atualizar link do relatório" : "Gerar link do relatório"}
-            </Botao>
-            {caminhoRelatorio && (
+          <div className="flex flex-wrap items-center gap-2">
+            {caminhoRelatorio ? (
               <>
-                <Botao variante="secundario" onClick={copiarLinkRelatorio}>Copiar link</Botao>
-                <Botao variante="sucesso" onClick={() => window.open(linkWhatsAppRelatorio(), "_blank")}>
-                  Enviar por WhatsApp
+                <input
+                  type="text"
+                  readOnly
+                  value={urlRelatorio()}
+                  className="w-full rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-mono text-xs text-slate-700 sm:w-64"
+                />
+                <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={copiarLinkRelatorio}>Copiar link</Botao>
+                <Botao variante="sucesso" className="px-3 py-1.5 text-xs" onClick={() => window.open(linkWhatsAppRelatorio(), "_blank")}>
+                  WhatsApp
                 </Botao>
-                <Botao variante="secundario" onClick={() => window.open(linkEmailRelatorio(), "_blank")}>
-                  Enviar por e-mail
+                <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={() => window.open(linkEmailRelatorio(), "_blank")}>
+                  E-mail
                 </Botao>
-                <Botao variante="secundario" onClick={() => window.open(urlRelatorio(), "_blank")}>
-                  Abrir página do relatório
+                <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={() => window.open(urlRelatorio(), "_blank")}>
+                  Abrir
                 </Botao>
               </>
+            ) : (
+              <Botao onClick={gerarLinkRelatorio} disabled={gerandoLink}>
+                {gerandoLink ? "Gerando..." : "Gerar link de compartilhamento"}
+              </Botao>
             )}
           </div>
         </div>
       </Card>
-
-      <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-        Conteúdo técnico protegido — este relatório é somente leitura. As informações comerciais ficam registradas em campos próprios abaixo.
-      </p>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card title="Identificação">
@@ -436,12 +433,12 @@ export default function RelatorioDetalhePage({ params }: { params: Promise<{ id:
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card title={`Fotos e evidências (${relatorio.fotos.length}) — Clique para abrir`}>
+        <Card title={`Fotos e evidências (${relatorio.fotos.length})`}>
           {relatorio.fotos.length > 0 ? (
             <GaleriaFotos
               fotos={relatorio.fotos.map((f, idx) => ({
                 src: mediaUrl(f),
-                legenda: `Evidência fotográfica #${idx + 1}`
+                legenda: `Foto ${idx + 1}`
               }))}
             />
           ) : (
@@ -454,7 +451,7 @@ export default function RelatorioDetalhePage({ params }: { params: Promise<{ id:
                 {relatorio.anexos.filter((a) => a.categoria === "documento").map((d) => (
                   <li key={d.id} className="text-sm">
                     <a href={mediaUrl(d.arquivo)} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 underline hover:text-blue-800">
-                      📄 {d.nome_original || d.arquivo.split("/").pop()}
+                      {d.nome_original || d.arquivo.split("/").pop()}
                     </a>
                   </li>
                 ))}

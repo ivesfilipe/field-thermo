@@ -797,71 +797,60 @@ export default function OsDetalhePage() {
 
       {os.relatorio && (
         <Card
-          title="Relatório técnico — Envio ao responsável do local"
+          title="Relatório técnico"
           acao={
             <div className="flex flex-wrap gap-2">
               {os.relatorio.status === "aprovado" && (
-                <Botao variante="secundario" onClick={baixarPdf}>Baixar PDF</Botao>
+                <Botao variante="secundario" className="px-3 py-1 text-xs" onClick={baixarPdf}>Imprimir / PDF</Botao>
               )}
               {Boolean(os.relatorio.conteudo) && (
-                <Botao variante="secundario" onClick={() => setMostrarRelatorio(true)}>Visualizar relatório completo</Botao>
+                <Botao variante="secundario" className="px-3 py-1 text-xs" onClick={() => setMostrarRelatorio(true)}>Ver laudo</Botao>
               )}
             </div>
           }
         >
           <div className="space-y-3 text-sm">
-            <div className="flex flex-wrap items-center gap-3">
-              <Badge status={os.relatorio.status} />
-              <span className="text-zinc-500">Validado em {os.relatorio.data_validacao?.slice(0, 16) || "-"}</span>
-              {os.relatorio.enviado_comercial === 1 && <span className="text-xs text-emerald-600">✓ Enviado ao comercial</span>}
-              {os.relatorio.status === "reprovado" && os.relatorio.complemento_motivo && (
-                <span className="text-xs text-red-600">Complemento solicitado: {os.relatorio.complemento_motivo}</span>
-              )}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <Badge status={os.relatorio.status} />
+                <span className="text-xs text-slate-500">Validado em {os.relatorio.data_validacao?.slice(0, 16) || "-"}</span>
+                {os.relatorio.enviado_comercial === 1 && <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">Enviado ao comercial</span>}
+                {os.relatorio.status === "reprovado" && os.relatorio.complemento_motivo && (
+                  <span className="text-xs text-red-600">Complemento: {os.relatorio.complemento_motivo}</span>
+                )}
+              </div>
+              <div className="text-xs text-slate-500">
+                <span className="font-semibold text-slate-700">Destinatário: </span>
+                {os.local_responsavel || os.responsavel_local || os.cliente_nome}
+                {(os.local_responsavel_telefone || os.cliente_telefone) && ` • ${os.local_responsavel_telefone || os.cliente_telefone}`}
+              </div>
             </div>
-            {os.relatorio.recomendacoes && <p className="text-sm text-zinc-600">{os.relatorio.recomendacoes}</p>}
+            {os.relatorio.recomendacoes && <p className="text-sm text-slate-600">{os.relatorio.recomendacoes}</p>}
 
-            {(os.local_responsavel || os.responsavel_local || os.local_responsavel_telefone || os.cliente_telefone) && (
-              <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
-                <span className="font-semibold text-zinc-800">Responsável do local:</span>{" "}
-                {os.local_responsavel || os.responsavel_local || os.cliente_nome}{" "}
-                {(os.local_responsavel_telefone || os.cliente_telefone) && `• Tel/WhatsApp: ${os.local_responsavel_telefone || os.cliente_telefone}`}{" "}
-                {(os.local_responsavel_email || os.cliente_email) && `• E-mail: ${os.local_responsavel_email || os.cliente_email}`}
-              </div>
-            )}
-
-            {caminhoRelatorio && (
-              <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5">
-                <p className="mb-1 text-xs font-semibold text-blue-900">Link do relatório para o responsável do local</p>
-                <p className="break-all font-mono text-xs text-blue-800">{urlRelatorio()}</p>
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-2">
-              <Botao onClick={gerarLinkRelatorio} disabled={gerandoLinkRelatorio}>
-                {gerandoLinkRelatorio ? "Gerando..." : caminhoRelatorio ? "Atualizar link do relatório" : "Gerar link do relatório"}
-              </Botao>
-              {caminhoRelatorio && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2.5">
+              {caminhoRelatorio ? (
                 <>
-                  <Botao variante="secundario" onClick={copiarLinkRelatorio}>Copiar link</Botao>
-                  <Botao
-                    variante="sucesso"
-                    onClick={() => window.open(linkWhatsAppRelatorio(), "_blank")}
-                  >
-                    Enviar por WhatsApp
+                  <input
+                    type="text"
+                    readOnly
+                    value={urlRelatorio()}
+                    className="w-full rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-mono text-xs text-slate-700 sm:w-72"
+                  />
+                  <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={copiarLinkRelatorio}>Copiar link</Botao>
+                  <Botao variante="sucesso" className="px-3 py-1.5 text-xs" onClick={() => window.open(linkWhatsAppRelatorio(), "_blank")}>
+                    WhatsApp
                   </Botao>
-                  <Botao
-                    variante="secundario"
-                    onClick={() => window.open(linkEmailRelatorio(), "_blank")}
-                  >
-                    Enviar por e-mail
+                  <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={() => window.open(linkEmailRelatorio(), "_blank")}>
+                    E-mail
                   </Botao>
-                  <Botao
-                    variante="secundario"
-                    onClick={() => window.open(urlRelatorio(), "_blank")}
-                  >
-                    Abrir página do relatório
+                  <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={() => window.open(urlRelatorio(), "_blank")}>
+                    Abrir
                   </Botao>
                 </>
+              ) : (
+                <Botao onClick={gerarLinkRelatorio} disabled={gerandoLinkRelatorio}>
+                  {gerandoLinkRelatorio ? "Gerando..." : "Gerar link do relatório"}
+                </Botao>
               )}
             </div>
           </div>
@@ -869,7 +858,7 @@ export default function OsDetalhePage() {
       )}
 
       {os.status === "concluida" && (
-        <Card title="Avaliação do cliente">
+        <Card title="Avaliação de atendimento">
           {os.avaliacao?.status === "respondida" ? (
             <div className="space-y-3 text-sm">
               <div className="flex flex-wrap items-center gap-3">
@@ -896,37 +885,32 @@ export default function OsDetalhePage() {
               )}
             </div>
           ) : (
-            <div className="space-y-3 text-sm">
+            <div className="space-y-2.5 text-sm">
               <div className="flex flex-wrap items-center gap-3">
                 <Badge status="pendente" />
-                <span className="text-zinc-500">Aguardando avaliação do cliente</span>
+                <span className="text-xs text-slate-500">Aguardando resposta do cliente</span>
               </div>
-              {caminhoAvaliacao && (
-                <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5">
-                  <p className="mb-1 text-xs font-semibold text-blue-800">Link exclusivo desta OS</p>
-                  <p className="break-all font-mono text-xs text-blue-700">{urlAvaliacao()}</p>
-                </div>
-              )}
-              <div className="flex flex-wrap gap-2">
-                <Botao onClick={gerarLinkAvaliacao} disabled={gerandoLink}>
-                  {gerandoLink ? "Gerando..." : caminhoAvaliacao ? "Gerar novo link" : "Gerar link de avaliação"}
-                </Botao>
-                {caminhoAvaliacao && (
+              <div className="flex flex-wrap items-center gap-2">
+                {caminhoAvaliacao ? (
                   <>
-                    <Botao variante="secundario" onClick={copiarLink}>Copiar link</Botao>
-                    <Botao
-                      variante="sucesso"
-                      onClick={() => window.open(linkWhatsApp(), "_blank")}
-                    >
-                      Enviar por WhatsApp
+                    <input
+                      type="text"
+                      readOnly
+                      value={urlAvaliacao()}
+                      className="w-full rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-mono text-xs text-slate-700 sm:w-72"
+                    />
+                    <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={copiarLink}>Copiar link</Botao>
+                    <Botao variante="sucesso" className="px-3 py-1.5 text-xs" onClick={() => window.open(linkWhatsApp(), "_blank")}>
+                      WhatsApp
                     </Botao>
-                    <Botao
-                      variante="secundario"
-                      onClick={() => window.open(linkEmail(), "_blank")}
-                    >
-                      Enviar por e-mail
+                    <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={() => window.open(linkEmail(), "_blank")}>
+                      E-mail
                     </Botao>
                   </>
+                ) : (
+                  <Botao onClick={gerarLinkAvaliacao} disabled={gerandoLink}>
+                    {gerandoLink ? "Gerando..." : "Gerar link de avaliação"}
+                  </Botao>
                 )}
               </div>
             </div>
@@ -1003,7 +987,7 @@ export default function OsDetalhePage() {
                   )}
                   {(c.evidencia_fotografica.length > 0 || fotos.length > 0) && (
                     <div>
-                      <h5 className="mb-1.5 font-semibold text-zinc-900">Evidências fotográficas ({fotos.length}) — clique na foto para abrir</h5>
+                      <h5 className="mb-1.5 font-semibold text-zinc-900">Evidências fotográficas ({fotos.length})</h5>
                       {fotos.length > 0 ? (
                         <GaleriaFotos
                           fotos={fotos.map((f, idx) => ({
@@ -1020,13 +1004,6 @@ export default function OsDetalhePage() {
                     <div><h5 className="mb-1 font-semibold text-zinc-900">Assinatura do responsável</h5><p>{c.assinatura.nome}{c.assinatura.cargo ? ` (${c.assinatura.cargo})` : ""}{c.assinatura.data_hora ? ` — ${c.assinatura.data_hora}` : ""}</p></div>
                   )}
                   {c.tecnico && <p className="text-xs text-zinc-500">Técnico responsável: {c.tecnico}</p>}
-                  {Array.isArray(c.lacunas) && c.lacunas.length > 0 && (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                      <h5 className="mb-1 font-semibold text-amber-800">Lacunas indicadas (dados não registrados)</h5>
-                      <ul className="list-inside list-disc text-amber-700">{c.lacunas.map((x, i) => <li key={i}>{x}</li>)}</ul>
-                    </div>
-                  )}
-                  <p className="border-t border-zinc-100 pt-3 text-xs text-zinc-400">{c.observacao_ia}</p>
                 </div>
               );
             })()}

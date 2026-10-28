@@ -426,7 +426,6 @@ function enviarPdfHtml(relatorio, req, res) {
     fotosHtml = `
       <section class="secao page-break-avoid">
         <div class="secao-titulo">
-          <span class="icone">📷</span>
           <h2>Registro Fotográfico (${relatorio.fotos.length})</h2>
         </div>
         <div class="grade-fotos">
@@ -455,7 +454,6 @@ function enviarPdfHtml(relatorio, req, res) {
     medicoesHtml = `
       <section class="secao page-break-avoid">
         <div class="secao-titulo">
-          <span class="icone">📊</span>
           <h2>Medições e Parâmetros Técnicos</h2>
         </div>
         <table class="tabela-padrao">
@@ -518,7 +516,6 @@ function enviarPdfHtml(relatorio, req, res) {
     docsHtml = `
       <section class="secao page-break-avoid">
         <div class="secao-titulo">
-          <span class="icone">📎</span>
           <h2>Documentos Vinculados (${docsParaPdf.length})</h2>
         </div>
         <ul class="lista-docs">
@@ -527,7 +524,7 @@ function enviarPdfHtml(relatorio, req, res) {
               (d) => `
             <li>
               <a href="${e(base + d.arquivo)}" target="_blank">
-                📄 ${e(d.nome_original || d.arquivo.split('/').pop())}
+                ${e(d.nome_original || d.arquivo.split('/').pop())}
               </a>
             </li>
           `
@@ -552,7 +549,6 @@ function enviarPdfHtml(relatorio, req, res) {
     parecerHtml = `
       <section class="secao page-break-avoid">
         <div class="secao-titulo">
-          <span class="icone">📋</span>
           <h2>Parecer Técnico e Recomendações</h2>
         </div>
         <div class="grade-parecer">
@@ -567,7 +563,7 @@ function enviarPdfHtml(relatorio, req, res) {
           ${
             relatorio.pendencias
               ? `<div class="card-parecer card-pendencia">
-                  <h4>⚠️ Pendências Identificadas</h4>
+                  <h4>Pendências Identificadas</h4>
                   <p>${e(relatorio.pendencias)}</p>
                 </div>`
               : ''
@@ -1274,7 +1270,6 @@ function enviarPdfHtml(relatorio, req, res) {
     relatorio.condicao_sintomas || relatorio.condicao_equipamento || relatorio.causa || relatorio.diagnostico
       ? `<section class="secao">
           <div class="secao-titulo">
-            <span class="icone">🔍</span>
             <h2>Condição Inicial e Diagnóstico Técnico</h2>
           </div>
           <div class="grid-2">
@@ -1305,7 +1300,6 @@ function enviarPdfHtml(relatorio, req, res) {
   <!-- Descrição do Serviço Realizado -->
   <section class="secao">
     <div class="secao-titulo">
-      <span class="icone">🛠️</span>
       <h2>Descrição do Serviço Realizado</h2>
     </div>
     <div class="texto-caixa">${e(relatorio.servico_executado || relatorio.os_descricao || 'Atendimento técnico executado conforme especificações.')}</div>
@@ -1332,7 +1326,6 @@ function enviarPdfHtml(relatorio, req, res) {
   <!-- Assinaturas e Validação -->
   <section class="secao page-break-avoid">
     <div class="secao-titulo">
-      <span class="icone">✍️</span>
       <h2>Termo de Conclusão e Homologação Técnica</h2>
     </div>
 

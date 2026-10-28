@@ -16,15 +16,14 @@ const COR_BOLINHA: Record<string, string> = {
 
 export function Card({ title, children, acao }: { title: string; children: React.ReactNode; acao?: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 bg-white px-4 py-3">
-        <h2 className="flex items-center gap-2 text-sm font-bold tracking-tight text-blue-950">
-          <span className="h-3.5 w-1 rounded-full bg-blue-900" />
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/80 px-4 py-2.5">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">
           {title}
         </h2>
         {acao}
       </div>
-      <div className="p-4 text-zinc-900">{children}</div>
+      <div className="p-4 text-slate-900">{children}</div>
     </div>
   );
 }
@@ -253,18 +252,18 @@ export function Erro({ msg }: { msg: string }) {
 
 export function Tabela({ cabecalhos, children }: { cabecalhos: React.ReactNode[]; children: React.ReactNode }) {
   return (
-    <div className="-mx-4 overflow-x-auto px-4">
+    <div className="-mx-4 -my-1 overflow-x-auto">
       <table className="w-full min-w-125 text-left text-sm">
         <thead>
-          <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
+          <tr className="border-b border-slate-200 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
             {cabecalhos.map((h, i) => (
-              <th key={i} className="whitespace-nowrap px-3 py-2.5 font-semibold">
+              <th key={i} className="whitespace-nowrap px-4 py-2.5 font-semibold">
                 {h}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-100">{children}</tbody>
+        <tbody className="divide-y divide-slate-100">{children}</tbody>
       </table>
     </div>
   );
@@ -295,24 +294,21 @@ export function EstadoVazio({ texto }: { texto: string }) {
 
 export function PageHeader({ titulo, descricao, acoes }: { titulo: string; descricao?: string; acoes?: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-5 py-4 shadow-sm">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3.5">
       <div>
-        <h1 className="text-lg font-bold tracking-tight text-blue-950 md:text-xl">{titulo}</h1>
-        {descricao && <p className="mt-0.5 text-xs text-zinc-500 md:text-sm">{descricao}</p>}
+        <h1 className="text-lg font-bold tracking-tight text-slate-900 md:text-xl">{titulo}</h1>
+        {descricao && <p className="mt-0.5 text-xs text-slate-500">{descricao}</p>}
       </div>
       {acoes && <div className="flex flex-wrap items-center gap-2">{acoes}</div>}
     </div>
   );
 }
 
-export function KPI({ label, valor, cor = "text-blue-900", icone }: { label: string; valor: number | string; cor?: string; icone?: React.ReactNode }) {
+export function KPI({ label, valor, cor = "text-blue-950" }: { label: string; valor: number | string; cor?: string; icone?: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-      {icone && <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-900">{icone}</div>}
-      <div className="min-w-0">
-        <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{label}</p>
-        <p className={`mt-0.5 truncate text-2xl font-bold leading-tight ${cor}`}>{valor}</p>
-      </div>
+    <div className="rounded-lg border border-slate-200 border-l-4 border-l-blue-900 bg-white px-3.5 py-2.5">
+      <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+      <p className={`mt-0.5 truncate text-xl font-bold leading-tight ${cor}`}>{valor}</p>
     </div>
   );
 }
@@ -388,17 +384,20 @@ export function GaleriaFotos({
             key={`${f.src}-${idx}`}
             type="button"
             onClick={() => setIndiceAtivo(idx)}
-            className="group relative overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 text-left shadow-sm transition hover:border-blue-600 hover:shadow-md focus:outline-none"
-            title="Clique para abrir e ampliar a foto"
+            className="group relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100 text-left transition hover:border-blue-700 focus:outline-none"
+            title="Abrir imagem em tela cheia"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={f.src}
               alt={f.legenda || `Foto ${idx + 1}`}
-              className={`${classesThumb} object-cover transition duration-200 group-hover:scale-105`}
+              className={`${classesThumb} object-cover`}
             />
-            <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-blue-950/75 px-1.5 py-1 text-[11px] font-semibold text-white">
-              🔍 Abrir foto
+            <span className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-slate-900/80 px-2 py-1 text-[11px] font-medium text-white">
+              <span className="truncate">{f.legenda || `Foto ${idx + 1}`}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 shrink-0 text-blue-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15zM10.5 7.5v6m3-3h-6" />
+              </svg>
             </span>
           </button>
         ))}
@@ -410,32 +409,32 @@ export function GaleriaFotos({
           onClick={() => setIndiceAtivo(null)}
         >
           <div
-            className="flex w-full max-w-4xl flex-col items-center gap-3"
+            className="flex w-full max-w-4xl flex-col items-center gap-2.5"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex w-full flex-wrap items-center justify-between gap-2 rounded-xl bg-blue-950 px-4 py-2.5 text-white shadow-lg">
+            <div className="flex w-full flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2.5 text-white">
               <div className="text-sm font-semibold">
                 {fotoAtual.legenda || `Foto ${indiceAtivo + 1}`}
-                <span className="ml-2 text-xs font-normal text-blue-200">
+                <span className="ml-2 text-xs font-normal text-slate-400">
                   ({indiceAtivo + 1} de {fotos.length})
                 </span>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {fotos.length > 1 && (
                   <>
                     <button
                       type="button"
                       onClick={() => setIndiceAtivo((indiceAtivo - 1 + fotos.length) % fotos.length)}
-                      className="rounded-lg bg-blue-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-800"
+                      className="rounded border border-slate-700 bg-slate-800 px-2.5 py-1 text-xs font-medium text-white hover:bg-slate-700"
                     >
-                      ◀ Anterior
+                      Anterior
                     </button>
                     <button
                       type="button"
                       onClick={() => setIndiceAtivo((indiceAtivo + 1) % fotos.length)}
-                      className="rounded-lg bg-blue-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-800"
+                      className="rounded border border-slate-700 bg-slate-800 px-2.5 py-1 text-xs font-medium text-white hover:bg-slate-700"
                     >
-                      Próxima ▶
+                      Próxima
                     </button>
                   </>
                 )}
@@ -443,26 +442,26 @@ export function GaleriaFotos({
                   href={fotoAtual.src}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-blue-950 hover:bg-blue-50"
+                  className="rounded bg-blue-800 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700"
                 >
-                  Abrir em nova guia ↗
+                  Abrir original
                 </a>
                 <button
                   type="button"
                   onClick={() => setIndiceAtivo(null)}
-                  className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+                  className="rounded bg-slate-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-slate-600"
                 >
-                  Fechar ✕
+                  Fechar
                 </button>
               </div>
             </div>
 
-            <div className="flex max-h-[80vh] w-full items-center justify-center overflow-auto rounded-xl bg-black/40 p-2">
+            <div className="flex max-h-[80vh] w-full items-center justify-center overflow-auto rounded-lg border border-slate-800 bg-slate-950 p-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={fotoAtual.src}
                 alt={fotoAtual.legenda || `Foto ${indiceAtivo + 1}`}
-                className="max-h-[76vh] max-w-full rounded-lg bg-white object-contain shadow-2xl"
+                className="max-h-[76vh] max-w-full rounded bg-white object-contain"
               />
             </div>
           </div>
