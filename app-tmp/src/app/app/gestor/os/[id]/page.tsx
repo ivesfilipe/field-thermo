@@ -317,18 +317,12 @@ export default function OsDetalhePage() {
     if (!os) return;
     setErro("");
     setMsg("");
-    let emailDestino = os.local_responsavel_email || os.cliente_email || "";
-    if (!emailDestino) {
-      const digitado = window.prompt("Informe o e-mail do cliente/responsável para envio da avaliação:", "");
-      if (!digitado) return;
-      emailDestino = digitado.trim();
-    }
     try {
       const r = await api.post<{ ok: boolean; destinatarios: string[]; remetente: string }>(
         `/api/gestor/os/${os.id}/avaliacao/enviar-email`,
-        { email: emailDestino, base_url: window.location.origin }
+        { base_url: window.location.origin }
       );
-      setMsg(`Avaliação enviada por e-mail (${r.remetente}) para ${r.destinatarios.join(", ")}.`);
+      setMsg(`Avaliação enviada automaticamente por e-mail (${r.remetente}) para ${r.destinatarios.join(", ")}.`);
       carregar();
     } catch (err) {
       setErro((err as Error).message);
@@ -339,18 +333,12 @@ export default function OsDetalhePage() {
     if (!os) return;
     setErro("");
     setMsg("");
-    let emailDestino = os.local_responsavel_email || os.cliente_email || "";
-    if (!emailDestino) {
-      const digitado = window.prompt("Informe o e-mail do cliente/responsável para envio do relatório:", "");
-      if (!digitado) return;
-      emailDestino = digitado.trim();
-    }
     try {
       const r = await api.post<{ ok: boolean; destinatarios: string[]; remetente: string }>(
         `/api/gestor/os/${os.id}/relatorio/enviar-email`,
-        { email: emailDestino, base_url: window.location.origin }
+        { base_url: window.location.origin }
       );
-      setMsg(`Relatório técnico enviado por e-mail (${r.remetente}) para ${r.destinatarios.join(", ")}.`);
+      setMsg(`Relatório técnico enviado automaticamente por e-mail (${r.remetente}) para ${r.destinatarios.join(", ")}.`);
       carregar();
     } catch (err) {
       setErro((err as Error).message);

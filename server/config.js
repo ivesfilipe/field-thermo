@@ -1,5 +1,5 @@
 const path = require('path');
-const dotenv = require('dotenv');
+const dotenv = (() => { try { return require('dotenv'); } catch { return { config: () => {} }; } })();
 
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
@@ -10,5 +10,11 @@ module.exports = {
   UPLOADS_DIR: process.env.UPLOADS_DIR || path.join(__dirname, 'uploads'),
   TOKEN_EXPIRES_IN: process.env.TOKEN_EXPIRES_IN || '12h',
   IS_PRODUCTION: process.env.NODE_ENV === 'production',
-  GOOGLE_REVIEW_URL: process.env.GOOGLE_REVIEW_URL || 'https://search.google.com/local/writereview?placeid=ChIJZe9bdx-VpgAR3EwV7DUft7A&source=g.page.m._&utm_source=gbp&laa=merchant-review-solicitation'
+  GOOGLE_REVIEW_URL: process.env.GOOGLE_REVIEW_URL || 'https://search.google.com/local/writereview?placeid=ChIJZe9bdx-VpgAR3EwV7DUft7A&source=g.page.m._&utm_source=gbp&laa=merchant-review-solicitation',
+  SMTP_HOST: process.env.SMTP_HOST || 'mail.medicalthermo.com',
+  SMTP_PORT: Number(process.env.SMTP_PORT || 465),
+  SMTP_USER: process.env.SMTP_USER || 'thermocontrol@medicalthermo.com',
+  SMTP_PASS: process.env.SMTP_PASS || 'Acesso@thermo26',
+  SMTP_FROM: process.env.SMTP_FROM || 'thermocontrol@medicalthermo.com',
+  SMTP_FROM_NAME: process.env.SMTP_FROM_NAME || 'MedicalThermo Herzog'
 };

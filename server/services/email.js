@@ -6,39 +6,9 @@ const { spawn } = require('child_process');
 const config = require('../config');
 
 function detectarEmailEmpresaNoServidor() {
-  if (process.env.SMTP_FROM) return process.env.SMTP_FROM.trim();
-  if (process.env.SMTP_USER && process.env.SMTP_USER.includes('@')) return process.env.SMTP_USER.trim();
-
-  const possiveisPastasDominio = [
-    '/home/medicalthermo/mail/medicalthermo.com',
-    '/home/medicalthermo/mail/thermocontrol.medicalthermo.com'
-  ];
-
-  const prioridade = ['atendimento', 'contato', 'relatorios', 'relatorio', 'comercial', 'suporte', 'thermocontrol', 'sac', 'adm', 'admin'];
-
-  for (const dirDominio of possiveisPastasDominio) {
-    try {
-      if (fs.existsSync(dirDominio)) {
-        const dominio = path.basename(dirDominio);
-        const entradas = fs.readdirSync(dirDominio, { withFileTypes: true })
-          .filter((d) => d.isDirectory() && !d.name.startsWith('.'))
-          .map((d) => d.name);
-
-        if (entradas.length > 0) {
-          for (const pref of prioridade) {
-            if (entradas.includes(pref)) {
-              return `${pref}@${dominio}`;
-            }
-          }
-          return `${entradas[0]}@${dominio}`;
-        }
-      }
-    } catch {
-      // ignora erro de leitura
-    }
-  }
-
-  return 'contato@medicalthermo.com';
+  if (config.SMTP_FROM) return config.SMTP_FROM.trim();
+  if (config.SMTP_USER && config.SMTP_USER.includes('@')) return config.SMTP_USER.trim();
+  return 'thermocontrol@medicalthermo.com';
 }
 
 function encodeHeader(str) {
@@ -217,11 +187,13 @@ async function enviarEmailServidor({ para, assunto, html }) {
     .filter((x) => x.includes('@'));
 
   if (!toList.length) {
-    throw new Error('Informe um endereço de e-mail válido para o cliente.');
+    throw new Error('Este cliente/local não possui e-mail cadastrado.');
   }
 
   const fromEmail = detectarEmailEmpresaNoServidor();
-  const fromName = process.env.SMTP_FROM_NAME || 'MedicalThermo Herzog';
+  const fromName = config.SMTP_FROM_NAME || 'MedicalThermo Herzog';
+  const user = config.SMTP_USER || 'thermocontrol@medicalthermo.com';
+  const pass = config.SMTP_PASS || 'Acesso@thermo26';
   const rawMime = montarMimeMessage({
     fromName,
     fromEmail,
@@ -230,31 +202,40 @@ async function enviarEmailServidor({ para, assunto, html }) {
     html
   });
 
-  // 1) Tenta sendmail nativo do servidor Linux/cPanel (mesmo servidor da MedicalThermo)
+  const tentativasSmtp = [
+    { host: config.SMTP_HOST || 'mail.medicalthermo.com', port: Number(config.SMTP_PORT || 465) },
+    { host: '127.0.0.1', port: 465 },
+    { host: '127.0.0.1', port: 587 },
+    { host: '127.0.0.1', port: 25 }
+  ];
+
+  let ultimoErro = null;
+
+  for (const t of tentativasSmtp) {
+    try {
+      await enviarViaSmtpSocket({
+        host: t.host,
+        port: t.port,
+        user,
+        pass,
+        fromEmail,
+        toList,
+        rawMime
+      });
+      return { enviados: toList, remetente: fromEmail };
+    } catch (err) {
+      ultimoErro = err;
+    }
+  }
+
   try {
     await enviarViaSendmailLocal({ fromEmail, rawMime });
     return { enviados: toList, remetente: fromEmail };
-  } catch {
-    // fallback para SMTP local (127.0.0.1:25) ou configurado em variáveis de ambiente
+  } catch (err) {
+    ultimoErro = ultimoErro || err;
   }
 
-  // 2) Tenta SMTP local na porta 25 (Exim/Postfix local no mesmo servidor) ou SMTP configurado
-  const host = process.env.SMTP_HOST || '127.0.0.1';
-  const port = Number(process.env.SMTP_PORT || 25);
-  const user = process.env.SMTP_USER || '';
-  const pass = process.env.SMTP_PASS || '';
-
-  await enviarViaSmtpSocket({
-    host,
-    port,
-    user,
-    pass,
-    fromEmail,
-    toList,
-    rawMime
-  });
-
-  return { enviados: toList, remetente: fromEmail };
+  throw ultimoErro || new Error('Não foi possível conectar ao servidor de e-mail.');
 }
 
 function montarHtmlAvaliacaoGoogle({ os_numero, cliente_nome, responsavel_nome, servico, tecnico_nome, link_google, url_avaliacao }) {

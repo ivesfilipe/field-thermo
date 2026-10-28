@@ -488,12 +488,6 @@ export default function ExecucaoOsPage() {
     if (enviandoGoogle) return;
     setErro("");
     setMsg("");
-    let emailInformado = os?.local_responsavel_email || os?.cliente_email || "";
-    if (canal === "email" && !emailInformado) {
-      const digitado = window.prompt("Informe o e-mail do cliente/responsável para enviar o link de avaliação do Google:", "");
-      if (!digitado) return;
-      emailInformado = digitado.trim();
-    }
     setEnviandoGoogle(true);
     try {
       const r = await api.post<{
@@ -505,11 +499,11 @@ export default function ExecucaoOsPage() {
         enviada_em: string;
       }>(
         `/api/tecnico/os/${id}/avaliacao-google`,
-        { canal, reenviar, email: canal === "email" ? emailInformado : undefined }
+        { canal, reenviar }
       );
       if (r.ok) {
         if (r.canal === "email") {
-          setMsg(`Avaliação do Google enviada por e-mail (${r.remetente || "servidor MedicalThermo"}) para ${(r.destinatarios || [emailInformado]).join(", ")}.`);
+          setMsg(`Avaliação do Google enviada automaticamente por e-mail (${r.remetente || "thermocontrol@medicalthermo.com"}) para ${(r.destinatarios || []).join(", ")}.`);
         } else if (r.whatsapp_url) {
           window.open(r.whatsapp_url, "_blank");
           setMsg("Link de avaliação do Google aberto no WhatsApp e registrado no histórico do atendimento.");

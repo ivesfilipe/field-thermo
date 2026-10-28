@@ -109,18 +109,12 @@ export default function RelatoriosPage() {
     e.stopPropagation();
     setErro("");
     setMsg("");
-    let emailDestino = r.local_responsavel_email || r.cliente_email || "";
-    if (!emailDestino) {
-      const digitado = window.prompt(`Informe o e-mail do responsável da OS ${r.os_numero}:`, "");
-      if (!digitado) return;
-      emailDestino = digitado.trim();
-    }
     try {
       const resp = await api.post<{ ok: boolean; destinatarios: string[]; remetente: string }>(
         `/api/comercial/relatorios/${r.id}/enviar-email`,
-        { email: emailDestino, base_url: window.location.origin }
+        { base_url: window.location.origin }
       );
-      setMsg(`Relatório da OS ${r.os_numero} enviado por e-mail (${resp.remetente}) para ${resp.destinatarios.join(", ")}.`);
+      setMsg(`Relatório da OS ${r.os_numero} enviado automaticamente por e-mail (${resp.remetente}) para ${resp.destinatarios.join(", ")}.`);
     } catch (err) {
       setErro((err as Error).message);
     }

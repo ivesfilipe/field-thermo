@@ -196,18 +196,12 @@ export default function RelatorioDetalhePage({ params }: { params: Promise<{ id:
     if (!relatorio) return;
     setErro("");
     setMsg("");
-    let emailDestino = relatorio.local_responsavel_email || relatorio.cliente_email || "";
-    if (!emailDestino) {
-      const digitado = window.prompt("Informe o e-mail do cliente/responsável para envio do relatório:", "");
-      if (!digitado) return;
-      emailDestino = digitado.trim();
-    }
     try {
       const r = await api.post<{ ok: boolean; destinatarios: string[]; remetente: string }>(
         `/api/comercial/relatorios/${relatorio.id}/enviar-email`,
-        { email: emailDestino, base_url: window.location.origin }
+        { base_url: window.location.origin }
       );
-      setMsg(`Relatório técnico enviado por e-mail (${r.remetente}) para ${r.destinatarios.join(", ")}.`);
+      setMsg(`Relatório técnico enviado automaticamente por e-mail (${r.remetente}) para ${r.destinatarios.join(", ")}.`);
       carregar();
     } catch (err) {
       setErro((err as Error).message);
