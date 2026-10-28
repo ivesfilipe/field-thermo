@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS execucoes (
   necessidade_adicional TEXT NOT NULL DEFAULT 'nao'
     CHECK (necessidade_adicional IN ('nao', 'nova_manutencao', 'substituicao_equipamento', 'fornecimento_peca', 'instalacao', 'adequacao', 'outro_servico')),
   necessidade_descricao TEXT,
-  complemento_solicitado TEXT
+  complemento_solicitado TEXT, avaliacao_google_enviada_em TEXT, avaliacao_google_enviada_por INTEGER REFERENCES usuarios(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS anexos (

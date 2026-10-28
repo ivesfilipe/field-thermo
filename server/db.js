@@ -139,7 +139,7 @@ const colunasExec2 = colunasDaTabela('execucoes');
 const colunasExecNova = [
   'condicao_sintomas', 'condicao_equipamento', 'condicao_observacoes', 'causa',
   'medicoes', 'atividades_executadas', 'resultado', 'pendencias', 'recomendacoes',
-  'assinatura_nome', 'assinatura_cargo', 'assinaturas', 'relatorio_ia', 'necessidade_descricao'
+  'assinatura_nome', 'assinatura_cargo', 'assinaturas', 'relatorio_ia', 'necessidade_descricao', 'avaliacao_google_enviada_em', 'avaliacao_google_enviada_por'
 ];
 for (const col of colunasExecNova) {
   if (!colunasExec2.includes(col)) {

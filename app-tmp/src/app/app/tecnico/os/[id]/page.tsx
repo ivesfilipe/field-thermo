@@ -27,6 +27,7 @@ interface Execucao {
   concluida_em: string | null;
   complemento_solicitado: string | null;
   dados_modelo: Record<string, string> | null;
+  avaliacao_google_enviada_em?: string | null;
 }
 
 interface Anexo {
@@ -48,10 +49,14 @@ interface OS {
   hora_inicio: string | null;
   hora_fim: string | null;
   cliente_nome: string;
+  cliente_telefone?: string | null;
+  cliente_email?: string | null;
   local_nome: string | null;
   local_endereco: string | null;
   local_endereco_completo?: string | null;
   local_responsavel: string | null;
+  local_responsavel_telefone?: string | null;
+  local_responsavel_email?: string | null;
   responsavel_local: string | null;
   equipamento_nome: string | null;
   equipamento_modelo: string | null;
@@ -239,6 +244,8 @@ export default function ExecucaoOsPage() {
   const [msg, setMsg] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [enviandoGoogle, setEnviandoGoogle] = useState(false);
+  const [dispensouGoogle, setDispensouGoogle] = useState(false);
 
   const [form, setForm] = useState<{
     servico_executado: string;
@@ -467,12 +474,35 @@ export default function ExecucaoOsPage() {
         }
       }
       await api.post(`/api/tecnico/os/${id}/concluir`);
+      setDispensouGoogle(false);
       carregar(false);
       setMsg("OS enviada para validação do gestor.");
     } catch (err) {
       setErro((err as Error).message);
     } finally {
       setEnviando(false);
+    }
+  }
+
+  async function enviarAvaliacaoGoogle(reenviar = false) {
+    if (enviandoGoogle) return;
+    setErro("");
+    setMsg("");
+    setEnviandoGoogle(true);
+    try {
+      const r = await api.post<{ ok: boolean; whatsapp_url: string; enviada_em: string }>(
+        `/api/tecnico/os/${id}/avaliacao-google`,
+        { reenviar }
+      );
+      if (r.ok && r.whatsapp_url) {
+        window.open(r.whatsapp_url, "_blank");
+        setMsg("Link de avaliação do Google aberto no WhatsApp e registrado no histórico do atendimento.");
+        carregar(true);
+      }
+    } catch (err) {
+      setErro((err as Error).message || "Não foi possível enviar o link de avaliação do Google.");
+    } finally {
+      setEnviandoGoogle(false);
     }
   }
 
@@ -735,7 +765,109 @@ export default function ExecucaoOsPage() {
               {enviando ? "Enviando..." : precisaComplemento ? "Reenviar para validação" : "Finalizar e enviar para validação"}
             </Botao>
           </div>
+
+          <Card title="Avaliação no Google (Opcional)">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+              <div className="text-slate-600">
+                <p>Envie o link de avaliação do Google apenas se considerar apropriado para este atendimento.</p>
+                {!(os.local_responsavel_telefone || os.cliente_telefone) && (
+                  <p className="mt-1 text-xs font-medium text-amber-700">
+                    Cliente sem telefone cadastrado — não será possível enviar via WhatsApp.
+                  </p>
+                )}
+              </div>
+              {os.execucao?.avaliacao_google_enviada_em ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                    Enviado em {os.execucao.avaliacao_google_enviada_em.slice(0, 16)}
+                  </span>
+                  <Botao
+                    variante="secundario"
+                    className="px-3 py-1.5 text-xs"
+                    disabled={enviandoGoogle}
+                    onClick={() => enviarAvaliacaoGoogle(true)}
+                  >
+                    {enviandoGoogle ? "Enviando..." : "Reenviar"}
+                  </Botao>
+                </div>
+              ) : (
+                <Botao
+                  variante="secundario"
+                  disabled={enviandoGoogle}
+                  onClick={() => enviarAvaliacaoGoogle(false)}
+                >
+                  {enviandoGoogle ? "Enviando..." : "Enviar link de avaliação do Google"}
+                </Botao>
+              )}
+            </div>
+          </Card>
         </>
+      )}
+
+      {(os.status === "aguardando_validacao" || os.status === "concluida") && (
+        <Card title="Avaliação do Cliente no Google (Opcional)">
+          {os.execucao?.avaliacao_google_enviada_em ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+              <div className="flex items-center gap-2 text-emerald-700">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold">✓</span>
+                <span>
+                  Link de avaliação do Google enviado em <strong>{os.execucao.avaliacao_google_enviada_em.slice(0, 16)}</strong>
+                </span>
+              </div>
+              <Botao
+                variante="secundario"
+                className="px-3 py-1.5 text-xs"
+                disabled={enviandoGoogle}
+                onClick={() => enviarAvaliacaoGoogle(true)}
+              >
+                {enviandoGoogle ? "Enviando..." : "Enviar novamente"}
+              </Botao>
+            </div>
+          ) : dispensouGoogle ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+              <span>Envio da avaliação do Google dispensado para este atendimento.</span>
+              <Botao
+                variante="secundario"
+                className="px-3 py-1.5 text-xs"
+                disabled={enviandoGoogle || !(os.local_responsavel_telefone || os.cliente_telefone)}
+                onClick={() => enviarAvaliacaoGoogle(false)}
+              >
+                Enviar link de avaliação do Google
+              </Botao>
+            </div>
+          ) : (
+            <div className="space-y-3 text-sm">
+              <p className="text-slate-700">
+                Atendimento concluído! Caso considere que o cliente ficou satisfeito e vale a pena solicitar uma avaliação no Google, clique no botão abaixo:
+              </p>
+              {(os.local_responsavel_telefone || os.cliente_telefone) ? (
+                <p className="text-xs text-slate-500">
+                  Canal de envio: <strong>WhatsApp ({os.local_responsavel_telefone || os.cliente_telefone})</strong>
+                </p>
+              ) : (
+                <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  Atenção: Este cliente/local não possui telefone válido cadastrado para envio via WhatsApp.
+                </p>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <Botao
+                  variante="sucesso"
+                  disabled={enviandoGoogle}
+                  onClick={() => enviarAvaliacaoGoogle(false)}
+                >
+                  {enviandoGoogle ? "Enviando..." : "Enviar link de avaliação do Google"}
+                </Botao>
+                <Botao
+                  variante="secundario"
+                  disabled={enviandoGoogle}
+                  onClick={() => setDispensouGoogle(true)}
+                >
+                  Agora não
+                </Botao>
+              </div>
+            </div>
+          )}
+        </Card>
       )}
 
       {(os.status === "aguardando_validacao" || os.status === "concluida") && fotos.length > 0 && (

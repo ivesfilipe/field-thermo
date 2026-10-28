@@ -18,10 +18,10 @@ const OS_BASE = `
   SELECT o.id, o.numero, o.servico, o.descricao, o.prioridade, o.data_agendada,
     o.hora_inicio, o.hora_fim, o.status, o.cliente_id, o.local_id, o.equipamento_id,
     o.tipo_atendimento,
-    c.nome AS cliente_nome,
+    c.nome AS cliente_nome, c.telefone AS cliente_telefone, c.email AS cliente_email,
     l.nome AS local_nome,
     ${sqlEnderecoLocalOuCliente('l', 'c')},
-    l.responsavel_nome AS local_responsavel,
+    l.responsavel_nome AS local_responsavel, l.responsavel_telefone AS local_responsavel_telefone, l.responsavel_email AS local_responsavel_email,
     ${sqlEnderecoCompleto('l', 'local_endereco_completo', 'c')},
     o.responsavel_local,
     e.nome AS equipamento_nome, e.modelo AS equipamento_modelo, e.numero_serie AS equipamento_serie,
@@ -174,6 +174,7 @@ router.get('/os/:id', (req, res) => {
     os.execucao.assinaturas = normalizarAssinaturas(os.execucao);
   }
   os.anexos = getAnexos(os.id);
+  os.google_review_url = config.GOOGLE_REVIEW_URL;
   res.json({ os });
 });
 
@@ -540,7 +541,84 @@ router.post('/os/:id/concluir', (req, res) => {
     db.prepare('INSERT INTO relatorios (os_id, status, conteudo) VALUES (?, ?, ?)').run(os.id, 'pendente', JSON.stringify(relatorioIa));
   }
   registrarHistorico({ usuario: req.user, tipo: 'os', registroId: os.id, campo: 'finalizacao_tecnico', valorNovo: tinhaComplemento ? 'reenviado após complemento' : 'enviado para validação do gestor' });
-  res.json({ os: getMinhaOS(req, os.id) });
+  const osAtualizada = getMinhaOS(req, os.id);
+  if (osAtualizada) {
+    osAtualizada.execucao = getExecucao(os.id);
+    osAtualizada.google_review_url = config.GOOGLE_REVIEW_URL;
+  }
+  res.json({ os: osAtualizada });
+});
+
+router.post('/os/:id/avaliacao-google', (req, res) => {
+  const os = getMinhaOS(req, Number(req.params.id));
+  if (!os) {
+    return res.status(404).json({ error: 'Ordem de serviço não encontrada' });
+  }
+  const execucao = getExecucao(os.id);
+  if (!execucao) {
+    return res.status(400).json({ error: 'Atendimento ainda não foi iniciado' });
+  }
+  if (execucao.avaliacao_google_enviada_em && !req.body?.reenviar) {
+    return res.status(409).json({
+      error: 'O link de avaliação do Google já foi enviado neste atendimento.',
+      enviada_em: execucao.avaliacao_google_enviada_em
+    });
+  }
+
+  const telBruto = String(req.body?.telefone || os.local_responsavel_telefone || os.cliente_telefone || '').replace(/\D/g, '');
+  if (!telBruto || telBruto.length < 8) {
+    registrarHistorico({
+      usuario: req.user,
+      tipo: 'os',
+      registroId: os.id,
+      campo: 'avaliacao_google',
+      valorNovo: 'Erro no envio: cliente sem telefone/WhatsApp válido cadastrado'
+    });
+    return res.status(400).json({
+      error: 'Este cliente/local não possui telefone válido cadastrado para envio via WhatsApp.'
+    });
+  }
+
+  const linkGoogle = config.GOOGLE_REVIEW_URL;
+  if (!linkGoogle) {
+    registrarHistorico({
+      usuario: req.user,
+      tipo: 'os',
+      registroId: os.id,
+      campo: 'avaliacao_google',
+      valorNovo: 'Erro no envio: link de avaliação do Google não configurado'
+    });
+    return res.status(500).json({ error: 'Link oficial de avaliação do Google não configurado no servidor.' });
+  }
+
+  const telWhatsApp = telBruto.length <= 11 ? `55${telBruto}` : telBruto;
+  const mensagem = [
+    'Olá! 😊 Obrigado por confiar em nosso trabalho. Se você ficou satisfeito com o atendimento, gostaríamos muito de contar com sua avaliação no Google. Sua opinião é muito importante para nós!',
+    '',
+    `⭐ Avalie nosso atendimento aqui: ${linkGoogle}`
+  ].join('\n');
+
+  const whatsappUrl = `https://wa.me/${telWhatsApp}?text=${encodeURIComponent(mensagem)}`;
+  const agora = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+  db.prepare(
+    'UPDATE execucoes SET avaliacao_google_enviada_em = ?, avaliacao_google_enviada_por = ? WHERE id = ?'
+  ).run(agora, req.user.id, execucao.id);
+
+  registrarHistorico({
+    usuario: req.user,
+    tipo: 'os',
+    registroId: os.id,
+    campo: 'avaliacao_google',
+    valorNovo: `Enviado via WhatsApp para ${os.local_responsavel_telefone || os.cliente_telefone} em ${agora}`
+  });
+
+  res.json({
+    ok: true,
+    enviada_em: agora,
+    whatsapp_url: whatsappUrl,
+    link_google: linkGoogle
+  });
 });
 
 module.exports = router;
