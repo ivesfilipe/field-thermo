@@ -313,6 +313,50 @@ export default function OsDetalhePage() {
     return `mailto:${email}?subject=${assunto}&body=${corpo}`;
   }
 
+  async function enviarEmailAvaliacao() {
+    if (!os) return;
+    setErro("");
+    setMsg("");
+    let emailDestino = os.local_responsavel_email || os.cliente_email || "";
+    if (!emailDestino) {
+      const digitado = window.prompt("Informe o e-mail do cliente/responsável para envio da avaliação:", "");
+      if (!digitado) return;
+      emailDestino = digitado.trim();
+    }
+    try {
+      const r = await api.post<{ ok: boolean; destinatarios: string[]; remetente: string }>(
+        `/api/gestor/os/${os.id}/avaliacao/enviar-email`,
+        { email: emailDestino, base_url: window.location.origin }
+      );
+      setMsg(`Avaliação enviada por e-mail (${r.remetente}) para ${r.destinatarios.join(", ")}.`);
+      carregar();
+    } catch (err) {
+      setErro((err as Error).message);
+    }
+  }
+
+  async function enviarEmailRelatorio() {
+    if (!os) return;
+    setErro("");
+    setMsg("");
+    let emailDestino = os.local_responsavel_email || os.cliente_email || "";
+    if (!emailDestino) {
+      const digitado = window.prompt("Informe o e-mail do cliente/responsável para envio do relatório:", "");
+      if (!digitado) return;
+      emailDestino = digitado.trim();
+    }
+    try {
+      const r = await api.post<{ ok: boolean; destinatarios: string[]; remetente: string }>(
+        `/api/gestor/os/${os.id}/relatorio/enviar-email`,
+        { email: emailDestino, base_url: window.location.origin }
+      );
+      setMsg(`Relatório técnico enviado por e-mail (${r.remetente}) para ${r.destinatarios.join(", ")}.`);
+      carregar();
+    } catch (err) {
+      setErro((err as Error).message);
+    }
+  }
+
   async function baixarPdf() {
     if (!os?.relatorio) return;
     setErro("");
@@ -840,7 +884,7 @@ export default function OsDetalhePage() {
                   <Botao variante="sucesso" className="px-3 py-1.5 text-xs" onClick={() => window.open(linkWhatsAppRelatorio(), "_blank")}>
                     WhatsApp
                   </Botao>
-                  <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={() => window.open(linkEmailRelatorio(), "_blank")}>
+                  <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={enviarEmailRelatorio}>
                     E-mail
                   </Botao>
                   <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={() => window.open(urlRelatorio(), "_blank")}>
@@ -903,7 +947,7 @@ export default function OsDetalhePage() {
                     <Botao variante="sucesso" className="px-3 py-1.5 text-xs" onClick={() => window.open(linkWhatsApp(), "_blank")}>
                       WhatsApp
                     </Botao>
-                    <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={() => window.open(linkEmail(), "_blank")}>
+                    <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={enviarEmailAvaliacao}>
                       E-mail
                     </Botao>
                   </>

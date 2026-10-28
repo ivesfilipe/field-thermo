@@ -9,6 +9,7 @@ const { registrarHistorico, equipesDoUsuario } = require('../../calendario');
 const { TIPOS_NECESSIDADE } = require('../../constantes');
 const { gerarRelatorioIA } = require('../../ia');
 const { sqlEnderecoCompleto, sqlEnderecoLocalOuCliente } = require('../../endereco');
+const { enviarEmailServidor, montarHtmlAvaliacaoGoogle } = require('../../services/email');
 
 const router = express.Router();
 
@@ -549,7 +550,7 @@ router.post('/os/:id/concluir', (req, res) => {
   res.json({ os: osAtualizada });
 });
 
-router.post('/os/:id/avaliacao-google', (req, res) => {
+router.post('/os/:id/avaliacao-google', async (req, res) => {
   const os = getMinhaOS(req, Number(req.params.id));
   if (!os) {
     return res.status(404).json({ error: 'Ordem de serviço não encontrada' });
@@ -601,27 +602,54 @@ router.post('/os/:id/avaliacao-google', (req, res) => {
     }
 
     const assunto = `Avalie nosso atendimento no Google - OS ${os.numero} (MedicalThermo Herzog)`;
-    const mailtoUrl = `mailto:${emailDestino}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(mensagem)}`;
-
-    db.prepare(
-      'UPDATE execucoes SET avaliacao_google_enviada_em = ?, avaliacao_google_enviada_por = ? WHERE id = ?'
-    ).run(agora, req.user.id, execucao.id);
-
-    registrarHistorico({
-      usuario: req.user,
-      tipo: 'os',
-      registroId: os.id,
-      campo: 'avaliacao_google',
-      valorNovo: `Enviado via E-mail para ${emailDestino} em ${agora}`
-    });
-
-    return res.json({
-      ok: true,
-      canal: 'email',
-      enviada_em: agora,
-      mailto_url: mailtoUrl,
+    const html = montarHtmlAvaliacaoGoogle({
+      os_numero: os.numero,
+      cliente_nome: os.cliente_nome,
+      responsavel_nome: os.local_responsavel || os.responsavel_local || os.cliente_nome,
+      servico: os.servico,
+      tecnico_nome: req.user.nome,
       link_google: linkGoogle
     });
+
+    try {
+      const envio = await enviarEmailServidor({
+        para: emailDestino,
+        assunto,
+        html
+      });
+
+      db.prepare(
+        'UPDATE execucoes SET avaliacao_google_enviada_em = ?, avaliacao_google_enviada_por = ? WHERE id = ?'
+      ).run(agora, req.user.id, execucao.id);
+
+      registrarHistorico({
+        usuario: req.user,
+        tipo: 'os',
+        registroId: os.id,
+        campo: 'avaliacao_google',
+        valorNovo: `Enviado por e-mail (${envio.remetente} -> ${envio.enviados.join(', ')}) em ${agora}`
+      });
+
+      return res.json({
+        ok: true,
+        canal: 'email',
+        enviada_em: agora,
+        destinatarios: envio.enviados,
+        remetente: envio.remetente,
+        link_google: linkGoogle
+      });
+    } catch (err) {
+      registrarHistorico({
+        usuario: req.user,
+        tipo: 'os',
+        registroId: os.id,
+        campo: 'avaliacao_google',
+        valorNovo: `Erro no envio por e-mail para ${emailDestino}: ${err.message}`
+      });
+      return res.status(500).json({
+        error: `Falha ao enviar e-mail pelo servidor: ${err.message}`
+      });
+    }
   }
 
   const telBruto = String(req.body?.telefone || os.local_responsavel_telefone || os.cliente_telefone || '').replace(/\D/g, '');

@@ -105,14 +105,25 @@ export default function RelatoriosPage() {
     window.open(url, "_blank");
   }
 
-  function enviarEmail(e: React.MouseEvent, r: Relatorio) {
+  async function enviarEmail(e: React.MouseEvent, r: Relatorio) {
     e.stopPropagation();
-    const email = r.local_responsavel_email || r.cliente_email || "";
-    const resp = r.local_responsavel || r.responsavel_local || r.cliente_nome || "";
-    const saudacao = resp ? `Olá, ${resp}!` : "Olá!";
-    const assunto = encodeURIComponent(`Relatório Técnico - OS ${r.os_numero}`);
-    const corpo = encodeURIComponent(`${saudacao}\n\nSegue o link para acessar e baixar o relatório técnico da OS ${r.os_numero} (${r.os_servico || ""}):\n${urlRelatorio(r)}`);
-    window.open(`mailto:${email}?subject=${assunto}&body=${corpo}`, "_blank");
+    setErro("");
+    setMsg("");
+    let emailDestino = r.local_responsavel_email || r.cliente_email || "";
+    if (!emailDestino) {
+      const digitado = window.prompt(`Informe o e-mail do responsável da OS ${r.os_numero}:`, "");
+      if (!digitado) return;
+      emailDestino = digitado.trim();
+    }
+    try {
+      const resp = await api.post<{ ok: boolean; destinatarios: string[]; remetente: string }>(
+        `/api/comercial/relatorios/${r.id}/enviar-email`,
+        { email: emailDestino, base_url: window.location.origin }
+      );
+      setMsg(`Relatório da OS ${r.os_numero} enviado por e-mail (${resp.remetente}) para ${resp.destinatarios.join(", ")}.`);
+    } catch (err) {
+      setErro((err as Error).message);
+    }
   }
 
   function abrirPdf(e: React.MouseEvent, r: Relatorio) {

@@ -10,6 +10,8 @@ const {
 const { TIPOS_NECESSIDADE } = require('../../constantes');
 const { MODELOS } = require('../../modelos');
 const { sqlEnderecoCompleto } = require('../../endereco');
+const config = require('../../config');
+const { enviarEmailServidor, montarHtmlAvaliacaoGoogle, montarHtmlRelatorioCliente } = require('../../services/email');
 
 const router = express.Router();
 
@@ -475,6 +477,115 @@ router.post('/os/:id/relatorio/link', (req, res) => {
   registrarHistorico({ usuario: req.user, tipo: 'os', registroId: id, campo: 'relatorio', valorNovo: 'link do relatório gerado para envio' });
   const link = `/relatorio/${relatorio.token}`;
   res.json({ relatorio: { id: relatorio.id, token: relatorio.token, status: relatorio.status, link } });
+});
+
+router.post('/os/:id/avaliacao/enviar-email', async (req, res) => {
+  const id = Number(req.params.id);
+  const os = getOS(id);
+  if (!os) {
+    return res.status(404).json({ error: 'Ordem de serviço não encontrada' });
+  }
+  const emailDestino = String(req.body?.email || os.local_responsavel_email || os.cliente_email || '').trim();
+  if (!emailDestino || !emailDestino.includes('@')) {
+    return res.status(400).json({ error: 'Este cliente/local não possui e-mail válido cadastrado. Informe um e-mail para envio.' });
+  }
+  let avaliacao = db.prepare('SELECT * FROM avaliacoes WHERE os_id = ?').get(id);
+  if (!avaliacao) {
+    const info = db.prepare('INSERT INTO avaliacoes (os_id, token) VALUES (?, ?)').run(id, crypto.randomBytes(16).toString('hex'));
+    avaliacao = db.prepare('SELECT * FROM avaliacoes WHERE id = ?').get(info.lastInsertRowid);
+  }
+  const baseFront = req.body?.base_url || 'https://thermocontrol.medicalthermo.com';
+  const urlAvaliacao = `${baseFront.replace(/\/$/, '')}/avaliar/${avaliacao.token}`;
+  const html = montarHtmlAvaliacaoGoogle({
+    os_numero: os.numero,
+    cliente_nome: os.cliente_nome,
+    responsavel_nome: os.local_responsavel || os.responsavel_local || os.cliente_nome,
+    servico: os.servico,
+    tecnico_nome: os.execucao?.executor_nome || '',
+    link_google: config.GOOGLE_REVIEW_URL,
+    url_avaliacao: urlAvaliacao
+  });
+  try {
+    const envio = await enviarEmailServidor({
+      para: emailDestino,
+      assunto: `Avalie o atendimento da OS ${os.numero} - MedicalThermo Herzog`,
+      html
+    });
+    registrarHistorico({
+      usuario: req.user,
+      tipo: 'os',
+      registroId: id,
+      campo: 'avaliacao',
+      valorNovo: `Link de avaliação enviado por e-mail (${envio.remetente} -> ${envio.enviados.join(', ')})`
+    });
+    res.json({ ok: true, destinatarios: envio.enviados, remetente: envio.remetente });
+  } catch (err) {
+    res.status(500).json({ error: `Falha ao enviar e-mail pelo servidor: ${err.message}` });
+  }
+});
+
+router.post('/os/:id/relatorio/enviar-email', async (req, res) => {
+  const id = Number(req.params.id);
+  const os = getOS(id);
+  if (!os) {
+    return res.status(404).json({ error: 'Ordem de serviço não encontrada' });
+  }
+  const emailDestino = String(req.body?.email || os.local_responsavel_email || os.cliente_email || '').trim();
+  if (!emailDestino || !emailDestino.includes('@')) {
+    return res.status(400).json({ error: 'Este cliente/local não possui e-mail válido cadastrado. Informe um e-mail para envio.' });
+  }
+  let relatorio = db.prepare('SELECT * FROM relatorios WHERE os_id = ?').get(id);
+  if (!relatorio) {
+    const token = crypto.randomBytes(16).toString('hex');
+    const info = db.prepare("INSERT INTO relatorios (os_id, status, token) VALUES (?, 'aprovado', ?)").run(id, token);
+    relatorio = db.prepare('SELECT * FROM relatorios WHERE id = ?').get(info.lastInsertRowid);
+  } else if (!relatorio.token) {
+    const token = crypto.randomBytes(16).toString('hex');
+    db.prepare('UPDATE relatorios SET token = ? WHERE id = ?').run(token, relatorio.id);
+    relatorio = db.prepare('SELECT * FROM relatorios WHERE id = ?').get(relatorio.id);
+  }
+  const baseFront = (req.body?.base_url || 'https://thermocontrol.medicalthermo.com').replace(/\/$/, '');
+  const baseApi = `${req.protocol}://${req.get('host')}`;
+  const urlRelatorio = `${baseFront}/relatorio/${relatorio.token}`;
+  const urlPdf = `${baseApi}/api/comercial/relatorios/publico/${relatorio.token}/pdf`;
+  const avaliacao = db.prepare('SELECT token FROM avaliacoes WHERE os_id = ?').get(id);
+  const urlAvaliacao = avaliacao?.token ? `${baseFront}/avaliar/${avaliacao.token}` : '';
+
+  const html = montarHtmlRelatorioCliente({
+    os_numero: os.numero,
+    cliente_nome: os.cliente_nome,
+    local_nome: os.local_nome,
+    responsavel_nome: os.local_responsavel || os.responsavel_local || os.cliente_nome,
+    equipamento_nome: os.equipamento_nome ? `${os.equipamento_codigo_mt ? `${os.equipamento_codigo_mt} - ` : ''}${os.equipamento_nome}` : '',
+    tecnico_nome: os.execucao?.executor_nome || '',
+    data_atendimento: os.execucao?.concluida_em?.slice(0, 16) || os.data_agendada || '',
+    servico: os.servico,
+    servico_executado: os.execucao?.servico_executado || '',
+    diagnostico: os.execucao?.diagnostico || '',
+    recomendacoes: relatorio.recomendacoes || os.execucao?.recomendacoes || '',
+    url_relatorio: urlRelatorio,
+    url_pdf: urlPdf,
+    url_avaliacao: urlAvaliacao,
+    url_google: config.GOOGLE_REVIEW_URL
+  });
+
+  try {
+    const envio = await enviarEmailServidor({
+      para: emailDestino,
+      assunto: `Relatório Técnico de Atendimento - OS ${os.numero} (MedicalThermo Herzog)`,
+      html
+    });
+    registrarHistorico({
+      usuario: req.user,
+      tipo: 'os',
+      registroId: id,
+      campo: 'relatorio',
+      valorNovo: `Relatório enviado por e-mail (${envio.remetente} -> ${envio.enviados.join(', ')})`
+    });
+    res.json({ ok: true, destinatarios: envio.enviados, remetente: envio.remetente });
+  } catch (err) {
+    res.status(500).json({ error: `Falha ao enviar e-mail pelo servidor: ${err.message}` });
+  }
 });
 
 router.patch('/os/:id/reabrir', (req, res) => {

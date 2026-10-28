@@ -6,6 +6,8 @@ const db = require('../../db');
 const { authenticate, requireRole } = require('../../middleware/auth');
 const { TIPOS_NECESSIDADE } = require('../../constantes');
 const config = require('../../config');
+const { registrarHistorico } = require('../../calendario');
+const { enviarEmailServidor, montarHtmlRelatorioCliente } = require('../../services/email');
 
 const router = express.Router();
 
@@ -176,6 +178,61 @@ router.post('/relatorios/:id/link', (req, res) => {
     ? garantirTokenRelatorio(id, null)
     : relatorio.token;
   res.json({ relatorio: { id, token, status: relatorio.status, link: `/relatorio/${token}` } });
+});
+
+router.post('/relatorios/:id/enviar-email', async (req, res) => {
+  const id = Number(req.params.id);
+  const relatorio = db.prepare(`${RELATORIO_DETALHE} WHERE r.id = ?`).get(id);
+  if (!relatorio) {
+    return res.status(404).json({ error: 'Relatório não encontrado' });
+  }
+  const emailDestino = String(req.body?.email || relatorio.local_responsavel_email || relatorio.cliente_email || '').trim();
+  if (!emailDestino || !emailDestino.includes('@')) {
+    return res.status(400).json({ error: 'Este cliente/local não possui e-mail válido cadastrado. Informe um e-mail para envio.' });
+  }
+  relatorio.token = garantirTokenRelatorio(relatorio.id, relatorio.token);
+  const baseFront = (req.body?.base_url || 'https://thermocontrol.medicalthermo.com').replace(/\/$/, '');
+  const baseApi = `${req.protocol}://${req.get('host')}`;
+  const urlRelatorio = `${baseFront}/relatorio/${relatorio.token}`;
+  const urlPdf = `${baseApi}/api/comercial/relatorios/publico/${relatorio.token}/pdf`;
+  const avaliacao = db.prepare('SELECT token FROM avaliacoes WHERE os_id = ?').get(relatorio.os_id);
+  const urlAvaliacao = avaliacao?.token ? `${baseFront}/avaliar/${avaliacao.token}` : '';
+
+  const html = montarHtmlRelatorioCliente({
+    os_numero: relatorio.os_numero,
+    cliente_nome: relatorio.cliente_nome,
+    local_nome: relatorio.local_nome,
+    responsavel_nome: relatorio.local_responsavel || relatorio.responsavel_local || relatorio.cliente_nome,
+    equipamento_nome: relatorio.equipamento_nome ? `${relatorio.equipamento_codigo_mt ? `${relatorio.equipamento_codigo_mt} - ` : ''}${relatorio.equipamento_nome}` : '',
+    tecnico_nome: relatorio.tecnico_nome || '',
+    data_atendimento: relatorio.atendimento_concluido_em?.slice(0, 16) || relatorio.data_agendada || '',
+    servico: relatorio.os_servico,
+    servico_executado: relatorio.servico_executado || '',
+    diagnostico: relatorio.diagnostico || '',
+    recomendacoes: relatorio.recomendacoes || relatorio.recomendacoes_tecnico || '',
+    url_relatorio: urlRelatorio,
+    url_pdf: urlPdf,
+    url_avaliacao: urlAvaliacao,
+    url_google: config.GOOGLE_REVIEW_URL
+  });
+
+  try {
+    const envio = await enviarEmailServidor({
+      para: emailDestino,
+      assunto: `Relatório Técnico de Atendimento - OS ${relatorio.os_numero} (MedicalThermo Herzog)`,
+      html
+    });
+    registrarHistorico({
+      usuario: req.user,
+      tipo: 'relatorio',
+      registroId: relatorio.id,
+      campo: 'envio_email',
+      valorNovo: `Relatório enviado por e-mail (${envio.remetente} -> ${envio.enviados.join(', ')})`
+    });
+    res.json({ ok: true, destinatarios: envio.enviados, remetente: envio.remetente });
+  } catch (err) {
+    res.status(500).json({ error: `Falha ao enviar e-mail pelo servidor: ${err.message}` });
+  }
 });
 
 router.get('/relatorios/:id', (req, res) => {
