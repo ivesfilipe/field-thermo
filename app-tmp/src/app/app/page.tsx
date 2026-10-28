@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { api, PERFIS, type Perfil } from "@/lib/api";
 import { Badge, Botao, Card, EstadoVazio, KPI, LinksMapa, LinhaVazia, Loading, PageHeader, Prioridade, Tabela } from "@/components/ui";
@@ -47,6 +48,35 @@ interface Indicadores {
   os_aguardando_validacao: number;
   atividades_programadas: number;
 }
+
+const ATALHOS: Record<Perfil, { label: string; desc: string; href: string; destaque?: boolean }[]> = {
+  admin: [
+    { label: "+ Nova OS", desc: "Criar e agendar atendimento", href: "/app/gestor/os/nova", destaque: true },
+    { label: "Ordens de Serviço", desc: "Lista completa e filtros", href: "/app/gestor/os" },
+    { label: "Calendário", desc: "Agenda por dia, semana e mês", href: "/app/gestor/calendario" },
+    { label: "Mapa das Equipes", desc: "Localização dos atendimentos", href: "/app/gestor/mapa" },
+    { label: "Clientes", desc: "Cadastro, locais e equipamentos", href: "/app/gestor/clientes" },
+    { label: "Usuários e Equipes", desc: "Administração de acessos", href: "/app/admin/usuarios" }
+  ],
+  gestor: [
+    { label: "+ Nova OS", desc: "Criar e agendar atendimento", href: "/app/gestor/os/nova", destaque: true },
+    { label: "Ordens de Serviço", desc: "Lista completa e validação", href: "/app/gestor/os" },
+    { label: "Calendário", desc: "Agenda por dia, semana e mês", href: "/app/gestor/calendario" },
+    { label: "Mapa das Equipes", desc: "Localização dos atendimentos", href: "/app/gestor/mapa" },
+    { label: "Clientes", desc: "Cadastro, locais e equipamentos", href: "/app/gestor/clientes" },
+    { label: "Relatórios Técnicos", desc: "Relatórios validados e PDF", href: "/app/comercial/relatorios" }
+  ],
+  tecnico: [
+    { label: "Minhas OS", desc: "Atendimentos do dia e execução", href: "/app/tecnico/os", destaque: true },
+    { label: "Minha Agenda", desc: "Programação de atendimentos", href: "/app/tecnico/agenda" },
+    { label: "Controle de KM", desc: "Registrar saída e chegada de veículo", href: "/app/tecnico/km" }
+  ],
+  comercial: [
+    { label: "Relatórios Recebidos", desc: "Laudos técnicos com indicação", href: "/app/comercial/relatorios", destaque: true },
+    { label: "Oportunidades", desc: "Propostas e negociações", href: "/app/comercial/oportunidades" },
+    { label: "Avaliações", desc: "Satisfação dos clientes", href: "/app/comercial/avaliacoes" }
+  ]
+};
 
 export default function AppHome() {
   const { usuario } = useAuth();
@@ -101,15 +131,19 @@ export default function AppHome() {
   }
 
   const contOportunidades = (s: string) => (oportunidades || []).filter((o) => o.status === s).length;
+  const atalhos = ATALHOS[perfil] || [];
 
   return (
     <div className="space-y-5">
       <PageHeader
         titulo={`Olá, ${usuario?.nome?.split(" ")[0]}`}
-        descricao={`Painel de ${PERFIS[perfil].toLowerCase()} — visão geral do Thermo control`}
+        descricao={`Painel de ${PERFIS[perfil].toLowerCase()} — visão geral e acesso rápido`}
         acoes={
           perfil === "gestor" || perfil === "admin" ? (
-            <Botao onClick={() => router.push("/app/gestor/calendario")}>Abrir calendário</Botao>
+            <div className="flex gap-2">
+              <Botao variante="secundario" onClick={() => router.push("/app/gestor/calendario")}>Calendário</Botao>
+              <Botao onClick={() => router.push("/app/gestor/os/nova")}>+ Nova OS</Botao>
+            </div>
           ) : perfil === "tecnico" ? (
             <Botao onClick={() => router.push("/app/tecnico/agenda")}>Ver minha agenda</Botao>
           ) : (
@@ -117,6 +151,27 @@ export default function AppHome() {
           )
         }
       />
+
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+        {atalhos.map((a) => (
+          <Link
+            key={a.href}
+            href={a.href}
+            className={`group flex flex-col justify-between rounded-xl border p-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
+              a.destaque
+                ? "border-blue-600 bg-blue-600 text-white hover:bg-blue-700"
+                : "border-blue-100 bg-white text-slate-800 hover:border-blue-300"
+            }`}
+          >
+            <span className={`text-sm font-bold ${a.destaque ? "text-white" : "text-blue-700 group-hover:text-blue-800"}`}>
+              {a.label}
+            </span>
+            <span className={`mt-1 text-xs leading-snug ${a.destaque ? "text-blue-100" : "text-slate-500"}`}>
+              {a.desc}
+            </span>
+          </Link>
+        ))}
+      </div>
 
       {perfil === "comercial" ? (
         <>
@@ -178,10 +233,10 @@ export default function AppHome() {
                     <td className="px-3 py-2">{o.cliente_nome}</td>
                     <td className="hidden px-3 py-2 md:table-cell">
                       {o.local_nome || "-"}
-                      {o.local_endereco_completo || o.local_endereco && (
+                      {(o.local_endereco_completo || o.local_endereco) && (
                         <span className="block text-xs text-zinc-500">
                           {o.local_endereco_completo || o.local_endereco}
-                          <LinksMapa endereco={o.local_endereco_completo || o.local_endereco} />
+                          <LinksMapa endereco={(o.local_endereco_completo || o.local_endereco)!} />
                         </span>
                       )}
                     </td>
@@ -200,15 +255,15 @@ export default function AppHome() {
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
             <KPI label="OS de hoje" valor={indicadores?.os_hoje ?? totalPorStatus("pendente")} cor="text-blue-700" />
             <KPI label="Em andamento" valor={indicadores?.os_em_andamento ?? totalPorStatus("em_andamento")} cor="text-cyan-700" />
-            <KPI label="Aguardando atendimento" valor={indicadores?.os_aguardando_atendimento ?? 0} cor="text-amber-700" />
+            <KPI label="Aguardando atend." valor={indicadores?.os_aguardando_atendimento ?? 0} cor="text-amber-700" />
             <KPI label="Atrasadas" valor={indicadores?.os_atrasadas ?? 0} cor="text-red-700" />
-            <KPI label="Aguardando validação" valor={indicadores?.os_aguardando_validacao ?? totalPorStatus("aguardando_validacao")} cor="text-violet-700" />
-            <KPI label="Atividades programadas" valor={indicadores?.atividades_programadas ?? 0} cor="text-emerald-700" />
+            <KPI label="Aguard. validação" valor={indicadores?.os_aguardando_validacao ?? totalPorStatus("aguardando_validacao")} cor="text-violet-700" />
+            <KPI label="Atividades prog." valor={indicadores?.atividades_programadas ?? 0} cor="text-emerald-700" />
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card
-              title={`OS de ${rotuloData()}`}
+              title={`OS agendadas para ${rotuloData()}`}
               acao={
                 <div className="flex items-center gap-1.5">
                   <Botao variante="secundario" className="px-2.5 py-1.5 text-sm" onClick={() => mudarData(-1)}>‹</Botao>
@@ -242,7 +297,7 @@ export default function AppHome() {
               )}
             </Card>
 
-            <Card title="Ordens recentes" acao={<Botao variante="secundario" onClick={() => router.push("/app/gestor/os")}>Ver todas</Botao>}>
+            <Card title="Ordens de Serviço recentes" acao={<Botao variante="secundario" onClick={() => router.push("/app/gestor/os")}>Ver todas</Botao>}>
               <Tabela cabecalhos={["Nº", "Cliente", "Serviço", "Data", "Status"]}>
                 {ordens === null ? (
                   <tr><td colSpan={99}><Loading /></td></tr>

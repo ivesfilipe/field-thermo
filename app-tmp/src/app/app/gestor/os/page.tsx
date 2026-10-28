@@ -22,11 +22,21 @@ interface OS {
 interface Cliente { id: number; nome: string }
 interface Equipe { id: number; nome: string }
 
+const ABAS_STATUS = [
+  { v: "", l: "Todas" },
+  { v: "pendente", l: "Pendentes" },
+  { v: "em_andamento", l: "Em andamento" },
+  { v: "aguardando_validacao", l: "Aguardando validação" },
+  { v: "concluida", l: "Concluídas" },
+  { v: "cancelada", l: "Canceladas" }
+];
+
 export default function OsPage() {
   const router = useRouter();
   const [ordens, setOrdens] = useState<OS[] | null>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [filtro, setFiltro] = useState({
     busca: "", status: "", cliente_id: "", equipe_id: "", prioridade: "", data_inicio: "", data_fim: ""
   });
@@ -70,52 +80,75 @@ export default function OsPage() {
     <div className="space-y-4">
       <PageHeader
         titulo="Ordens de Serviço"
-        descricao="Acompanhe, filtre e gerencie as ordens de serviço"
+        descricao="Acompanhe, filtre por status e gerencie as ordens de serviço"
         acoes={<Botao onClick={() => router.push("/app/gestor/os/nova")}>+ Nova OS</Botao>}
       />
 
-      <Card title="Filtros">
-        <div className="grid gap-2 md:grid-cols-4">
-          <Campo label="Busca" placeholder="Nº, serviço ou cliente..." value={filtro.busca} onChange={(e) => setFiltro({ ...filtro, busca: e.target.value })} />
-          <Select label="Status" value={filtro.status} onChange={(e) => setFiltro({ ...filtro, status: e.target.value })}>
-            <option value="">Todos</option>
-            <option value="pendente">Pendente</option>
-            <option value="em_andamento">Em andamento</option>
-            <option value="aguardando_validacao">Aguardando validação</option>
-            <option value="concluida">Concluída</option>
-            <option value="cancelada">Cancelada</option>
-          </Select>
-          <Select label="Prioridade" value={filtro.prioridade} onChange={(e) => setFiltro({ ...filtro, prioridade: e.target.value })}>
-            <option value="">Todas</option>
-            <option value="baixa">Baixa</option>
-            <option value="media">Média</option>
-            <option value="alta">Alta</option>
-            <option value="urgente">Urgente</option>
-          </Select>
-          <Select label="Cliente" value={filtro.cliente_id} onChange={(e) => setFiltro({ ...filtro, cliente_id: e.target.value })}>
-            <option value="">Todos</option>
-            {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-          </Select>
-          <Select label="Equipe" value={filtro.equipe_id} onChange={(e) => setFiltro({ ...filtro, equipe_id: e.target.value })}>
-            <option value="">Todas</option>
-            {equipes.map((eq) => <option key={eq.id} value={eq.id}>{eq.nome}</option>)}
-          </Select>
-          <Campo label="Período (de)" type="date" value={filtro.data_inicio} onChange={(e) => setFiltro({ ...filtro, data_inicio: e.target.value })} />
-          <Campo label="Período (até)" type="date" value={filtro.data_fim} onChange={(e) => setFiltro({ ...filtro, data_fim: e.target.value })} />
-        </div>
-        {temFiltro && (
-          <div className="mt-3">
-            <Botao
-              variante="secundario"
-              onClick={() => setFiltro({ busca: "", status: "", cliente_id: "", equipe_id: "", prioridade: "", data_inicio: "", data_fim: "" })}
-            >
-              Limpar filtros
+      <div className="rounded-xl border border-blue-100 bg-white p-3 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap gap-1.5">
+            {ABAS_STATUS.map((aba) => {
+              const ativo = filtro.status === aba.v;
+              return (
+                <button
+                  key={aba.v}
+                  type="button"
+                  onClick={() => setFiltro({ ...filtro, status: aba.v })}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    ativo ? "bg-blue-600 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {aba.l}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex flex-1 items-center justify-end gap-2 sm:flex-initial">
+            <input
+              value={filtro.busca}
+              onChange={(e) => setFiltro({ ...filtro, busca: e.target.value })}
+              placeholder="Buscar Nº, cliente ou serviço..."
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none sm:w-64"
+            />
+            <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={() => setMostrarFiltros(!mostrarFiltros)}>
+              {mostrarFiltros ? "Ocultar filtros" : "Mais filtros"}
             </Botao>
+            {temFiltro && (
+              <Botao
+                variante="secundario"
+                className="px-3 py-1.5 text-xs"
+                onClick={() => setFiltro({ busca: "", status: "", cliente_id: "", equipe_id: "", prioridade: "", data_inicio: "", data_fim: "" })}
+              >
+                Limpar
+              </Botao>
+            )}
+          </div>
+        </div>
+
+        {mostrarFiltros && (
+          <div className="mt-3 grid gap-2 border-t border-slate-100 pt-3 md:grid-cols-5">
+            <Select label="Prioridade" value={filtro.prioridade} onChange={(e) => setFiltro({ ...filtro, prioridade: e.target.value })}>
+              <option value="">Todas</option>
+              <option value="baixa">Baixa</option>
+              <option value="media">Média</option>
+              <option value="alta">Alta</option>
+              <option value="urgente">Urgente</option>
+            </Select>
+            <Select label="Cliente" value={filtro.cliente_id} onChange={(e) => setFiltro({ ...filtro, cliente_id: e.target.value })}>
+              <option value="">Todos</option>
+              {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </Select>
+            <Select label="Equipe" value={filtro.equipe_id} onChange={(e) => setFiltro({ ...filtro, equipe_id: e.target.value })}>
+              <option value="">Todas</option>
+              {equipes.map((eq) => <option key={eq.id} value={eq.id}>{eq.nome}</option>)}
+            </Select>
+            <Campo label="Período (de)" type="date" value={filtro.data_inicio} onChange={(e) => setFiltro({ ...filtro, data_inicio: e.target.value })} />
+            <Campo label="Período (até)" type="date" value={filtro.data_fim} onChange={(e) => setFiltro({ ...filtro, data_fim: e.target.value })} />
           </div>
         )}
-      </Card>
+      </div>
 
-      <Card title={`Resultados (${ordens?.length ?? "..."})`}>
+      <Card title={`Ordens encontradas (${ordens?.length ?? "..."})`}>
         <Tabela cabecalhos={["Nº", "Cliente", "Local", "Serviço", "Equipe", "Data", "Prioridade", "Status", ""]}>
           {ordens === null ? (
             <tr><td colSpan={99}><Loading /></td></tr>
@@ -128,10 +161,10 @@ export default function OsPage() {
                 <td className="px-3 py-2">{o.cliente_nome}</td>
                 <td className="hidden px-3 py-2 md:table-cell">
                   {o.local_nome || "-"}
-                  {o.local_endereco_completo || o.local_endereco && (
+                  {(o.local_endereco_completo || o.local_endereco) && (
                     <span className="block text-xs text-zinc-500">
                       {o.local_endereco_completo || o.local_endereco}
-                      <LinksMapa endereco={o.local_endereco_completo || o.local_endereco} />
+                      <LinksMapa endereco={(o.local_endereco_completo || o.local_endereco)!} />
                     </span>
                   )}
                 </td>

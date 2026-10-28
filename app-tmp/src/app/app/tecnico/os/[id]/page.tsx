@@ -655,7 +655,7 @@ export default function ExecucaoOsPage() {
             <p className="mt-2 text-xs text-zinc-400">Adicione múltiplas fotos do atendimento. Elas ficam vinculadas à OS.</p>
           </Card>
 
-          <Card title={`4. Assinaturas dos responsáveis (${form.assinaturas.length})`}>
+          <Card title={`3. Assinaturas dos responsáveis (${form.assinaturas.length})`}>
             {form.assinaturas.length > 0 && (
               <div className="mb-4 space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Assinaturas registradas</p>

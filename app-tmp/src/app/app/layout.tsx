@@ -87,25 +87,27 @@ const NAV: Record<Perfil, { titulo: string; itens: { href: string; label: string
     {
       titulo: "Visão geral",
       itens: [
-        { href: "/app", label: "Início", icone: "inicio" }
+        { href: "/app", label: "Painel Inicial", icone: "inicio" }
       ]
     },
     {
-      titulo: "Operação",
+      titulo: "Operação & Campo",
       itens: [
-        { href: "/app/gestor/mapa", label: "Mapa das Equipes", icone: "mapa" },
+        { href: "/app/gestor/os", label: "Ordens de Serviço", icone: "os" },
         { href: "/app/gestor/calendario", label: "Calendário", icone: "calendario" },
-        { href: "/app/gestor/km", label: "Controle de Quilometragem", icone: "km" }
+        { href: "/app/gestor/mapa", label: "Mapa das Equipes", icone: "mapa" },
+        { href: "/app/gestor/km", label: "Quilometragem (KM)", icone: "km" }
       ]
     },
     {
       titulo: "Cadastros",
       itens: [
+        { href: "/app/gestor/clientes", label: "Clientes", icone: "clientes" },
         { href: "/app/gestor/locais", label: "Endereços", icone: "locais" }
       ]
     },
     {
-      titulo: "Acompanhamento",
+      titulo: "Qualidade",
       itens: [
         { href: "/app/comercial/relatorios", label: "Relatórios Técnicos", icone: "relatorios" },
         { href: "/app/gestor/avaliacoes", label: "Avaliações", icone: "avaliacoes" }
@@ -124,16 +126,16 @@ const NAV: Record<Perfil, { titulo: string; itens: { href: string; label: string
     {
       titulo: "Visão geral",
       itens: [
-        { href: "/app", label: "Início", icone: "inicio" }
+        { href: "/app", label: "Painel Inicial", icone: "inicio" }
       ]
     },
     {
-      titulo: "Operação",
+      titulo: "Operação & Campo",
       itens: [
-        { href: "/app/gestor/mapa", label: "Mapa das Equipes", icone: "mapa" },
-        { href: "/app/gestor/calendario", label: "Calendário", icone: "calendario" },
         { href: "/app/gestor/os", label: "Ordens de Serviço", icone: "os" },
-        { href: "/app/gestor/km", label: "Controle de Quilometragem", icone: "km" }
+        { href: "/app/gestor/calendario", label: "Calendário", icone: "calendario" },
+        { href: "/app/gestor/mapa", label: "Mapa das Equipes", icone: "mapa" },
+        { href: "/app/gestor/km", label: "Quilometragem (KM)", icone: "km" }
       ]
     },
     {
@@ -145,7 +147,7 @@ const NAV: Record<Perfil, { titulo: string; itens: { href: string; label: string
       ]
     },
     {
-      titulo: "Acompanhamento",
+      titulo: "Qualidade",
       itens: [
         { href: "/app/comercial/relatorios", label: "Relatórios Técnicos", icone: "relatorios" },
         { href: "/app/gestor/avaliacoes", label: "Avaliações", icone: "avaliacoes" }
@@ -156,14 +158,14 @@ const NAV: Record<Perfil, { titulo: string; itens: { href: string; label: string
     {
       titulo: "Visão geral",
       itens: [
-        { href: "/app", label: "Início", icone: "inicio" }
+        { href: "/app", label: "Painel Inicial", icone: "inicio" }
       ]
     },
     {
       titulo: "Minha rotina",
       itens: [
-        { href: "/app/tecnico/agenda", label: "Minha Agenda", icone: "agenda" },
         { href: "/app/tecnico/os", label: "Minhas OS", icone: "os" },
+        { href: "/app/tecnico/agenda", label: "Minha Agenda", icone: "agenda" },
         { href: "/app/tecnico/km", label: "Controle de KM", icone: "km" }
       ]
     }
@@ -172,11 +174,11 @@ const NAV: Record<Perfil, { titulo: string; itens: { href: string; label: string
     {
       titulo: "Visão geral",
       itens: [
-        { href: "/app", label: "Início", icone: "inicio" }
+        { href: "/app", label: "Painel Inicial", icone: "inicio" }
       ]
     },
     {
-      titulo: "Acompanhamento",
+      titulo: "Comercial",
       itens: [
         { href: "/app/comercial/relatorios", label: "Relatórios Recebidos", icone: "relatorios" },
         { href: "/app/comercial/oportunidades", label: "Oportunidades", icone: "oportunidades" },
@@ -193,7 +195,7 @@ function itensAchatados(perfil: Perfil): { href: string; label: string; icone: s
 function TituloPagina(pathname: string, perfil: Perfil): string {
   const base = "/app";
   const rest = pathname.replace(base, "");
-  if (rest === "" || rest === "/") return "Painel inicial";
+  if (rest === "" || rest === "/") return "Painel Inicial";
   const lista = itensAchatados(perfil);
   const match = lista.find((i) => rest.startsWith(i.href.replace(base, "")));
   if (match) return match.label;
@@ -246,21 +248,36 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   if (carregando || !usuario) {
-    return <p className="py-16 text-center text-sm text-zinc-400">Carregando...</p>;
+    return <p className="py-16 text-center text-sm text-white">Carregando...</p>;
   }
 
   const perfil = usuario.perfil as Perfil;
   const iniciais = usuario.nome.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+  const podeCriarOS = perfil === "gestor" || perfil === "admin";
+  const itensMobile = itensAchatados(perfil).slice(0, 4);
 
   const sidebar = (
-    <aside className="flex h-full w-64 flex-col bg-blue-700">
-      <div className="flex flex-col gap-2 border-b border-blue-600 px-4 py-4">
+    <aside className="flex h-full w-64 flex-col bg-blue-700 shadow-lg">
+      <div className="flex flex-col gap-2 border-b border-blue-600/80 px-4 py-4">
         <Image src="/logo.png" alt="Logo MedicalThermo Herzog" width={224} height={59} className="h-auto w-full object-contain" />
-        <div className="min-w-0">
+        <div className="flex items-center justify-between gap-2 pt-1">
           <p className="truncate text-sm font-bold text-white">Thermo control</p>
-          <p className="truncate text-xs text-blue-300">{PERFIS[perfil]}</p>
+          <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-100">
+            {PERFIS[perfil]}
+          </span>
         </div>
       </div>
+
+      {podeCriarOS && (
+        <div className="px-3 pt-3">
+          <Link
+            href="/app/gestor/os/nova"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-white px-3 py-2.5 text-sm font-bold text-blue-700 shadow-sm transition-all hover:bg-blue-50 active:scale-[0.98]"
+          >
+            <span>+ Nova Ordem de Serviço</span>
+          </Link>
+        </div>
+      )}
 
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
         {(NAV[perfil] || []).map((secao) => (
@@ -272,7 +289,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                     ativo ? "bg-sky-500 text-white shadow-sm" : "text-blue-50 hover:bg-blue-600"
                   }`}
                 >
@@ -292,14 +309,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         ))}
       </nav>
 
-      <div className="border-t border-blue-600 p-3">
+      <div className="border-t border-blue-600/80 p-3">
         <div className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-800 text-xs font-bold text-white">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500 text-xs font-bold text-white">
             {iniciais}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-white">{usuario.nome}</p>
-            <p className="truncate text-xs text-blue-300">{PERFIS[perfil]}</p>
+            <p className="truncate text-xs text-blue-200">{PERFIS[perfil]}</p>
           </div>
         </div>
         <button
@@ -316,15 +333,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-slate-100">
       <div className="sticky top-0 hidden h-screen shrink-0 lg:block">
         <div className={`h-full transition-all duration-200 ${recolhida ? "w-16" : "w-64"}`}>
           {recolhida ? (
-            <aside className="flex h-full w-16 flex-col bg-blue-700">
-              <div className="flex justify-center border-b border-blue-900 py-4">
+            <aside className="flex h-full w-16 flex-col bg-blue-700 shadow-lg">
+              <div className="flex justify-center border-b border-blue-600 py-4">
                 <div className="flex justify-center px-2 py-4">
-                <Image src="/logo.png" alt="Logo" width={64} height={17} className="h-auto w-16 object-contain" />
-              </div>
+                  <Image src="/logo.png" alt="Logo" width={64} height={17} className="h-auto w-16 object-contain" />
+                </div>
               </div>
               <nav className="flex-1 space-y-3 px-2 py-4">
                 {(NAV[perfil] || []).map((secao) => (
@@ -343,7 +360,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                           <span className="relative">
                             {ICONES[item.icone]}
                             {item.label.includes("Avalia") && pendentesAval > 0 && (
-                              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-blue-950" title={`${pendentesAval} avaliação(ões) pendente(s)`} />
+                              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-blue-700" title={`${pendentesAval} avaliação(ões) pendente(s)`} />
                             )}
                           </span>
                         </Link>
@@ -352,8 +369,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </div>
                 ))}
               </nav>
-              <div className="flex justify-center border-t border-blue-900 p-3">
-                <button onClick={logout} title="Sair" className="rounded-lg border border-blue-700 p-2 text-blue-100 hover:bg-blue-900">
+              <div className="flex justify-center border-t border-blue-600 p-3">
+                <button onClick={logout} title="Sair" className="rounded-lg border border-blue-500 p-2 text-white hover:bg-blue-600">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
@@ -390,11 +407,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-blue-600 bg-blue-700/95 px-4 py-3 backdrop-blur md:px-6">
+      <div className="flex min-w-0 flex-1 flex-col pb-16 lg:pb-0">
+        <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-blue-500/40 bg-blue-600 px-4 py-3 shadow-sm md:px-6">
           <button
             onClick={() => setMenuAberto(true)}
-            className="rounded-lg border border-blue-700 p-2 text-blue-100 hover:bg-blue-900 lg:hidden"
+            className="rounded-lg border border-blue-400/60 p-2 text-white hover:bg-blue-500 lg:hidden"
             title="Abrir menu"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -402,23 +419,59 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </svg>
           </button>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-white">{TituloPagina(pathname, perfil)}</p>
-            <p className="hidden truncate text-xs text-blue-300 sm:block">
+            <p className="truncate text-sm font-bold text-white">{TituloPagina(pathname, perfil)}</p>
+            <p className="hidden truncate text-xs text-blue-100 sm:block">
               {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
             </p>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden rounded-full bg-blue-900 px-3 py-1 text-xs font-medium text-blue-200 md:inline-block">
+            {podeCriarOS && (
+              <Link
+                href="/app/gestor/os/nova"
+                className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-blue-700 shadow-sm hover:bg-blue-50 sm:inline-block"
+              >
+                + Nova OS
+              </Link>
+            )}
+            <span className="hidden rounded-full bg-blue-700/80 px-3 py-1 text-xs font-medium text-white md:inline-block">
               {PERFIS[perfil]}
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-800 text-xs font-bold text-white lg:hidden">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-xs font-bold text-white lg:hidden">
               {iniciais}
             </div>
           </div>
         </header>
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-5 md:px-6 md:py-6">{children}</main>
-        <footer className="py-3 text-center text-xs font-bold text-blue-200">Criado por Matheus Bastos</footer>
+        <footer className="py-3 text-center text-xs font-semibold text-slate-400">Criado por Matheus Bastos</footer>
       </div>
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-slate-200 bg-white px-2 py-1.5 shadow-lg lg:hidden">
+        {itensMobile.map((item) => {
+          const ativo = pathname === item.href || (item.href !== "/app" && pathname.startsWith(item.href));
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex flex-col items-center gap-0.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                ativo ? "text-blue-600 font-bold" : "text-slate-500 hover:text-blue-600"
+              }`}
+            >
+              {ICONES[item.icone]}
+              <span className="max-w-18 truncate">{item.label.replace("Ordens de Serviço", "OS").replace("Painel Inicial", "Início").replace("Quilometragem (KM)", "KM").replace("Controle de KM", "KM")}</span>
+            </Link>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => setMenuAberto(true)}
+          className="flex flex-col items-center gap-0.5 rounded-lg px-2.5 py-1 text-[11px] font-medium text-slate-500 hover:text-blue-600"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+          <span>Menu</span>
+        </button>
+      </nav>
     </div>
   );
 }
