@@ -91,33 +91,28 @@ const NAV: Record<Perfil, { titulo: string; itens: { href: string; label: string
       ]
     },
     {
-      titulo: "Operação & Campo",
+      titulo: "Atendimentos",
       itens: [
         { href: "/app/gestor/os", label: "Ordens de Serviço", icone: "os" },
-        { href: "/app/gestor/calendario", label: "Calendário", icone: "calendario" },
+        { href: "/app/comercial/relatorios", label: "Relatórios Técnicos", icone: "relatorios" },
+        { href: "/app/gestor/calendario", label: "Agenda / Calendário", icone: "calendario" }
+      ]
+    },
+    {
+      titulo: "Campo e Frota",
+      itens: [
         { href: "/app/gestor/mapa", label: "Mapa das Equipes", icone: "mapa" },
-        { href: "/app/gestor/km", label: "Quilometragem (KM)", icone: "km" }
-      ]
-    },
-    {
-      titulo: "Cadastros",
-      itens: [
-        { href: "/app/gestor/clientes", label: "Clientes", icone: "clientes" },
-        { href: "/app/gestor/locais", label: "Endereços", icone: "locais" }
-      ]
-    },
-    {
-      titulo: "Qualidade",
-      itens: [
-        { href: "/app/comercial/relatorios", label: "Relatórios Técnicos", icone: "relatorios" }
-      ]
-    },
-    {
-      titulo: "Administração",
-      itens: [
-        { href: "/app/admin/usuarios", label: "Usuários", icone: "usuarios" },
-        { href: "/app/admin/equipes", label: "Equipes", icone: "equipes" },
+        { href: "/app/gestor/km", label: "Quilometragem (KM)", icone: "km" },
         { href: "/app/admin/veiculos", label: "Veículos", icone: "veiculos" }
+      ]
+    },
+    {
+      titulo: "Cadastros e Equipes",
+      itens: [
+        { href: "/app/gestor/clientes", label: "Clientes e Equipamentos", icone: "clientes" },
+        { href: "/app/gestor/locais", label: "Locais / Endereços", icone: "locais" },
+        { href: "/app/admin/equipes", label: "Equipes Técnicas", icone: "equipes" },
+        { href: "/app/admin/usuarios", label: "Usuários do Sistema", icone: "usuarios" }
       ]
     }
   ],
@@ -129,26 +124,26 @@ const NAV: Record<Perfil, { titulo: string; itens: { href: string; label: string
       ]
     },
     {
-      titulo: "Operação & Campo",
+      titulo: "Atendimentos",
       itens: [
         { href: "/app/gestor/os", label: "Ordens de Serviço", icone: "os" },
-        { href: "/app/gestor/calendario", label: "Calendário", icone: "calendario" },
+        { href: "/app/comercial/relatorios", label: "Relatórios Técnicos", icone: "relatorios" },
+        { href: "/app/gestor/calendario", label: "Agenda / Calendário", icone: "calendario" }
+      ]
+    },
+    {
+      titulo: "Campo e Frota",
+      itens: [
         { href: "/app/gestor/mapa", label: "Mapa das Equipes", icone: "mapa" },
         { href: "/app/gestor/km", label: "Quilometragem (KM)", icone: "km" }
       ]
     },
     {
-      titulo: "Cadastros",
+      titulo: "Cadastros e Equipes",
       itens: [
-        { href: "/app/gestor/clientes", label: "Clientes", icone: "clientes" },
-        { href: "/app/gestor/locais", label: "Endereços", icone: "locais" },
-        { href: "/app/gestor/equipes", label: "Equipes", icone: "equipes" }
-      ]
-    },
-    {
-      titulo: "Qualidade",
-      itens: [
-        { href: "/app/comercial/relatorios", label: "Relatórios Técnicos", icone: "relatorios" }
+        { href: "/app/gestor/clientes", label: "Clientes e Equipamentos", icone: "clientes" },
+        { href: "/app/gestor/locais", label: "Locais / Endereços", icone: "locais" },
+        { href: "/app/gestor/equipes", label: "Equipes Técnicas", icone: "equipes" }
       ]
     }
   ],
@@ -178,7 +173,7 @@ const NAV: Record<Perfil, { titulo: string; itens: { href: string; label: string
     {
       titulo: "Comercial",
       itens: [
-        { href: "/app/comercial/relatorios", label: "Relatórios Recebidos", icone: "relatorios" },
+        { href: "/app/comercial/relatorios", label: "Relatórios Técnicos", icone: "relatorios" },
         { href: "/app/comercial/oportunidades", label: "Oportunidades", icone: "oportunidades" }
       ]
     }
@@ -218,11 +213,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const buscar = async () => {
       try {
         if (perfilAtual === "gestor" || perfilAtual === "admin") {
-          const r = await api.get<{ indicadores: { pendentes: number } }>("/api/gestor/avaliacoes");
-          if (!parou) setPendentesAval(r.indicadores.pendentes || 0);
-        } else if (perfilAtual === "comercial") {
-          const r = await api.get<{ avaliacoes: { status: string }[] }>("/api/comercial/avaliacoes");
-          if (!parou) setPendentesAval(r.avaliacoes.filter((a) => a.status === "pendente").length);
+          const r = await api.get<{ ordens: { status: string }[] }>("/api/gestor/os?status=aguardando_validacao");
+          if (!parou) setPendentesAval((r.ordens || []).length);
         }
       } catch {
         /* sem notificação se a API falhar */
@@ -292,8 +284,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 >
                   <span className="shrink-0">{ICONES[item.icone]}</span>
                   <span className="truncate">{item.label}</span>
-                  {item.label.includes("Avalia") && pendentesAval > 0 ? (
-                    <span className="ml-auto shrink-0 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white" title={`${pendentesAval} avaliação(ões) pendente(s)`}>
+                  {item.href === "/app/gestor/os" && pendentesAval > 0 ? (
+                    <span className="ml-auto shrink-0 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-slate-950" title={`${pendentesAval} OS aguardando validação`}>
                       {pendentesAval}
                     </span>
                   ) : ativo ? (

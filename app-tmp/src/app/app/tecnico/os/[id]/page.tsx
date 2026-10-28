@@ -546,6 +546,7 @@ export default function ExecucaoOsPage() {
         )}
       </div>
 
+      <div className="grid grid-cols-2 gap-2 rounded-xl border border-slate-200/90 bg-white p-3 text-xs sm:grid-cols-4">{[{ k: "pendente", l: "1. Agendada" }, { k: "em_andamento", l: "2. Execução Técnica" }, { k: "aguardando_validacao", l: "3. Em Validação" }, { k: "concluida", l: "4. Finalizada" }].map((etapa, idx) => { const ordem = ["pendente", "em_andamento", "aguardando_validacao", "concluida"]; const atualIdx = ordem.indexOf(os.status === "em_deslocamento" ? "em_andamento" : os.status); const concluidaEtapa = atualIdx > idx || os.status === "concluida"; const ativa = atualIdx === idx && os.status !== "concluida"; return (<div key={etapa.k} className={`flex items-center gap-2 rounded-lg border px-3 py-2 font-semibold ${ativa ? "border-blue-600 bg-blue-50 text-blue-900" : concluidaEtapa ? "border-emerald-200 bg-emerald-50/70 text-emerald-800" : "border-slate-100 bg-slate-50 text-slate-400"}`}><span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${ativa ? "bg-blue-700 text-white" : concluidaEtapa ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-500"}`}>{concluidaEtapa ? "✓" : idx + 1}</span><span className="truncate">{etapa.l}</span></div>); })}</div>
       <Card title="Dados da OS (preenchidos pelo gestor)">
         <dl className="grid grid-cols-2 gap-y-2.5 text-sm md:grid-cols-3">
           <Item rotulo="Cliente" valor={os.cliente_nome} />
