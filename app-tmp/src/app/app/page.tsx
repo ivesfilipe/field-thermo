@@ -49,31 +49,31 @@ interface Indicadores {
   atividades_programadas: number;
 }
 
-const ATALHOS: Record<Perfil, { label: string; desc: string; href: string; destaque?: boolean }[]> = {
+const ATALHOS: Record<Perfil, { categoria: string; label: string; desc: string; href: string; destaque?: boolean }[]> = {
   admin: [
-    { label: "+ Nova OS", desc: "Abrir e agendar atendimento", href: "/app/gestor/os/nova", destaque: true },
-    { label: "Ordens de Serviço", desc: "Consultar, filtrar e validar OS", href: "/app/gestor/os" },
-    { label: "Relatórios Técnicos", desc: "Baixar PDF e enviar por e-mail", href: "/app/comercial/relatorios" },
-    { label: "Agenda / Calendário", desc: "Programação por dia e semana", href: "/app/gestor/calendario" },
-    { label: "Clientes e Equipamentos", desc: "Cadastro de clientes e máquinas", href: "/app/gestor/clientes" },
-    { label: "Usuários e Equipes", desc: "Gestão de acessos e técnicos", href: "/app/admin/usuarios" }
+    { categoria: "AÇÃO RÁPIDA", label: "+ Nova OS", desc: "Abrir e agendar atendimento", href: "/app/gestor/os/nova", destaque: true },
+    { categoria: "ATENDIMENTOS", label: "Ordens de Serviço", desc: "Consultar, filtrar e validar OS", href: "/app/gestor/os" },
+    { categoria: "LAUDOS E ENVIO", label: "Relatórios Técnicos", desc: "Baixar PDF e enviar por e-mail", href: "/app/comercial/relatorios" },
+    { categoria: "PROGRAMAÇÃO", label: "Agenda / Calendário", desc: "Programação por dia e semana", href: "/app/gestor/calendario" },
+    { categoria: "CADASTROS", label: "Clientes e Equipamentos", desc: "Cadastro de clientes e máquinas", href: "/app/gestor/clientes" },
+    { categoria: "ADMINISTRAÇÃO", label: "Usuários e Equipes", desc: "Gestão de acessos e técnicos", href: "/app/admin/usuarios" }
   ],
   gestor: [
-    { label: "+ Nova OS", desc: "Abrir e agendar atendimento", href: "/app/gestor/os/nova", destaque: true },
-    { label: "Ordens de Serviço", desc: "Consultar, filtrar e validar OS", href: "/app/gestor/os" },
-    { label: "Relatórios Técnicos", desc: "Baixar PDF e enviar por e-mail", href: "/app/comercial/relatorios" },
-    { label: "Agenda / Calendário", desc: "Programação por dia e semana", href: "/app/gestor/calendario" },
-    { label: "Clientes e Equipamentos", desc: "Cadastro de clientes e máquinas", href: "/app/gestor/clientes" },
-    { label: "Mapa das Equipes", desc: "Localização dos atendimentos", href: "/app/gestor/mapa" }
+    { categoria: "AÇÃO RÁPIDA", label: "+ Nova OS", desc: "Abrir e agendar atendimento", href: "/app/gestor/os/nova", destaque: true },
+    { categoria: "ATENDIMENTOS", label: "Ordens de Serviço", desc: "Consultar, filtrar e validar OS", href: "/app/gestor/os" },
+    { categoria: "LAUDOS E ENVIO", label: "Relatórios Técnicos", desc: "Baixar PDF e enviar por e-mail", href: "/app/comercial/relatorios" },
+    { categoria: "PROGRAMAÇÃO", label: "Agenda / Calendário", desc: "Programação por dia e semana", href: "/app/gestor/calendario" },
+    { categoria: "CADASTROS", label: "Clientes e Equipamentos", desc: "Cadastro de clientes e máquinas", href: "/app/gestor/clientes" },
+    { categoria: "CAMPO", label: "Mapa das Equipes", desc: "Localização dos atendimentos", href: "/app/gestor/mapa" }
   ],
   tecnico: [
-    { label: "Minhas OS", desc: "Atendimentos atribuídos e execução", href: "/app/tecnico/os", destaque: true },
-    { label: "Minha Agenda", desc: "Programação por data", href: "/app/tecnico/agenda" },
-    { label: "Controle de KM", desc: "Registrar saída e chegada de veículo", href: "/app/tecnico/km" }
+    { categoria: "EXECUÇÃO", label: "Minhas OS", desc: "Atendimentos atribuídos e execução", href: "/app/tecnico/os", destaque: true },
+    { categoria: "PROGRAMAÇÃO", label: "Minha Agenda", desc: "Programação por data", href: "/app/tecnico/agenda" },
+    { categoria: "FROTA", label: "Controle de KM", desc: "Registrar saída e chegada de veículo", href: "/app/tecnico/km" }
   ],
   comercial: [
-    { label: "Relatórios Técnicos", desc: "Laudos concluídos, PDF e e-mail", href: "/app/comercial/relatorios", destaque: true },
-    { label: "Oportunidades", desc: "Propostas e negociações", href: "/app/comercial/oportunidades" }
+    { categoria: "LAUDOS E ENVIO", label: "Relatórios Técnicos", desc: "Laudos concluídos, PDF e e-mail", href: "/app/comercial/relatorios", destaque: true },
+    { categoria: "COMERCIAL", label: "Oportunidades", desc: "Propostas e negociações", href: "/app/comercial/oportunidades" }
   ]
 };
 
@@ -153,8 +153,11 @@ export default function AppHome() {
       />
 
       {/* Grade de Acesso Rápido com identificação clara de cada área */}
-      <div>
-        <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">Acesso Rápido às Áreas do Sistema</p>
+      <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-xs">
+        <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-blue-950">1. Menu Rápido — O que você deseja fazer?</span>
+          <span className="text-[11px] font-medium text-slate-400">Clique em um cartão para abrir</span>
+        </div>
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
           {atalhos.map((a) => (
             <Link
@@ -163,11 +166,18 @@ export default function AppHome() {
               className={`flex flex-col justify-between rounded-xl border p-3.5 transition-all ${
                 a.destaque
                   ? "border-blue-900 bg-blue-900 text-white shadow-sm hover:bg-blue-950"
-                  : "border-slate-200/90 bg-white text-slate-900 shadow-xs hover:border-blue-400 hover:bg-blue-50/30"
+                  : "border-slate-200 bg-slate-50/70 text-slate-900 hover:border-blue-500 hover:bg-blue-50/50"
               }`}
             >
-              <span className="text-sm font-bold leading-snug">{a.label}</span>
-              <span className={`mt-1 text-xs leading-snug ${a.destaque ? "text-blue-200" : "text-slate-500"}`}>
+              <div>
+                <span className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                  a.destaque ? "bg-blue-800 text-blue-100" : "bg-blue-100/80 text-blue-900"
+                }`}>
+                  {a.categoria}
+                </span>
+                <p className="mt-1.5 text-sm font-bold leading-snug">{a.label}</p>
+              </div>
+              <span className={`mt-1.5 text-xs leading-snug ${a.destaque ? "text-blue-200" : "text-slate-500"}`}>
                 {a.desc}
               </span>
             </Link>
@@ -270,8 +280,11 @@ export default function AppHome() {
             </div>
           )}
 
-          <div>
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">Resumo Operacional</p>
+          <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-xs">
+            <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-950">2. Indicadores Operacionais</span>
+              <span className="text-[11px] font-medium text-slate-400">Visão em tempo real</span>
+            </div>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
               <KPI label="OS de hoje" valor={indicadores?.os_hoje ?? totalPorStatus("pendente")} cor="text-blue-700" />
               <KPI label="Em andamento" valor={indicadores?.os_em_andamento ?? totalPorStatus("em_andamento")} cor="text-cyan-700" />
@@ -284,7 +297,7 @@ export default function AppHome() {
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card
-              title={`OS agendadas (${rotuloData()})`}
+              title={`3. OS agendadas (${rotuloData()})`}
               acao={
                 <div className="flex items-center gap-1">
                   <Botao variante="secundario" className="px-2 py-1 text-xs" onClick={() => mudarData(-1)}>‹</Botao>
@@ -333,7 +346,7 @@ export default function AppHome() {
                       <td className="whitespace-nowrap px-3 py-2">{o.data_agendada || "-"}</td>
                       <td className="px-3 py-2"><Badge status={o.status} /></td>
                     </tr>
-                  ))}
+                  ))
                 )}
               </Tabela>
             </Card>
