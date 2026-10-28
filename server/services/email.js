@@ -290,51 +290,81 @@ async function enviarEmailServidor({ para, assunto, html }) {
   throw ultimoErro || new Error('Não foi possível conectar ao servidor de e-mail.');
 }
 
-function montarHtmlAvaliacaoGoogle({ os_numero, cliente_nome, responsavel_nome, servico, tecnico_nome, link_google, url_avaliacao }) {
+function montarHtmlAvaliacaoGoogle({ os_numero, cliente_nome, responsavel_nome, servico, tecnico_nome, link_google }) {
   const e = escapeHtml;
   const link = link_google || config.GOOGLE_REVIEW_URL;
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </head>
-<body style="margin:0; padding:24px 12px; background-color:#f1f5f9; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; color:#0f172a;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background-color:#ffffff; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden;">
+<body style="margin:0; padding:32px 16px; background-color:#f1f5f9; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#0f172a;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; margin:0 auto; background-color:#ffffff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden; box-shadow:0 4px 12px rgba(15,23,42,0.05);">
+    <!-- Cabeçalho Corporativo Centralizado -->
     <tr>
-      <td style="background-color:#172554; padding:20px 24px; color:#ffffff;">
-        <div style="margin-bottom:12px;"><img src="cid:logo@medicalthermo.com" alt="MedicalThermo Engenharia Herzog" width="210" style="display:block; max-width:210px; height:auto; border:0;" /></div>
-        <div style="font-size:18px; font-weight:700; margin-top:4px;">Avalie nosso atendimento — OS ${e(os_numero)}</div>
+      <td align="center" style="background-color:#0f172a; padding:28px 24px 22px; border-bottom:3px solid #1d4ed8;">
+        <img src="cid:logo@medicalthermo.com" alt="MedicalThermo Engenharia Herzog" width="190" style="display:block; margin:0 auto 14px; max-width:190px; height:auto; border:0;" />
+        <span style="display:inline-block; background-color:#1e293b; border:1px solid #334155; color:#93c5fd; font-size:11px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; padding:4px 12px; border-radius:999px;">
+          Atendimento Concluído • OS ${e(os_numero)}
+        </span>
       </td>
     </tr>
+
+    <!-- Corpo da Mensagem -->
     <tr>
-      <td style="padding:24px;">
-        <p style="margin:0 0 14px; font-size:15px; line-height:1.6; color:#1e293b;">
-          Olá, <strong>${e(responsavel_nome || cliente_nome || 'Cliente')}</strong>! 😊
-        </p>
-        <p style="margin:0 0 16px; font-size:14px; line-height:1.6; color:#334155;">
-          Obrigado por confiar em nosso trabalho no atendimento da <strong>OS ${e(os_numero)}</strong>${servico ? ` (${e(servico)})` : ''}.
-          Se você ficou satisfeito com o atendimento, gostaríamos muito de contar com sua avaliação no Google. Sua opinião é muito importante para nós!
+      <td style="padding:28px 28px 24px;">
+        <h2 style="margin:0 0 12px; font-size:18px; font-weight:700; color:#0f172a; text-align:center;">
+          Como foi o nosso atendimento?
+        </h2>
+        <p style="margin:0 0 16px; font-size:14px; line-height:1.6; color:#334155; text-align:center;">
+          Olá, <strong>${e(responsavel_nome || cliente_nome || 'Cliente')}</strong>!<br/>
+          Agradecemos pela confiança em nosso trabalho. Sua opinião no Google é fundamental para continuarmos entregando excelência técnica.
         </p>
 
-        <div style="text-align:center; margin:28px 0;">
-          <a href="${e(link)}" target="_blank" style="display:inline-block; background-color:#1e3a8a; color:#ffffff; text-decoration:none; font-weight:700; font-size:15px; padding:14px 28px; border-radius:8px; margin:4px;">
-            ⭐ Avaliar Atendimento no Google
-          </a>
-          ${false ? `
-          <a href="${e(url_avaliacao)}" target="_blank" style="display:inline-block; background-color:#059669; color:#ffffff; text-decoration:none; font-weight:700; font-size:14px; padding:14px 24px; border-radius:8px; margin:4px;">
-            Avaliação Interna do Atendimento
-          </a>` : ''}
-        </div>
+        <!-- Resumo Compacto do Atendimento -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; margin:20px 0; font-size:13px;">
+          <tr>
+            <td style="padding:10px 14px; border-bottom:1px solid #e2e8f0; color:#64748b; width:38%;">Ordem de Serviço</td>
+            <td style="padding:10px 14px; border-bottom:1px solid #e2e8f0; font-weight:700; color:#0f172a; text-align:right;">${e(os_numero)}</td>
+          </tr>
+          ${cliente_nome ? `
+          <tr>
+            <td style="padding:10px 14px; border-bottom:1px solid #e2e8f0; color:#64748b;">Cliente</td>
+            <td style="padding:10px 14px; border-bottom:1px solid #e2e8f0; font-weight:600; color:#1e293b; text-align:right;">${e(cliente_nome)}</td>
+          </tr>` : ''}
+          ${servico ? `
+          <tr>
+            <td style="padding:10px 14px;${tecnico_nome ? ' border-bottom:1px solid #e2e8f0;' : ''} color:#64748b;">Serviço Realizado</td>
+            <td style="padding:10px 14px;${tecnico_nome ? ' border-bottom:1px solid #e2e8f0;' : ''} color:#1e293b; text-align:right;">${e(servico)}</td>
+          </tr>` : ''}
+          ${tecnico_nome ? `
+          <tr>
+            <td style="padding:10px 14px; color:#64748b;">Técnico Responsável</td>
+            <td style="padding:10px 14px; color:#1e293b; text-align:right;">${e(tecnico_nome)}</td>
+          </tr>` : ''}
+        </table>
 
-        <p style="margin:16px 0 0; font-size:12px; color:#64748b; text-align:center;">
-          Ou acesse diretamente pelo link:<br/>
-          <a href="${e(link)}" style="color:#1e3a8a; word-break:break-all;">${e(link)}</a>
+        <!-- Botão Principal -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0 8px;">
+          <tr>
+            <td align="center">
+              <a href="${e(link)}" target="_blank" style="display:inline-block; background-color:#1d4ed8; color:#ffffff; text-decoration:none; font-weight:700; font-size:14px; padding:14px 32px; border-radius:8px;">
+                ⭐ Avaliar Atendimento no Google
+              </a>
+            </td>
+          </tr>
+        </table>
+        <p style="margin:10px 0 0; font-size:11px; color:#94a3b8; text-align:center;">
+          Leva menos de 1 minuto • Avaliação oficial no Google
         </p>
       </td>
     </tr>
+
+    <!-- Rodapé -->
     <tr>
       <td style="background-color:#f8fafc; border-top:1px solid #e2e8f0; padding:14px 24px; text-align:center; font-size:11px; color:#64748b;">
-        <strong>MedicalThermo Herzog</strong> — Engenharia Clínica e Refrigeração Técnica${tecnico_nome ? ` • Técnico: ${e(tecnico_nome)}` : ''}
+        <strong>MedicalThermo Engenharia Herzog</strong> • Sistema Thermo Control
       </td>
     </tr>
   </table>
@@ -342,92 +372,104 @@ function montarHtmlAvaliacaoGoogle({ os_numero, cliente_nome, responsavel_nome, 
 </html>`;
 }
 
-function montarHtmlRelatorioCliente({ os_numero, cliente_nome, local_nome, responsavel_nome, equipamento_nome, tecnico_nome, data_atendimento, servico, servico_executado, diagnostico, recomendacoes, url_relatorio, url_pdf, url_avaliacao, url_google }) {
+function montarHtmlRelatorioCliente({ os_numero, cliente_nome, local_nome, responsavel_nome, equipamento_nome, tecnico_nome, data_atendimento, servico, servico_executado, diagnostico, recomendacoes, url_relatorio, url_pdf, url_google }) {
   const e = escapeHtml;
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </head>
-<body style="margin:0; padding:24px 12px; background-color:#f1f5f9; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; color:#0f172a;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px; margin:0 auto; background-color:#ffffff; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden;">
+<body style="margin:0; padding:32px 16px; background-color:#f1f5f9; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#0f172a;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background-color:#ffffff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden; box-shadow:0 4px 12px rgba(15,23,42,0.05);">
+    <!-- Cabeçalho Corporativo Centralizado -->
     <tr>
-      <td style="background-color:#172554; padding:20px 24px; color:#ffffff;">
-        <div style="margin-bottom:12px;"><img src="cid:logo@medicalthermo.com" alt="MedicalThermo Engenharia Herzog" width="210" style="display:block; max-width:210px; height:auto; border:0;" /></div>
-        <div style="font-size:18px; font-weight:700; margin-top:4px;">Relatório Técnico de Atendimento — OS ${e(os_numero)}</div>
+      <td align="center" style="background-color:#0f172a; padding:28px 24px 22px; border-bottom:3px solid #1d4ed8;">
+        <img src="cid:logo@medicalthermo.com" alt="MedicalThermo Engenharia Herzog" width="190" style="display:block; margin:0 auto 14px; max-width:190px; height:auto; border:0;" />
+        <span style="display:inline-block; background-color:#1e293b; border:1px solid #334155; color:#93c5fd; font-size:11px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; padding:4px 12px; border-radius:999px;">
+          Relatório Técnico • OS ${e(os_numero)}
+        </span>
       </td>
     </tr>
+
+    <!-- Corpo -->
     <tr>
-      <td style="padding:24px;">
-        <p style="margin:0 0 14px; font-size:14px; line-height:1.5; color:#334155;">
+      <td style="padding:28px 28px 24px;">
+        <p style="margin:0 0 12px; font-size:15px; line-height:1.5; color:#0f172a;">
           Olá, <strong>${e(responsavel_nome || cliente_nome || 'Cliente')}</strong>.
         </p>
-        <p style="margin:0 0 16px; font-size:14px; line-height:1.5; color:#334155;">
-          Encaminhamos o link de acesso ao <strong>Relatório Técnico da Ordem de Serviço Nº ${e(os_numero)}</strong> realizada em sua unidade.
+        <p style="margin:0 0 20px; font-size:14px; line-height:1.6; color:#475569;">
+          O relatório técnico referente à Ordem de Serviço <strong>${e(os_numero)}</strong> foi concluído e validado. Confira abaixo o resumo do atendimento:
         </p>
 
-        <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0; border-radius:6px; margin-bottom:18px; font-size:13px;">
-          <tr style="background-color:#f8fafc;">
-            <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0; color:#64748b; width:36%;">Cliente</td>
-            <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0; font-weight:600; color:#0f172a;">${e(cliente_nome || '-')}</td>
-          </tr>
+        <!-- Tabela de Identificação Limpa -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:20px; font-size:13px;">
           <tr>
-            <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0; color:#64748b;">Unidade / Local</td>
-            <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0; color:#0f172a;">${e(local_nome || '-')}</td>
+            <td style="padding:10px 14px; border-bottom:1px solid #e2e8f0; color:#64748b; width:38%;">Cliente</td>
+            <td style="padding:10px 14px; border-bottom:1px solid #e2e8f0; font-weight:600; color:#0f172a; text-align:right;">${e(cliente_nome || '-')}</td>
           </tr>
+          ${local_nome ? `
+          <tr>
+            <td style="padding:10px 14px; border-bottom:1px solid #e2e8f0; color:#64748b;">Unidade / Local</td>
+            <td style="padding:10px 14px; border-bottom:1px solid #e2e8f0; color:#1e293b; text-align:right;">${e(local_nome)}</td>
+          </tr>` : ''}
           ${equipamento_nome ? `
-          <tr style="background-color:#f8fafc;">
-            <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0; color:#64748b;">Equipamento</td>
-            <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0; color:#0f172a;">${e(equipamento_nome)}</td>
+          <tr>
+            <td style="padding:10px 14px; border-bottom:1px solid #e2e8f0; color:#64748b;">Equipamento</td>
+            <td style="padding:10px 14px; border-bottom:1px solid #e2e8f0; color:#1e293b; text-align:right;">${e(equipamento_nome)}</td>
           </tr>` : ''}
           <tr>
-            <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0; color:#64748b;">Serviço</td>
-            <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0; color:#0f172a;">${e(servico || '-')}</td>
-          </tr>
-          <tr style="background-color:#f8fafc;">
-            <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0; color:#64748b;">Técnico Responsável</td>
-            <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0; color:#0f172a;">${e(tecnico_nome || '-')}</td>
+            <td style="padding:10px 14px; border-bottom:1px solid #e2e8f0; color:#64748b;">Serviço</td>
+            <td style="padding:10px 14px; border-bottom:1px solid #e2e8f0; color:#1e293b; text-align:right;">${e(servico || '-')}</td>
           </tr>
           <tr>
-            <td style="padding:8px 12px; color:#64748b;">Data</td>
-            <td style="padding:8px 12px; color:#0f172a;">${e(data_atendimento || '-')}</td>
+            <td style="padding:10px 14px; border-bottom:1px solid #e2e8f0; color:#64748b;">Técnico Responsável</td>
+            <td style="padding:10px 14px; border-bottom:1px solid #e2e8f0; color:#1e293b; text-align:right;">${e(tecnico_nome || '-')}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px; color:#64748b;">Data de Conclusão</td>
+            <td style="padding:10px 14px; color:#1e293b; text-align:right;">${e(data_atendimento || '-')}</td>
           </tr>
         </table>
 
-        ${servico_executado ? `
-        <div style="margin-bottom:16px;">
-          <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:#64748b; margin-bottom:4px;">Serviço Executado</div>
-          <div style="padding:12px; background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; font-size:13px; line-height:1.5; color:#1e293b; white-space:pre-wrap;">${e(servico_executado)}</div>
+        ${servico_executado || diagnostico || recomendacoes ? `
+        <div style="background-color:#f8fafc; border-left:3px solid #1d4ed8; border-top:1px solid #e2e8f0; border-right:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; border-radius:6px; padding:14px 16px; margin-bottom:24px; font-size:13px; line-height:1.6; color:#334155;">
+          ${servico_executado ? `<div style="margin-bottom:${diagnostico || recomendacoes ? '10px' : '0'};"><strong style="color:#0f172a; display:block; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">Resumo do Serviço Executado</strong><span style="white-space:pre-wrap;">${e(servico_executado)}</span></div>` : ''}
+          ${diagnostico ? `<div style="margin-bottom:${recomendacoes ? '8px' : '0'};"><strong style="color:#0f172a;">Diagnóstico:</strong> ${e(diagnostico)}</div>` : ''}
+          ${recomendacoes ? `<div><strong style="color:#0f172a;">Recomendações:</strong> ${e(recomendacoes)}</div>` : ''}
         </div>` : ''}
 
-        ${diagnostico || recomendacoes ? `
-        <div style="margin-bottom:20px; padding:12px; background-color:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; font-size:13px; color:#334155;">
-          ${diagnostico ? `<div style="margin-bottom:6px;"><strong>Diagnóstico:</strong> ${e(diagnostico)}</div>` : ''}
-          ${recomendacoes ? `<div><strong>Recomendações:</strong> ${e(recomendacoes)}</div>` : ''}
-        </div>` : ''}
+        <!-- Ações do Relatório -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 16px;">
+          <tr>
+            <td align="center">
+              <a href="${e(url_relatorio)}" target="_blank" style="display:inline-block; background-color:#1d4ed8; color:#ffffff; text-decoration:none; font-weight:700; font-size:14px; padding:13px 28px; border-radius:8px; margin:4px;">
+                Visualizar Relatório Online e Fotos
+              </a>
+              ${url_pdf ? `
+              <a href="${e(url_pdf)}" target="_blank" style="display:inline-block; background-color:#0f172a; color:#ffffff; text-decoration:none; font-weight:600; font-size:13px; padding:13px 22px; border-radius:8px; margin:4px;">
+                Baixar PDF
+              </a>` : ''}
+            </td>
+          </tr>
+        </table>
 
-        <div style="text-align:center; margin:24px 0 16px;">
-          <a href="${e(url_relatorio)}" target="_blank" style="display:inline-block; background-color:#1e3a8a; color:#ffffff; text-decoration:none; font-weight:700; font-size:14px; padding:12px 24px; border-radius:6px; margin:4px;">
-            Abrir Relatório Completo e Fotos
-          </a>
-          ${url_pdf ? `
-          <a href="${e(url_pdf)}" target="_blank" style="display:inline-block; background-color:#0f172a; color:#ffffff; text-decoration:none; font-weight:600; font-size:13px; padding:12px 20px; border-radius:6px; margin:4px;">
-            Baixar PDF
-          </a>` : ''}
-          ${false ? `
-          <a href="${e(url_avaliacao)}" target="_blank" style="display:inline-block; background-color:#059669; color:#ffffff; text-decoration:none; font-weight:600; font-size:13px; padding:12px 20px; border-radius:6px; margin:4px;">
-            Avaliar Atendimento
-          </a>` : ''}
-          ${url_google ? `
-          <a href="${e(url_google)}" target="_blank" style="display:inline-block; background-color:#d97706; color:#ffffff; text-decoration:none; font-weight:600; font-size:13px; padding:12px 20px; border-radius:6px; margin:4px;">
+        ${url_google ? `
+        <div style="border-top:1px solid #e2e8f0; margin-top:20px; padding-top:18px; text-align:center;">
+          <p style="margin:0 0 10px; font-size:12px; color:#64748b;">
+            Ficou satisfeito com o nosso atendimento? Avalie nossa equipe no Google:
+          </p>
+          <a href="${e(url_google)}" target="_blank" style="display:inline-block; background-color:#f8fafc; border:1px solid #cbd5e1; color:#0f172a; text-decoration:none; font-weight:700; font-size:12px; padding:8px 18px; border-radius:6px;">
             ⭐ Avaliar no Google
-          </a>` : ''}
-        </div>
+          </a>
+        </div>` : ''}
       </td>
     </tr>
+
+    <!-- Rodapé -->
     <tr>
       <td style="background-color:#f8fafc; border-top:1px solid #e2e8f0; padding:14px 24px; text-align:center; font-size:11px; color:#64748b;">
-        <strong>MedicalThermo Herzog</strong> — Engenharia Clínica e Refrigeração Técnica
+        <strong>MedicalThermo Engenharia Herzog</strong> • Sistema Thermo Control
       </td>
     </tr>
   </table>

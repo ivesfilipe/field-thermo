@@ -863,11 +863,11 @@ export default function OsDetalhePage() {
             <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2.5">
               {caminhoRelatorio ? (
                 <>
-                  <input
+                  <input className="hidden"
                     type="text"
                     readOnly
                     value={urlRelatorio()}
-                    className="w-full rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-mono text-xs text-slate-700 sm:w-72"
+                    data-input-oculto="1"
                   />
                   <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={copiarLinkRelatorio}>Copiar link</Botao>
                   {/* WhatsApp oculto */}
@@ -929,11 +929,11 @@ export default function OsDetalhePage() {
               <div className="flex flex-wrap items-center gap-2">
                 {caminhoAvaliacao ? (
                   <>
-                    <input
+                    <input className="hidden"
                       type="text"
                       readOnly
                       value={urlAvaliacao()}
-                      className="w-full rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-mono text-xs text-slate-700 sm:w-72"
+                      data-input-oculto="1"
                     />
                     <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={copiarLink}>Copiar link</Botao>
                     <Botao variante="sucesso" className="px-3 py-1.5 text-xs" onClick={enviarEmailAvaliacao}>{/*
