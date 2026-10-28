@@ -114,7 +114,7 @@ function getIndicadores() {
   return db
     .prepare(
       `SELECT
-        (SELECT COUNT(*) FROM ordens_servico WHERE data_agendada = date('now') AND status NOT IN ('concluida', 'cancelada')) AS os_hoje,
+        (SELECT COUNT(*) FROM ordens_servico WHERE data_agendada = date('now') AND status NOT IN ('concluida', 'cancelada', 'excluida')) AS os_hoje,
         (SELECT COUNT(*) FROM ordens_servico WHERE status = 'em_andamento') AS os_em_andamento,
         (SELECT COUNT(*) FROM ordens_servico WHERE status = 'pendente' AND data_agendada IS NOT NULL) AS os_aguardando_atendimento,
         (SELECT COUNT(*) FROM ordens_servico WHERE status = 'pendente' AND data_agendada < date('now')) AS os_atrasadas,
@@ -234,6 +234,10 @@ router.post('/atividades', (req, res) => {
   if (tipo && !TIPOS_ATIVIDADE[tipo]) {
     return res.status(400).json({ error: 'Tipo de atividade inválido' });
   }
+  const STATUS_ATIVIDADE_DB = ['agendada', 'confirmada', 'em_andamento', 'aguardando_validacao', 'concluida', 'reaberta', 'cancelada'];
+  if (status && !STATUS_ATIVIDADE_DB.includes(status)) {
+    return res.status(400).json({ error: 'Status de atividade inválido' });
+  }
   if (os_id) {
     const os = db.prepare('SELECT id FROM ordens_servico WHERE id = ?').get(os_id);
     if (!os) {
@@ -341,7 +345,8 @@ router.patch('/atividades/:id/status', (req, res) => {
     return res.status(404).json({ error: 'Atividade não encontrada' });
   }
   const { status } = req.body || {};
-  if (!status || !STATUS_VISUAL.includes(status)) {
+  const STATUS_ATIVIDADE_DB = ['agendada', 'confirmada', 'em_andamento', 'aguardando_validacao', 'concluida', 'reaberta', 'cancelada'];
+  if (!status || !STATUS_ATIVIDADE_DB.includes(status)) {
     return res.status(400).json({ error: 'Status inválido' });
   }
   if (atv.status !== status) {

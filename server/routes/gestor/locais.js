@@ -86,10 +86,11 @@ router.delete('/locais/:id', (req, res) => {
   if (!local) {
     return res.status(404).json({ error: 'Local não encontrado' });
   }
-  const vinculadas = db.prepare('SELECT COUNT(*) AS n FROM ordens_servico WHERE local_id = ?').get(id).n;
+  const vinculadas = db.prepare("SELECT COUNT(*) AS n FROM ordens_servico WHERE local_id = ? AND status != 'excluida'").get(id).n;
   if (vinculadas > 0) {
     return res.status(400).json({ error: 'Local possui ordens de serviço vinculadas' });
   }
+  db.prepare("UPDATE ordens_servico SET local_id = NULL WHERE local_id = ? AND status = 'excluida'").run(id);
   db.prepare('DELETE FROM locais WHERE id = ?').run(id);
   res.status(204).end();
 });

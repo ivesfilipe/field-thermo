@@ -78,6 +78,9 @@ router.get('/km', (req, res) => {
     .get(...baseParams).total;
 
   const veiculos = db.prepare("SELECT id, placa, descricao FROM veiculos WHERE ativo = 1 ORDER BY placa").all();
+  if (tecnico && equipeIds.length === 0) {
+    return res.json({ registros: [], total_dia: 0, veiculos, equipes: [], membros: [], ordens: [] });
+  }
   const equipes = tecnico
     ? db.prepare(`SELECT id, nome FROM equipes WHERE id IN (${equipeIds.map(() => '?').join(',')}) ORDER BY nome`).all(...equipeIds)
     : db.prepare('SELECT id, nome FROM equipes ORDER BY nome').all();
@@ -90,7 +93,7 @@ router.get('/km', (req, res) => {
     .all(...(tecnico ? [...equipeIds, ...equipeIds] : []));
   const ordens = tecnico
     ? db
-        .prepare(`SELECT id, numero, servico FROM ordens_servico WHERE equipe_id IN (${equipeIds.map(() => '?').join(',')}) AND status NOT IN ('cancelada', 'concluida') ORDER BY numero`)
+        .prepare(`SELECT id, numero, servico FROM ordens_servico WHERE equipe_id IN (${equipeIds.map(() => '?').join(',')}) AND status NOT IN ('cancelada', 'concluida', 'excluida') ORDER BY numero`)
         .all(...equipeIds)
     : [];
 

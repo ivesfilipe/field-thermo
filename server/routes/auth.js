@@ -34,7 +34,8 @@ router.post('/login', loginLimiter, (req, res) => {
 });
 
 router.get('/me', authenticate, (req, res) => {
-  res.json({ usuario: req.user });
+  const token = signToken(req.user);
+  res.json({ usuario: req.user, token });
 });
 
 module.exports = router;

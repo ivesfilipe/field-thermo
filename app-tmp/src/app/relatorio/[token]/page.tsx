@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
 import { api, API_URL, mediaUrl, ApiError } from "@/lib/api";
 import { Alerta, Badge, Botao, GaleriaFotos } from "@/components/ui";
 
@@ -42,6 +41,8 @@ interface RelatorioPublico {
   assinatura: string | null;
   assinatura_nome: string | null;
   assinatura_cargo: string | null;
+  assinatura_tecnico?: string | null;
+  assinatura_tecnico_nome?: string | null;
   assinaturas?: Array<{ id: number; nome: string; cargo: string; arquivo: string; criado_em?: string | null }> | null;
   fotos?: string[];
   anexos: Array<{ id: number; categoria: string; arquivo: string; nome_original: string | null }>;
@@ -98,14 +99,7 @@ export default function RelatorioPublicoPage() {
           </div>
           {relatorio && (
             <div className="flex items-center gap-2">
-              {relatorio.avaliacao_token && relatorio.avaliacao_status === "pendente" && (
-                <Link
-                  href={`/avaliacao/${relatorio.avaliacao_token}`}
-                  className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
-                >
-                  Avaliar Atendimento
-                </Link>
-              )}
+
               <Botao onClick={abrirPdf} className="bg-white px-3 py-1.5 text-xs !text-blue-950 hover:bg-blue-50">
                 Imprimir / PDF
               </Botao>

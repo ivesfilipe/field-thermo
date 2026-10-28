@@ -131,7 +131,7 @@ export default function RelatoriosPage() {
     <div className="space-y-4">
       <PageHeader
         titulo="Relatórios Técnicos"
-        descricao="Visualize, baixe em PDF ou envie o link do relatório para o responsável do local via WhatsApp ou e-mail"
+        descricao="Visualize, baixe em PDF ou envie o link do relatório para o responsável do local via e-mail"
         acoes={<Botao onClick={() => router.push("/app/comercial/oportunidades")}>Ver oportunidades</Botao>}
       />
 

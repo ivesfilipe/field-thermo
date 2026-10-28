@@ -53,19 +53,23 @@ function detectarConflitos({ data, hora_inicio, hora_fim, tecnico_id, equipe_id,
   const fim = hora_fim || horarioFimPadrao(hora_inicio);
   if (!hora_inicio || !fim) return [];
   const conflitos = [];
+  const tecIdNum = tecnico_id ? Number(tecnico_id) : null;
+  const eqIdNum = equipe_id ? Number(equipe_id) : null;
+  const exOsIdNum = excluir_os_id ? Number(excluir_os_id) : null;
+  const exAtvIdNum = excluir_atividade_id ? Number(excluir_atividade_id) : null;
 
   const conflitoOs = (item) => {
-    if (item.id === excluir_os_id) return;
+    if (exOsIdNum && Number(item.id) === exOsIdNum) return;
     if (!item.hora_inicio) return;
     if (!sobrepoe(hora_inicio, fim, item.hora_inicio || '00:00', item.hora_fim || '23:59')) return;
-    if (tecnico_id && item.tecnico_id === tecnico_id) {
+    if (tecIdNum && Number(item.tecnico_id) === tecIdNum) {
       conflitos.push({
         tipo: 'os', id: item.id, referencia: item.numero, titulo: item.servico,
         motivo: 'tecnico', horario: `${item.data} ${item.hora_inicio || '--'}-${item.hora_fim || '--'}`,
         tecnico_nome: item.tecnico_nome
       });
     }
-    if (equipe_id && item.equipe_id === equipe_id) {
+    if (eqIdNum && Number(item.equipe_id) === eqIdNum) {
       conflitos.push({
         tipo: 'os', id: item.id, referencia: item.numero, titulo: item.servico,
         motivo: 'equipe', horario: `${item.data} ${item.hora_inicio || '--'}-${item.hora_fim || '--'}`,
@@ -75,18 +79,18 @@ function detectarConflitos({ data, hora_inicio, hora_fim, tecnico_id, equipe_id,
   };
 
   const conflitoAtv = (item) => {
-    if (item.id === excluir_atividade_id) return;
+    if (exAtvIdNum && Number(item.id) === exAtvIdNum) return;
     if (item.status === 'cancelada' || item.status === 'concluida') return;
     if (!item.hora_inicio) return;
     if (!sobrepoe(hora_inicio, fim, item.hora_inicio || '00:00', item.hora_fim || '23:59')) return;
-    if (tecnico_id && item.tecnico_id === tecnico_id) {
+    if (tecIdNum && Number(item.tecnico_id) === tecIdNum) {
       conflitos.push({
         tipo: 'atividade', id: item.id, referencia: `Atividade #${item.id}`, titulo: item.titulo,
         motivo: 'tecnico', horario: `${item.data} ${item.hora_inicio || '--'}-${item.hora_fim || '--'}`,
         tecnico_nome: item.tecnico_nome
       });
     }
-    if (equipe_id && item.equipe_id === equipe_id) {
+    if (eqIdNum && Number(item.equipe_id) === eqIdNum) {
       conflitos.push({
         tipo: 'atividade', id: item.id, referencia: `Atividade #${item.id}`, titulo: item.titulo,
         motivo: 'equipe', horario: `${item.data} ${item.hora_inicio || '--'}-${item.hora_fim || '--'}`,
@@ -161,12 +165,13 @@ function equipesDoUsuario(usuarioId) {
 }
 
 function validarTecnicoDeAgenda(tecnico_id, equipe_id) {
-  if (tecnico_id == null) return null;
-  const tecnico = db.prepare('SELECT id, perfil, equipe_id FROM usuarios WHERE id = ?').get(tecnico_id);
+  if (tecnico_id == null || tecnico_id === '') return null;
+  const tecIdNum = Number(tecnico_id);
+  const tecnico = db.prepare('SELECT id, perfil, equipe_id FROM usuarios WHERE id = ?').get(tecIdNum);
   if (!tecnico || tecnico.perfil !== 'tecnico') {
     return 'Técnico inválido';
   }
-  if (equipe_id != null && !equipesDoUsuario(tecnico_id).includes(equipe_id)) {
+  if (equipe_id != null && equipe_id !== '' && !equipesDoUsuario(tecIdNum).includes(Number(equipe_id))) {
     return 'Técnico não pertence à equipe informada';
   }
   return null;

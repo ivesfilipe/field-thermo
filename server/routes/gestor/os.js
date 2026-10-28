@@ -309,10 +309,11 @@ router.patch('/os/:id/cancelar', (req, res) => {
   if (!os) {
     return res.status(404).json({ error: 'Ordem de serviço não encontrada' });
   }
-  if (!['pendente', 'em_andamento'].includes(os.status)) {
+  if (!['pendente', 'em_deslocamento', 'em_andamento'].includes(os.status)) {
     return res.status(400).json({ error: 'Somente OS pendente ou em andamento pode ser cancelada' });
   }
   db.prepare("UPDATE ordens_servico SET status = 'cancelada' WHERE id = ?").run(id);
+  registrarHistorico({ usuario: req.user, tipo: 'os', registroId: id, campo: 'status', valorAnterior: os.status, valorNovo: 'cancelada' });
   res.json({ os: getOS(id) });
 });
 
@@ -385,7 +386,9 @@ router.patch('/os/:id/validar', (req, res) => {
     ).run(req.user.id, recomendacoes ?? null, motivo, id);
     db.prepare('UPDATE execucoes SET complemento_solicitado = ? WHERE id = ?').run(motivo, execucao.id);
     db.prepare("UPDATE ordens_servico SET status = 'em_andamento' WHERE id = ?").run(id);
-    registrarHistorico({ usuario: req.user, tipo: 'relatorio', registroId: relatorioExistente.id, campo: 'complemento', valorNovo: motivo });
+    if (relatorioExistente) {
+      registrarHistorico({ usuario: req.user, tipo: 'relatorio', registroId: relatorioExistente.id, campo: 'complemento', valorNovo: motivo });
+    }
     registrarHistorico({ usuario: req.user, tipo: 'os', registroId: id, campo: 'status', valorAnterior: 'aguardando_validacao', valorNovo: 'em_andamento (complemento solicitado)' });
     return res.json({ os: getOS(id) });
   }

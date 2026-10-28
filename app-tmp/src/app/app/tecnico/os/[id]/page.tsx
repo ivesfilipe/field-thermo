@@ -27,6 +27,8 @@ interface Execucao {
   concluida_em: string | null;
   complemento_solicitado: string | null;
   dados_modelo: Record<string, string> | null;
+  assinatura_tecnico?: string | null;
+  assinatura_tecnico_nome?: string | null;
   avaliacao_google_enviada_em?: string | null;
 }
 
@@ -437,6 +439,53 @@ export default function ExecucaoOsPage() {
     }
   }
 
+  const extratorAssinaturaTecnicaRef = useRef<(() => Promise<Blob | null>) | null>(null);
+
+  async function salvarAssinaturaTecnicaPad(blob: Blob) {
+    setErro("");
+    setMsg("");
+    try {
+      const file = new File([blob], "assinatura_tecnica.png", { type: "image/png" });
+      const fd = new FormData();
+      fd.append("assinatura", file);
+      fd.append("nome", os?.equipe_nome || "Técnico Responsável");
+      await api.uploadForm(`/api/tecnico/os/${id}/assinatura-tecnica`, fd);
+      setMsg("Assinatura técnica registrada com sucesso.");
+      carregar(true);
+    } catch (err) {
+      setErro((err as Error).message);
+    }
+  }
+
+  async function enviarAssinaturaTecnica(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setErro("");
+    setMsg("");
+    try {
+      const fd = new FormData();
+      fd.append("assinatura", file);
+      fd.append("nome", os?.equipe_nome || "Técnico Responsável");
+      await api.uploadForm(`/api/tecnico/os/${id}/assinatura-tecnica`, fd);
+      setMsg("Assinatura técnica registrada com sucesso.");
+      carregar(true);
+    } catch (err) {
+      setErro((err as Error).message);
+    }
+    e.target.value = "";
+  }
+
+  async function removerAssinaturaTecnica() {
+    setErro("");
+    try {
+      await api.del(`/api/tecnico/os/${id}/assinatura-tecnica`);
+      setMsg("Assinatura técnica removida.");
+      carregar(true);
+    } catch (err) {
+      setErro((err as Error).message);
+    }
+  }
+
   async function removerAssinatura(assId: number) {
     setErro("");
     try {
@@ -769,6 +818,46 @@ export default function ExecucaoOsPage() {
             </div>
           </Card>
 
+          <Card title="4. Assinatura Técnica (Executante)">
+            {os.execucao?.assinatura_tecnico ? (
+              <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">Assinatura Técnica Homologada</span>
+                    <p className="mt-1 text-sm font-bold text-zinc-900">{os.execucao.assinatura_tecnico_nome || "Técnico Responsável"}</p>
+                    <p className="text-xs text-zinc-500">Execução técnica de campo registrada no laudo</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removerAssinaturaTecnica}
+                    className="rounded-lg border border-red-200 bg-white px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
+                  >
+                    Alterar / Remover
+                  </button>
+                </div>
+                <div className="mt-3">
+                  <Image src={mediaUrl(os.execucao.assinatura_tecnico)} alt="Assinatura Técnica" width={600} height={212} className="h-20 w-auto rounded-md border border-blue-200 bg-white" />
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-3">
+                <p className="mb-2 text-sm font-semibold text-zinc-800">
+                  Assinatura do Técnico / Responsável Técnico
+                </p>
+                <p className="mb-3 text-xs text-zinc-500">
+                  Registre a sua assinatura técnica digital para constar no termo de homologação do relatório técnico.
+                </p>
+                <PadAssinatura onSalvar={salvarAssinaturaTecnicaPad} extratorRef={extratorAssinaturaTecnicaRef} />
+                <div className="mt-3 border-t border-zinc-200 pt-3">
+                  <label className="cursor-pointer text-sm font-medium text-blue-600 underline hover:text-blue-800">
+                    Enviar imagem de assinatura técnica (alternativa)
+                    <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={enviarAssinaturaTecnica} />
+                  </label>
+                </div>
+              </div>
+            )}
+          </Card>
+
           <div className="flex flex-wrap gap-2">
             <Botao variante="secundario" onClick={salvarRascunho} disabled={salvando}>
               {salvando ? "Salvando..." : "Salvar rascunho"}
@@ -871,6 +960,18 @@ export default function ExecucaoOsPage() {
               </div>
             </div>
           )}
+        </Card>
+      )}
+
+      {(os.status === "aguardando_validacao" || os.status === "concluida") && os.execucao?.assinatura_tecnico && (
+        <Card title="Assinatura Técnica Registrada">
+          <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">Técnico Responsável</span>
+            <div className="mt-2">
+              <Image src={mediaUrl(os.execucao.assinatura_tecnico)} alt="Assinatura Técnica" width={600} height={212} className="h-16 w-auto rounded border border-blue-200 bg-white" />
+            </div>
+            <p className="mt-1 text-xs font-bold text-zinc-900">{os.execucao.assinatura_tecnico_nome || "Técnico Executor"}</p>
+          </div>
         </Card>
       )}
 

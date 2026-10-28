@@ -670,7 +670,7 @@ export default function CalendarioPage() {
                     <td className="px-3 py-2">{e.cliente_nome || "-"}</td>
                     <td className="px-3 py-2">
                       {e.local_nome || "-"}
-                      {e.local_endereco_completo || e.local_endereco && (
+                      {(e.local_endereco_completo || e.local_endereco) && (
                         <span className="block text-xs text-zinc-500">
                           {e.local_endereco_completo || e.local_endereco}
                           <LinksMapa endereco={e.local_endereco_completo || e.local_endereco} />
@@ -770,7 +770,7 @@ export default function CalendarioPage() {
               <dt className="text-zinc-500">Local</dt>
               <dd>
                 {selecionado.local_nome || "-"}
-                {selecionado.local_endereco_completo || selecionado.local_endereco && (
+                {(selecionado.local_endereco_completo || selecionado.local_endereco) && (
                   <LinksMapa endereco={selecionado.local_endereco_completo || selecionado.local_endereco} />
                 )}
               </dd>

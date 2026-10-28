@@ -232,11 +232,18 @@ router.post('/os/:id/iniciar', (req, res) => {
     return res.status(400).json({ error: 'Somente OS pendente pode ser iniciada' });
   }
   db.prepare("UPDATE ordens_servico SET status = 'em_andamento' WHERE id = ?").run(os.id);
-  db.prepare(
-    "INSERT INTO execucoes (os_id, tecnico_id, iniciada_em) VALUES (?, ?, datetime('now'))"
-  ).run(os.id, req.user.id);
+  const execExistente = getExecucao(os.id);
+  if (execExistente) {
+    db.prepare(
+      "UPDATE execucoes SET tecnico_id = ?, iniciada_em = COALESCE(iniciada_em, datetime('now')) WHERE id = ?"
+    ).run(req.user.id, execExistente.id);
+  } else {
+    db.prepare(
+      "INSERT INTO execucoes (os_id, tecnico_id, iniciada_em) VALUES (?, ?, datetime('now'))"
+    ).run(os.id, req.user.id);
+  }
   registrarHistorico({ usuario: req.user, tipo: 'os', registroId: os.id, campo: 'inicio_atendimento', valorNovo: 'atendimento iniciado pelo técnico' });
-  const execucao = db.prepare('SELECT * FROM execucoes WHERE os_id = ?').get(os.id);
+  const execucao = getExecucao(os.id);
   res.json({ os: getMinhaOS(req, os.id), execucao });
 });
 
@@ -437,6 +444,37 @@ router.post('/os/:id/assinatura', upload.single('assinatura'), (req, res) => {
   );
   registrarHistorico({ usuario: req.user, tipo: 'execucao', registroId: execucao.id, campo: 'assinatura', valorNovo: `assinatura enviada (${nome || 'responsável'})` });
   res.status(201).json({ assinatura, assinaturas: lista, item });
+});
+
+router.post('/os/:id/assinatura-tecnica', upload.single('assinatura'), (req, res) => {
+  const os = getMinhaOS(req, Number(req.params.id));
+  if (!os) return res.status(404).json({ error: 'Ordem de serviço não encontrada' });
+  const erro = podeEditarExecucao(os);
+  if (erro) return res.status(400).json({ error: erro });
+  const execucao = getExecucao(os.id);
+  if (!execucao) return res.status(400).json({ error: 'Inicie o atendimento antes de registrar a assinatura técnica' });
+  if (!req.file) return res.status(400).json({ error: 'Envie a imagem da assinatura técnica' });
+  const assinatura = `/uploads/os${os.id}/${req.file.filename}`;
+  const nome = (req.body?.nome || req.user.nome || 'Técnico Responsável').trim();
+  db.prepare('UPDATE execucoes SET assinatura_tecnico = ?, assinatura_tecnico_nome = ? WHERE id = ?')
+    .run(assinatura, nome, execucao.id);
+  registrarHistorico({ usuario: req.user, tipo: 'execucao', registroId: execucao.id, campo: 'assinatura_tecnica', valorNovo: `assinatura técnica enviada por ${nome}` });
+  res.status(201).json({ assinatura_tecnico: assinatura, assinatura_tecnico_nome: nome });
+});
+
+router.delete('/os/:id/assinatura-tecnica', (req, res) => {
+  const os = getMinhaOS(req, Number(req.params.id));
+  if (!os) return res.status(404).json({ error: 'Ordem de serviço não encontrada' });
+  const erro = podeEditarExecucao(os);
+  if (erro) return res.status(400).json({ error: erro });
+  const execucao = getExecucao(os.id);
+  if (!execucao) return res.status(404).json({ error: 'Execução não encontrada' });
+  if (execucao.assinatura_tecnico) {
+    const caminho = path.join(config.UPLOADS_DIR, 'os' + os.id, path.basename(execucao.assinatura_tecnico));
+    try { if (fs.existsSync(caminho)) fs.unlinkSync(caminho); } catch {}
+  }
+  db.prepare('UPDATE execucoes SET assinatura_tecnico = NULL, assinatura_tecnico_nome = NULL WHERE id = ?').run(execucao.id);
+  res.json({ ok: true });
 });
 
 router.delete('/os/:id/assinaturas/:assId', (req, res) => {

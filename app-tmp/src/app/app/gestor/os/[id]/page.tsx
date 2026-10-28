@@ -26,6 +26,8 @@ interface Execucao {
   assinatura_nome: string | null;
   assinatura_cargo: string | null;
   assinaturas?: Array<{ id: number; nome: string; cargo: string; arquivo: string; criado_em?: string | null }> | null;
+  assinatura_tecnico?: string | null;
+  assinatura_tecnico_nome?: string | null;
   relatorio_ia: unknown;
   iniciada_em: string | null;
   concluida_em: string | null;
@@ -693,6 +695,15 @@ export default function OsDetalhePage() {
                 </li>
               ))}
             </ul>
+          )}
+          {exec.assinatura_tecnico && (
+            <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50/60 p-3">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-700">Assinatura Técnica (Executante)</span>
+              <div className="mt-1.5">
+                <Image src={mediaUrl(exec.assinatura_tecnico)} alt="Assinatura Técnica" width={600} height={212} className="h-16 w-auto rounded-lg border border-blue-200 bg-white" />
+              </div>
+              <p className="mt-1 text-sm font-semibold text-zinc-800">{exec.assinatura_tecnico_nome || "Técnico Responsável"}</p>
+            </div>
           )}
           {Array.isArray(exec.assinaturas) && exec.assinaturas.length > 0 ? (
             <div className="mt-3 space-y-2">

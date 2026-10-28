@@ -113,7 +113,7 @@ export default function EquipamentosPage() {
                 <td className="hidden px-3 py-2 lg:table-cell">{eq.cliente_nome}</td>
                 <td className="hidden px-3 py-2 lg:table-cell">
                   {eq.local_nome || "-"}
-                  {eq.local_endereco_completo || eq.local_endereco && (
+                  {(eq.local_endereco_completo || eq.local_endereco) && (
                     <span className="block text-xs text-zinc-500">
                       {eq.local_endereco_completo || eq.local_endereco}
                       <LinksMapa endereco={eq.local_endereco_completo || eq.local_endereco} />

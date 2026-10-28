@@ -27,12 +27,21 @@ function statusMapa(os) {
   if (os.status === 'em_deslocamento') return 'em_deslocamento';
   if (os.status === 'em_andamento') return os.complemento_solicitado ? 'aguardando_complemento' : 'em_atendimento';
   if (os.confirmada) return 'confirmada';
+  if (os.data_agendada && os.data_agendada < hojeLocal()) return 'atrasada';
   if (!os.equipe_id) {
-    if (os.data_agendada && os.data_agendada < hojeLocal()) return 'atrasada';
     return 'disponivel';
   }
   return 'agendada';
 }
+
+const STATUS_DIRETO_PERMITIDOS = new Set([
+  'pendente',
+  'em_deslocamento',
+  'em_andamento',
+  'aguardando_validacao',
+  'concluida',
+  'cancelada'
+]);
 
 function condicaoStatus(status) {
   const base = {
@@ -41,9 +50,11 @@ function condicaoStatus(status) {
     disponivel: "o.status = 'pendente' AND o.equipe_id IS NULL",
     em_atendimento: "o.status = 'em_andamento' AND (ex.complemento_solicitado IS NULL OR ex.complemento_solicitado = '')",
     aguardando_complemento: "o.status = 'em_andamento' AND ex.complemento_solicitado IS NOT NULL AND ex.complemento_solicitado != ''",
-    atrasada: `o.status = 'pendente' AND o.data_agendada IS NOT NULL AND o.data_agendada < date('now')`
+    atrasada: "o.status = 'pendente' AND o.data_agendada IS NOT NULL AND o.data_agendada < date('now')"
   };
-  return base[status] || `o.status = '${status}'`;
+  if (base[status]) return base[status];
+  if (STATUS_DIRETO_PERMITIDOS.has(status)) return `o.status = '${status}'`;
+  return '1 = 0';
 }
 
 router.get('/mapa', (req, res) => {

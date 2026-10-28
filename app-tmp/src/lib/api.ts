@@ -35,9 +35,15 @@ export function buildApiUrl(path: string): string {
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  data: any;
+  conflitos?: any[];
+  constructor(status: number, message: string, data?: any) {
     super(message);
     this.status = status;
+    this.data = data;
+    if (data && Array.isArray(data.conflitos)) {
+      this.conflitos = data.conflitos;
+    }
   }
 }
 
@@ -66,7 +72,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   });
   if (!res.ok) {
     const data = await res.json().catch(() => null);
-    throw new ApiError(res.status, data?.error || `Erro ${res.status}`);
+    throw new ApiError(res.status, data?.error || `Erro ${res.status}`, data);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;

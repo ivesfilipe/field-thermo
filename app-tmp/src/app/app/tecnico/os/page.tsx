@@ -77,7 +77,7 @@ export default function MinhasOsPage() {
                   <td className="px-3 py-2">{o.cliente_nome}</td>
                   <td className="px-3 py-2">
                     {o.local_nome || "-"}
-                    {o.local_endereco_completo || o.local_endereco && (
+                    {(o.local_endereco_completo || o.local_endereco) && (
                       <span className="block text-xs text-zinc-500">
                         {o.local_endereco_completo || o.local_endereco}
                         <LinksMapa endereco={o.local_endereco_completo || o.local_endereco} pararPropagacao />

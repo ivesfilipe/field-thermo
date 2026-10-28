@@ -178,10 +178,11 @@ router.delete('/clientes/:id', (req, res) => {
   if (!cliente) {
     return res.status(404).json({ error: 'Cliente não encontrado' });
   }
-  const vinculadas = db.prepare('SELECT COUNT(*) AS n FROM ordens_servico WHERE cliente_id = ?').get(id).n;
+  const vinculadas = db.prepare("SELECT COUNT(*) AS n FROM ordens_servico WHERE cliente_id = ? AND status != 'excluida'").get(id).n;
   if (vinculadas > 0) {
     return res.status(400).json({ error: 'Cliente possui ordens de serviço vinculadas' });
   }
+  db.prepare("DELETE FROM ordens_servico WHERE cliente_id = ? AND status = 'excluida'").run(id);
   db.prepare('DELETE FROM clientes WHERE id = ?').run(id);
   res.status(204).end();
 });

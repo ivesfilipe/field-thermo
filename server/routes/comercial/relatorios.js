@@ -36,6 +36,7 @@ const RELATORIO_DETALHE = `
     eq.nome AS equipe_nome,
     ex.diagnostico, ex.servico_executado, ex.observacoes, ex.fotos, ex.assinatura,
     ex.assinatura_nome, ex.assinatura_cargo, ex.assinaturas,
+    ex.assinatura_tecnico, ex.assinatura_tecnico_nome,
     ex.condicao_sintomas, ex.condicao_equipamento, ex.condicao_observacoes,
     ex.causa, ex.medicoes, ex.atividades_executadas, ex.resultado,
     ex.pendencias, ex.recomendacoes AS recomendacoes_tecnico,
@@ -346,6 +347,7 @@ let logoBase64 = null;
 function getLogo() {
   if (logoBase64 !== null) return logoBase64;
   const caminhos = [
+    path.join(__dirname, '../../logo.png'),
     path.join(__dirname, '../../../app-tmp/public/logo_original.png'),
     path.join(__dirname, '../../../logo_medicalthermo_herzog_transparente_cor.png'),
     path.join(__dirname, '../../../app-tmp/public/logo.png'),
@@ -371,8 +373,9 @@ function resolverImagem(src, base) {
   if (src.startsWith('data:')) return src;
   try {
     const limpo = src.replace(/^\/uploads\//, '');
-    const localPath = path.join(config.UPLOADS_DIR, limpo);
-    if (fs.existsSync(localPath)) {
+    const uploadsBase = path.resolve(config.UPLOADS_DIR);
+    const localPath = path.resolve(config.UPLOADS_DIR, limpo);
+    if ((localPath === uploadsBase || localPath.startsWith(uploadsBase + path.sep)) && fs.existsSync(localPath)) {
       const ext = path.extname(localPath).toLowerCase().replace('.', '') || 'jpeg';
       const mime = ext === 'png' ? 'image/png' : ext === 'svg' ? 'image/svg+xml' : 'image/jpeg';
       const b64 = fs.readFileSync(localPath).toString('base64');
@@ -1393,10 +1396,10 @@ function enviarPdfHtml(relatorio, req, res) {
           <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Execução Técnica</span>
         </div>
         <div class="assinatura-area">
-          <div class="linha-vazia-ass"></div>
+          ${relatorio.assinatura_tecnico ? `<img class="img-assinatura" src="${e(resolverImagem(relatorio.assinatura_tecnico, base))}" alt="Assinatura técnica" />` : '<div class="linha-vazia-ass"></div>'}
         </div>
         <div>
-          <div class="assinatura-nome">${e(relatorio.tecnico_nome || 'Técnico Responsável')}</div>
+          <div class="assinatura-nome">${e(relatorio.assinatura_tecnico_nome || relatorio.tecnico_nome || 'Técnico Responsável')}</div>
           <div class="assinatura-cargo">${e(relatorio.equipe_nome || 'Equipe Técnica de Campo')}</div>
           <div class="assinatura-data">Concluído em: ${e(formatarData(relatorio.atendimento_concluido_em || relatorio.data_agendada))}</div>
         </div>

@@ -32,8 +32,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     api
-      .get<{ usuario: Usuario }>("/api/auth/me")
-      .then((r) => setUsuario(r.usuario))
+      .get<{ usuario: Usuario; token?: string }>("/api/auth/me")
+      .then((r) => {
+        setUsuario(r.usuario);
+        if (r.token) setToken(r.token);
+      })
       .catch(() => setToken(null))
       .finally(() => setCarregando(false));
   }, []);

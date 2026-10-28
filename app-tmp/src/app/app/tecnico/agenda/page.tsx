@@ -144,7 +144,7 @@ export default function MinhaAgendaPage() {
                         {item.cliente_nome ? ` · ${item.cliente_nome}` : ""}
                         {item.local_nome ? ` · ${item.local_nome}` : ""}
                       </p>
-                      {item.local_endereco_completo || item.local_endereco && (
+                      {(item.local_endereco_completo || item.local_endereco) && (
                         <p className="mt-0.5 text-xs text-zinc-600">
                           {item.local_endereco_completo || item.local_endereco}
                           <LinksMapa endereco={item.local_endereco_completo || item.local_endereco} pararPropagacao />
@@ -198,7 +198,7 @@ export default function MinhaAgendaPage() {
               <dt className="text-zinc-500">Endereço</dt>
               <dd>
                 {detalhe.local_endereco_completo || detalhe.local_endereco || "-"}
-                {detalhe.local_endereco_completo || detalhe.local_endereco && (
+                {(detalhe.local_endereco_completo || detalhe.local_endereco) && (
                   <LinksMapa endereco={detalhe.local_endereco_completo || detalhe.local_endereco} />
                 )}
               </dd>

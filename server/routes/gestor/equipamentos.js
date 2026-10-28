@@ -42,7 +42,7 @@ function getEquipamentoCompleto(id) {
         r.id AS relatorio_id, r.status AS relatorio_status
        FROM ordens_servico o
        LEFT JOIN relatorios r ON r.os_id = o.id
-       WHERE o.equipamento_id = ?
+       WHERE o.equipamento_id = ? AND o.status != 'excluida'
        ORDER BY o.criado_em DESC`
     )
     .all(id);
@@ -85,7 +85,7 @@ router.get('/equipamentos', (req, res) => {
           r.id AS relatorio_id
          FROM ordens_servico o
          LEFT JOIN relatorios r ON r.os_id = o.id
-         WHERE o.equipamento_id = ?
+         WHERE o.equipamento_id = ? AND o.status != 'excluida'
          ORDER BY o.criado_em DESC`
       )
       .all(e.id);
@@ -111,7 +111,7 @@ router.post('/equipamentos', (req, res) => {
     return res.status(404).json({ error: 'Cliente não encontrado' });
   }
   if (local_id) {
-    const local = db.prepare('SELECT id FROM locais WHERE id = ? AND cliente_id = ?').get(local_id, cliente_id);
+    const local = db.prepare('SELECT id FROM locais WHERE id = ? AND cliente_id = ?').get(local_id, clienteIdFinal);
     if (!local) {
       return res.status(400).json({ error: 'Local não pertence ao cliente informado' });
     }
@@ -208,10 +208,11 @@ router.delete('/equipamentos/:id', (req, res) => {
   if (!equipamento) {
     return res.status(404).json({ error: 'Equipamento não encontrado' });
   }
-  const vinculadas = db.prepare('SELECT COUNT(*) AS n FROM ordens_servico WHERE equipamento_id = ?').get(id).n;
+  const vinculadas = db.prepare("SELECT COUNT(*) AS n FROM ordens_servico WHERE equipamento_id = ? AND status != 'excluida'").get(id).n;
   if (vinculadas > 0) {
     return res.status(400).json({ error: 'Equipamento possui histórico de ordens de serviço. Prefira desativá-lo (status "Desativado") em vez de excluir.' });
   }
+  db.prepare("UPDATE ordens_servico SET equipamento_id = NULL WHERE equipamento_id = ? AND status = 'excluida'").run(id);
   db.prepare('DELETE FROM equipamentos WHERE id = ?').run(id);
   res.status(204).end();
 });
