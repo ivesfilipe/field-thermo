@@ -25,6 +25,7 @@ interface Execucao {
   assinatura: string | null;
   assinatura_nome: string | null;
   assinatura_cargo: string | null;
+  assinaturas?: Array<{ id: number; nome: string; cargo: string; arquivo: string; criado_em?: string | null }> | null;
   relatorio_ia: unknown;
   iniciada_em: string | null;
   concluida_em: string | null;
@@ -579,11 +580,6 @@ export default function OsDetalhePage() {
           {exec.pendencias && <p className="mt-3 text-sm text-zinc-600"><strong className="text-zinc-500">Pendências:</strong> {exec.pendencias}</p>}
           {exec.recomendacoes && <p className="mt-2 text-sm text-zinc-600"><strong className="text-zinc-500">Recomendações:</strong> {exec.recomendacoes}</p>}
           {exec.observacoes && <p className="mt-2 text-sm text-zinc-600"><strong className="text-zinc-500">Observações:</strong> {exec.observacoes}</p>}
-          {exec.assinatura_nome && (
-            <p className="mt-3 text-sm text-zinc-600">
-              <strong className="text-zinc-500">Responsável pela assinatura:</strong> {exec.assinatura_nome}{exec.assinatura_cargo ? ` (${exec.assinatura_cargo})` : ""}
-            </p>
-          )}
           {fotos.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
               {fotos.map((f) => <Image key={f.id} src={mediaUrl(f.arquivo)} alt={`Anexo ${CATEGORIA_LABEL[f.categoria] || ""}`} width={80} height={80} className="h-20 w-20 rounded-lg border border-zinc-200 object-cover" />)}
@@ -600,11 +596,35 @@ export default function OsDetalhePage() {
               ))}
             </ul>
           )}
-          {exec.assinatura && (
-            <div className="mt-3">
-              <p className="mb-1 text-xs text-zinc-500">Assinatura</p>
-              <Image src={mediaUrl(exec.assinatura)} alt="Assinatura" width={600} height={212} className="h-16 w-auto rounded-lg border border-zinc-200" />
+          {Array.isArray(exec.assinaturas) && exec.assinaturas.length > 0 ? (
+            <div className="mt-3 space-y-2">
+              <p className="text-xs font-medium text-zinc-500">Assinaturas registradas ({exec.assinaturas.length})</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {exec.assinaturas.map((ass, idx) => (
+                  <div key={ass.id || idx} className="rounded-lg border border-zinc-200 bg-zinc-50 p-2.5">
+                    <Image src={mediaUrl(ass.arquivo)} alt={`Assinatura ${ass.nome || idx + 1}`} width={600} height={212} className="h-16 w-auto rounded-lg border border-zinc-200 bg-white" />
+                    <p className="mt-1.5 text-sm font-medium text-zinc-800">
+                      {ass.nome || exec.assinatura_nome || `Responsável #${idx + 1}`}
+                      {(ass.cargo || (idx === 0 ? exec.assinatura_cargo : "")) ? ` (${ass.cargo || exec.assinatura_cargo})` : ""}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
+          ) : (
+            <>
+              {exec.assinatura_nome && (
+                <p className="mt-3 text-sm text-zinc-600">
+                  <strong className="text-zinc-500">Responsável pela assinatura:</strong> {exec.assinatura_nome}{exec.assinatura_cargo ? ` (${exec.assinatura_cargo})` : ""}
+                </p>
+              )}
+              {exec.assinatura && (
+                <div className="mt-3">
+                  <p className="mb-1 text-xs text-zinc-500">Assinatura</p>
+                  <Image src={mediaUrl(exec.assinatura)} alt="Assinatura" width={600} height={212} className="h-16 w-auto rounded-lg border border-zinc-200" />
+                </div>
+              )}
+            </>
           )}
         </Card>
       )}

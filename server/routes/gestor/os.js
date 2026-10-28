@@ -58,6 +58,25 @@ function getOS(id) {
         try { os.execucao[campo] = JSON.parse(os.execucao[campo]); } catch { os.execucao[campo] = null; }
       }
     }
+    let listaAss = [];
+    if (typeof os.execucao.assinaturas === 'string' && os.execucao.assinaturas) {
+      try {
+        const p = JSON.parse(os.execucao.assinaturas);
+        if (Array.isArray(p)) listaAss = p;
+      } catch { listaAss = []; }
+    } else if (Array.isArray(os.execucao.assinaturas)) {
+      listaAss = os.execucao.assinaturas;
+    }
+    if (!listaAss.length && os.execucao.assinatura) {
+      listaAss = [{
+        id: 1,
+        nome: os.execucao.assinatura_nome || '',
+        cargo: os.execucao.assinatura_cargo || '',
+        arquivo: os.execucao.assinatura,
+        criado_em: os.execucao.concluida_em || null
+      }];
+    }
+    os.execucao.assinaturas = listaAss;
   }
   if (os.relatorio && os.relatorio.conteudo) {
     try { os.relatorio.conteudo = JSON.parse(os.relatorio.conteudo); } catch { os.relatorio.conteudo = null; }

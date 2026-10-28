@@ -27,7 +27,7 @@ const RELATORIO_DETALHE = `
     e.tensao AS equipamento_tensao, e.local AS equipamento_local, e.ambiente AS equipamento_ambiente,
     eq.nome AS equipe_nome,
     ex.diagnostico, ex.servico_executado, ex.observacoes, ex.fotos, ex.assinatura,
-    ex.assinatura_nome, ex.assinatura_cargo,
+    ex.assinatura_nome, ex.assinatura_cargo, ex.assinaturas,
     ex.condicao_sintomas, ex.condicao_equipamento, ex.condicao_observacoes,
     ex.causa, ex.medicoes, ex.atividades_executadas, ex.resultado,
     ex.pendencias, ex.recomendacoes AS recomendacoes_tecnico,
@@ -140,6 +140,21 @@ router.get('/relatorios/:id', (req, res) => {
     relatorio.conteudo = JSON.parse(relatorio.conteudo || 'null');
   } catch {
     relatorio.conteudo = null;
+  }
+  try {
+    const p = JSON.parse(relatorio.assinaturas || '[]');
+    relatorio.assinaturas = Array.isArray(p) ? p : [];
+  } catch {
+    relatorio.assinaturas = [];
+  }
+  if (!relatorio.assinaturas.length && relatorio.assinatura) {
+    relatorio.assinaturas = [{
+      id: 1,
+      nome: relatorio.assinatura_nome || '',
+      cargo: relatorio.assinatura_cargo || '',
+      arquivo: relatorio.assinatura,
+      criado_em: relatorio.atendimento_concluido_em || null
+    }];
   }
   relatorio.anexos = db.prepare('SELECT * FROM anexos WHERE os_id = ? ORDER BY id').all(relatorio.os_id) || [];
   relatorio.tipo_necessidade_label = TIPOS_NECESSIDADE[relatorio.necessidade_adicional] || relatorio.necessidade_adicional;
@@ -497,12 +512,48 @@ router.get('/relatorios/:id/pdf', (req, res) => {
     `;
   }
 
-  // Assinatura do cliente
-  let assinaturaClienteImg = '';
-  if (relatorio.assinatura) {
-    const srcAss = resolverImagem(relatorio.assinatura, base);
-    assinaturaClienteImg = `<img class="img-assinatura" src="${e(srcAss)}" alt="Assinatura do responsável" />`;
+  // Assinaturas do cliente / local (múltiplas)
+  let listaAssinaturas = [];
+  try {
+    const p = JSON.parse(relatorio.assinaturas || '[]');
+    if (Array.isArray(p)) listaAssinaturas = p;
+  } catch {
+    listaAssinaturas = [];
   }
+  if (!listaAssinaturas.length && relatorio.assinatura) {
+    listaAssinaturas = [{
+      id: 1,
+      nome: relatorio.assinatura_nome || '',
+      cargo: relatorio.assinatura_cargo || '',
+      arquivo: relatorio.assinatura,
+      criado_em: relatorio.atendimento_concluido_em || null
+    }];
+  }
+  const blocosAssinaturasClientesHtml = (listaAssinaturas.length ? listaAssinaturas : [null])
+    .map((ass, idx) => {
+      const imgTag = ass && ass.arquivo
+        ? `<img class="img-assinatura" src="${e(resolverImagem(ass.arquivo, base))}" alt="Assinatura do responsável" />`
+        : '<div class="linha-vazia-ass"></div>';
+      const nomeAss = (ass && ass.nome) || (idx === 0 ? (relatorio.assinatura_nome || relatorio.local_responsavel || relatorio.cliente_nome) : '') || 'Responsável pelo Local';
+      const cargoAss = (ass && ass.cargo) || (idx === 0 ? relatorio.assinatura_cargo : '') || 'Responsável no local';
+      const dataAss = formatarData((ass && ass.criado_em) || relatorio.atendimento_concluido_em || relatorio.data_agendada);
+      const tituloBloco = listaAssinaturas.length > 1 ? `Aceite do Cliente / Local (${idx + 1})` : 'Aceite do Cliente / Local';
+      return `
+      <div class="bloco-assinatura">
+        <div>
+          <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">${e(tituloBloco)}</span>
+        </div>
+        <div class="assinatura-area">
+          ${imgTag}
+        </div>
+        <div>
+          <div class="assinatura-nome">${e(nomeAss)}</div>
+          <div class="assinatura-cargo">${e(cargoAss)}</div>
+          <div class="assinatura-data">Data: ${e(dataAss)}</div>
+        </div>
+      </div>`;
+    })
+    .join('\n');
 
   const modeloHtml = conteudoIa && conteudoIa.modelo
     ? `<section class="secao page-break-avoid">
@@ -1227,20 +1278,8 @@ router.get('/relatorios/:id/pdf', (req, res) => {
         </div>
       </div>
 
-      <!-- Responsável no Local (Cliente) -->
-      <div class="bloco-assinatura">
-        <div>
-          <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Aceite do Cliente / Local</span>
-        </div>
-        <div class="assinatura-area">
-          ${assinaturaClienteImg || '<div class="linha-vazia-ass"></div>'}
-        </div>
-        <div>
-          <div class="assinatura-nome">${e(relatorio.assinatura_nome || relatorio.local_responsavel || relatorio.cliente_nome || 'Responsável pelo Local')}</div>
-          <div class="assinatura-cargo">${e(relatorio.assinatura_cargo || 'Responsável no local')}</div>
-          <div class="assinatura-data">Data: ${e(formatarData(relatorio.atendimento_concluido_em || relatorio.data_agendada))}</div>
-        </div>
-      </div>
+      <!-- Responsável(is) no Local (Cliente) -->
+      ${blocosAssinaturasClientesHtml}
 
       <!-- Validação da Gestão Técnica -->
       <div class="bloco-assinatura">

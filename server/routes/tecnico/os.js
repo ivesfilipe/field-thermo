@@ -90,6 +90,31 @@ function safeJsonObj(v) {
   }
 }
 
+function normalizarAssinaturas(execucao) {
+  if (!execucao) return [];
+  let lista = [];
+  if (typeof execucao.assinaturas === 'string' && execucao.assinaturas) {
+    try {
+      const p = JSON.parse(execucao.assinaturas);
+      if (Array.isArray(p)) lista = p;
+    } catch {
+      lista = [];
+    }
+  } else if (Array.isArray(execucao.assinaturas)) {
+    lista = execucao.assinaturas;
+  }
+  if (!lista.length && execucao.assinatura) {
+    lista = [{
+      id: 1,
+      nome: execucao.assinatura_nome || '',
+      cargo: execucao.assinatura_cargo || '',
+      arquivo: execucao.assinatura,
+      criado_em: execucao.concluida_em || null
+    }];
+  }
+  return lista;
+}
+
 const storage = multer.diskStorage({
   destination(req, file, cb) {
     const dir = path.join(config.UPLOADS_DIR, 'os' + req.params.id);
@@ -146,6 +171,7 @@ router.get('/os/:id', (req, res) => {
     os.execucao.atividades_executadas = safeJson(os.execucao.atividades_executadas);
     os.execucao.relatorio_ia = safeJson(os.execucao.relatorio_ia);
     os.execucao.dados_modelo = safeJsonObj(os.execucao.dados_modelo);
+    os.execucao.assinaturas = normalizarAssinaturas(os.execucao);
   }
   os.anexos = getAnexos(os.id);
   res.json({ os });
@@ -271,6 +297,31 @@ router.put('/os/:id/execucao', (req, res) => {
     if (!existente || typeof existente !== 'object' || Array.isArray(existente)) existente = {};
     atualizar.dados_modelo = JSON.stringify({ ...existente, ...b.dados_modelo });
   }
+  if (b.assinaturas !== undefined) {
+    if (!Array.isArray(b.assinaturas)) {
+      return res.status(400).json({ error: 'Assinaturas inválidas' });
+    }
+    const limpas = b.assinaturas
+      .filter((a) => a && a.arquivo)
+      .map((a, idx) => ({
+        id: a.id || idx + 1,
+        nome: String(a.nome || '').trim(),
+        cargo: String(a.cargo || '').trim(),
+        arquivo: String(a.arquivo),
+        criado_em: a.criado_em || null
+      }));
+    atualizar.assinaturas = JSON.stringify(limpas);
+    atualizar.assinatura = limpas[0]?.arquivo || null;
+    if (limpas[0]?.nome) atualizar.assinatura_nome = limpas[0].nome;
+    if (limpas[0]?.cargo !== undefined) atualizar.assinatura_cargo = limpas[0]?.cargo || null;
+  } else if (b.assinatura_nome !== undefined || b.assinatura_cargo !== undefined) {
+    const listaAtual = normalizarAssinaturas(execucao);
+    if (listaAtual.length > 0) {
+      if (b.assinatura_nome !== undefined) listaAtual[0].nome = b.assinatura_nome;
+      if (b.assinatura_cargo !== undefined) listaAtual[0].cargo = b.assinatura_cargo;
+      atualizar.assinaturas = JSON.stringify(listaAtual);
+    }
+  }
   const colunas = Object.keys(atualizar);
   if (!colunas.length) {
     return res.status(400).json({ error: 'Nenhum campo para atualizar' });
@@ -358,9 +409,71 @@ router.post('/os/:id/assinatura', upload.single('assinatura'), (req, res) => {
     return res.status(400).json({ error: 'Envie a imagem da assinatura' });
   }
   const assinatura = `/uploads/os${os.id}/${req.file.filename}`;
-  db.prepare('UPDATE execucoes SET assinatura = ? WHERE id = ?').run(assinatura, execucao.id);
-  registrarHistorico({ usuario: req.user, tipo: 'execucao', registroId: execucao.id, campo: 'assinatura', valorNovo: 'assinatura enviada' });
-  res.status(201).json({ assinatura });
+  const lista = normalizarAssinaturas(execucao);
+  const nome = req.body?.nome !== undefined
+    ? String(req.body.nome).trim()
+    : (lista.length === 0 ? (execucao.assinatura_nome || '') : '');
+  const cargo = req.body?.cargo !== undefined
+    ? String(req.body.cargo).trim()
+    : (lista.length === 0 ? (execucao.assinatura_cargo || '') : '');
+  const item = {
+    id: Date.now() + Math.floor(Math.random() * 1000),
+    nome,
+    cargo,
+    arquivo: assinatura,
+    criado_em: new Date().toISOString()
+  };
+  lista.push(item);
+  const primeira = lista[0];
+  db.prepare(
+    'UPDATE execucoes SET assinatura = ?, assinatura_nome = ?, assinatura_cargo = ?, assinaturas = ? WHERE id = ?'
+  ).run(
+    primeira.arquivo,
+    primeira.nome || execucao.assinatura_nome || null,
+    primeira.cargo || execucao.assinatura_cargo || null,
+    JSON.stringify(lista),
+    execucao.id
+  );
+  registrarHistorico({ usuario: req.user, tipo: 'execucao', registroId: execucao.id, campo: 'assinatura', valorNovo: `assinatura enviada (${nome || 'responsável'})` });
+  res.status(201).json({ assinatura, assinaturas: lista, item });
+});
+
+router.delete('/os/:id/assinaturas/:assId', (req, res) => {
+  const os = getMinhaOS(req, Number(req.params.id));
+  if (!os) {
+    return res.status(404).json({ error: 'Ordem de serviço não encontrada' });
+  }
+  const erro = podeEditarExecucao(os);
+  if (erro) {
+    return res.status(400).json({ error: erro });
+  }
+  const execucao = getExecucao(os.id);
+  if (!execucao) {
+    return res.status(404).json({ error: 'Execução não encontrada' });
+  }
+  const assId = String(req.params.assId);
+  const lista = normalizarAssinaturas(execucao);
+  const alvo = lista.find((a) => String(a.id) === assId);
+  const novaLista = lista.filter((a) => String(a.id) !== assId);
+  if (alvo && alvo.arquivo) {
+    const caminho = path.join(config.UPLOADS_DIR, 'os' + os.id, path.basename(alvo.arquivo));
+    try {
+      if (fs.existsSync(caminho)) fs.unlinkSync(caminho);
+    } catch {
+      // arquivo já removido
+    }
+  }
+  const primeira = novaLista[0] || null;
+  db.prepare(
+    'UPDATE execucoes SET assinatura = ?, assinatura_nome = ?, assinatura_cargo = ?, assinaturas = ? WHERE id = ?'
+  ).run(
+    primeira ? primeira.arquivo : null,
+    primeira ? primeira.nome : null,
+    primeira ? primeira.cargo : null,
+    JSON.stringify(novaLista),
+    execucao.id
+  );
+  res.json({ assinaturas: novaLista });
 });
 
 router.post('/os/:id/relatorio-ia', (req, res) => {
@@ -404,8 +517,10 @@ router.post('/os/:id/concluir', (req, res) => {
       return res.status(400).json({ error: msg });
     }
   }
-  if (!execucao.assinatura_nome || !execucao.assinatura) {
-    return res.status(400).json({ error: 'Registre o nome e a assinatura do responsável' });
+  const listaAssinaturas = normalizarAssinaturas(execucao);
+  const temAssinaturaValida = listaAssinaturas.some((a) => a.arquivo && String(a.nome || execucao.assinatura_nome || '').trim()) || (!!execucao.assinatura_nome && !!execucao.assinatura);
+  if (!temAssinaturaValida) {
+    return res.status(400).json({ error: 'Registre o nome e a assinatura de pelo menos um responsável' });
   }
 
   const tinhaComplemento = !!execucao.complemento_solicitado;

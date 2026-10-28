@@ -108,6 +108,7 @@ CREATE TABLE IF NOT EXISTS execucoes (
   assinatura TEXT,
   assinatura_nome TEXT,
   assinatura_cargo TEXT,
+  assinaturas TEXT,
   relatorio_ia TEXT,
   iniciada_em TEXT,
   concluida_em TEXT,

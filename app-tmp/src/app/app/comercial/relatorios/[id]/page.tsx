@@ -61,6 +61,7 @@ interface Relatorio {
   assinatura: string | null;
   assinatura_nome: string | null;
   assinatura_cargo: string | null;
+  assinaturas?: Array<{ id: number; nome: string; cargo: string; arquivo: string; criado_em?: string | null }> | null;
   tecnico_nome: string | null;
   gestor_nome: string | null;
   atendimento_concluido_em: string | null;
@@ -361,8 +362,20 @@ export default function RelatorioDetalhePage({ params }: { params: Promise<{ id:
             </div>
           )}
         </Card>
-        <Card title="Assinatura do responsável pelo atendimento">
-          {relatorio.assinatura ? (
+        <Card title="Assinaturas dos responsáveis pelo atendimento">
+          {Array.isArray(relatorio.assinaturas) && relatorio.assinaturas.length > 0 ? (
+            <div className="space-y-3">
+              {relatorio.assinaturas.map((ass, idx) => (
+                <div key={ass.id || idx} className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+                  <Image src={mediaUrl(ass.arquivo)} alt={`Assinatura ${ass.nome || idx + 1}`} width={600} height={212} className="h-20 w-auto rounded-md border border-zinc-200 bg-white" />
+                  <p className="mt-2 text-sm font-medium text-zinc-800">
+                    {ass.nome || relatorio.assinatura_nome || `Responsável #${idx + 1}`}
+                    {(ass.cargo || (idx === 0 ? relatorio.assinatura_cargo : "")) ? ` (${ass.cargo || relatorio.assinatura_cargo})` : ""}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : relatorio.assinatura ? (
             <>
               <Image src={mediaUrl(relatorio.assinatura)} alt="Assinatura" width={600} height={212} className="h-20 w-auto rounded-md border border-zinc-200" />
               {relatorio.assinatura_nome && <p className="mt-2 text-sm">{relatorio.assinatura_nome}{relatorio.assinatura_cargo ? ` (${relatorio.assinatura_cargo})` : ""}</p>}

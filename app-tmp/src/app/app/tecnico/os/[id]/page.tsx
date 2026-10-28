@@ -7,6 +7,14 @@ import { api, mediaUrl } from "@/lib/api";
 import { Alerta, Badge, Botao, Campo, Card, LinksMapa, PageHeader, Prioridade, Select, Textarea } from "@/components/ui";
 import { getModelo } from "@/lib/modelos";
 
+interface AssinaturaItem {
+  id: number;
+  nome: string;
+  cargo: string;
+  arquivo: string;
+  criado_em?: string | null;
+}
+
 interface Execucao {
   id: number;
   servico_executado: string | null;
@@ -14,6 +22,7 @@ interface Execucao {
   assinatura: string | null;
   assinatura_nome: string | null;
   assinatura_cargo: string | null;
+  assinaturas?: AssinaturaItem[] | null;
   iniciada_em: string | null;
   concluida_em: string | null;
   complemento_solicitado: string | null;
@@ -170,11 +179,14 @@ function PadAssinatura({ onSalvar }: { onSalvar: (blob: Blob) => void }) {
             const canvas = canvasRef.current;
             if (!canvas) return;
             canvas.toBlob((blob) => {
-              if (blob) onSalvar(blob);
+              if (blob) {
+                onSalvar(blob);
+                limpar();
+              }
             }, "image/png");
           }}
         >
-          ✓ Salvar assinatura
+          ✓ Adicionar assinatura
         </Botao>
       </div>
       <p className="mt-1 text-xs text-zinc-400">Peça para o cliente assinar com o dedo ou a caneta do dispositivo.</p>
@@ -195,20 +207,28 @@ export default function ExecucaoOsPage() {
     servico_executado: string;
     assinatura_nome: string;
     assinatura_cargo: string;
+    assinaturas: AssinaturaItem[];
     dados_modelo: Record<string, string>;
   }>({
     servico_executado: "",
     assinatura_nome: "",
     assinatura_cargo: "",
+    assinaturas: [],
     dados_modelo: {}
   });
   const [categoriaAnexo, setCategoriaAnexo] = useState("durante");
 
   const aplicarExecucao = useCallback((ex: Execucao | null) => {
+    const listaAss: AssinaturaItem[] = Array.isArray(ex?.assinaturas) && ex!.assinaturas.length > 0
+      ? ex!.assinaturas
+      : ex?.assinatura
+      ? [{ id: 1, nome: ex.assinatura_nome || "", cargo: ex.assinatura_cargo || "", arquivo: ex.assinatura, criado_em: ex.concluida_em }]
+      : [];
     setForm({
       servico_executado: ex?.servico_executado || "",
-      assinatura_nome: ex?.assinatura_nome || "",
-      assinatura_cargo: ex?.assinatura_cargo || "",
+      assinatura_nome: "",
+      assinatura_cargo: "",
+      assinaturas: listaAss,
       dados_modelo: ex?.dados_modelo || {}
     });
   }, []);
@@ -248,9 +268,11 @@ export default function ExecucaoOsPage() {
   const modelo = getModelo(os?.tipo_atendimento || null);
 
   function montarPayload() {
+    const primeira = form.assinaturas[0];
     const payload: Record<string, unknown> = {
-      assinatura_nome: form.assinatura_nome,
-      assinatura_cargo: form.assinatura_cargo
+      assinaturas: form.assinaturas,
+      assinatura_nome: primeira ? primeira.nome : form.assinatura_nome,
+      assinatura_cargo: primeira ? primeira.cargo : form.assinatura_cargo
     };
     const dm = form.dados_modelo || {};
     if (modelo) {
@@ -317,9 +339,17 @@ export default function ExecucaoOsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setErro("");
+    setMsg("");
     try {
-      await api.upload(`/api/tecnico/os/${id}/assinatura`, "assinatura", file);
-      setMsg("Assinatura enviada.");
+      if (form.assinaturas.length > 0) {
+        await api.put(`/api/tecnico/os/${id}/execucao`, montarPayload());
+      }
+      const fd = new FormData();
+      fd.append("assinatura", file);
+      fd.append("nome", form.assinatura_nome.trim());
+      fd.append("cargo", form.assinatura_cargo.trim());
+      await api.uploadForm(`/api/tecnico/os/${id}/assinatura`, fd);
+      setMsg("Assinatura adicionada.");
       carregar();
     } catch (err) {
       setErro((err as Error).message);
@@ -331,9 +361,28 @@ export default function ExecucaoOsPage() {
     setErro("");
     setMsg("");
     try {
+      if (form.assinaturas.length > 0) {
+        await api.put(`/api/tecnico/os/${id}/execucao`, montarPayload());
+      }
       const file = new File([blob], "assinatura.png", { type: "image/png" });
-      await api.upload(`/api/tecnico/os/${id}/assinatura`, "assinatura", file);
-      setMsg("Assinatura do cliente registrada.");
+      const fd = new FormData();
+      fd.append("assinatura", file);
+      fd.append("nome", form.assinatura_nome.trim());
+      fd.append("cargo", form.assinatura_cargo.trim());
+      await api.uploadForm(`/api/tecnico/os/${id}/assinatura`, fd);
+      setMsg("Assinatura adicionada.");
+      carregar();
+    } catch (err) {
+      setErro((err as Error).message);
+    }
+  }
+
+  async function removerAssinatura(assId: number) {
+    setErro("");
+    if (!confirm("Remover esta assinatura?")) return;
+    try {
+      await api.del(`/api/tecnico/os/${id}/assinaturas/${assId}`);
+      setMsg("Assinatura removida.");
       carregar();
     } catch (err) {
       setErro((err as Error).message);
@@ -543,31 +592,73 @@ export default function ExecucaoOsPage() {
             <p className="mt-2 text-xs text-zinc-400">Adicione múltiplas fotos do atendimento. Elas ficam vinculadas à OS.</p>
           </Card>
 
-          <Card title="4. Assinatura do responsável pelo local">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Campo label="Nome do responsável pelo local" value={form.assinatura_nome} onChange={(e) => setForm({ ...form, assinatura_nome: e.target.value })} placeholder="Nome de quem recebeu o atendimento" />
-              <Campo label="Cargo / função (opcional)" value={form.assinatura_cargo} onChange={(e) => setForm({ ...form, assinatura_cargo: e.target.value })} placeholder="Ex.: Supervisor de manutenção" />
-            </div>
-            <div className="mt-3">
-              {os.execucao?.assinatura ? (
-                <div>
-                  <p className="mb-1 text-sm font-medium text-zinc-700">Assinatura registrada</p>
-                  <Image src={mediaUrl(os.execucao.assinatura)} alt="Assinatura" width={600} height={212} className="h-24 w-auto rounded-md border border-zinc-200" />
-                  <p className="mt-2 text-xs text-zinc-400">Se necessário, desenhe novamente abaixo ou envie outra imagem para substituir.</p>
+          <Card title={`4. Assinaturas dos responsáveis (${form.assinaturas.length})`}>
+            {form.assinaturas.length > 0 && (
+              <div className="mb-4 space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Assinaturas registradas</p>
+                {form.assinaturas.map((ass, idx) => (
+                  <div key={ass.id || idx} className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-zinc-700">Assinatura #{idx + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => removerAssinatura(ass.id)}
+                        className="text-xs font-medium text-red-600 hover:underline"
+                      >
+                        Remover assinatura
+                      </button>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <Campo
+                        label="Nome do responsável"
+                        value={ass.nome}
+                        onChange={(e) => {
+                          const novas = [...form.assinaturas];
+                          novas[idx] = { ...novas[idx], nome: e.target.value };
+                          setForm({ ...form, assinaturas: novas });
+                        }}
+                        placeholder="Nome de quem assinou"
+                      />
+                      <Campo
+                        label="Cargo / função (opcional)"
+                        value={ass.cargo}
+                        onChange={(e) => {
+                          const novas = [...form.assinaturas];
+                          novas[idx] = { ...novas[idx], cargo: e.target.value };
+                          setForm({ ...form, assinaturas: novas });
+                        }}
+                        placeholder="Ex.: Supervisor de manutenção"
+                      />
+                    </div>
+                    <div className="mt-2">
+                      <Image src={mediaUrl(ass.arquivo)} alt={`Assinatura ${ass.nome || idx + 1}`} width={600} height={212} className="h-20 w-auto rounded-md border border-zinc-200 bg-white" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-3">
+              <p className="mb-2 text-sm font-semibold text-zinc-800">
+                {form.assinaturas.length > 0 ? "+ Adicionar outra assinatura" : "Adicionar assinatura do responsável"}
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Campo label="Nome do responsável pelo local" value={form.assinatura_nome} onChange={(e) => setForm({ ...form, assinatura_nome: e.target.value })} placeholder="Nome de quem recebeu o atendimento" />
+                <Campo label="Cargo / função (opcional)" value={form.assinatura_cargo} onChange={(e) => setForm({ ...form, assinatura_cargo: e.target.value })} placeholder="Ex.: Supervisor de manutenção" />
+              </div>
+              <div className="mt-3">
+                <p className="mb-1 text-sm font-medium text-zinc-700">Desenhe a assinatura abaixo e clique em &ldquo;✓ Adicionar assinatura&rdquo;</p>
+                <div className="mt-2">
+                  <PadAssinatura onSalvar={salvarAssinaturaPad} />
                 </div>
-              ) : (
-                <p className="mb-1 text-sm font-medium text-zinc-700">Assinatura do cliente na hora do atendimento</p>
-              )}
-              <div className="mt-2">
-                <PadAssinatura onSalvar={salvarAssinaturaPad} />
+                <div className="mt-3 border-t border-zinc-200 pt-3">
+                  <label className="cursor-pointer text-sm font-medium text-blue-600 underline hover:text-blue-800">
+                    Enviar imagem de assinatura (alternativa)
+                    <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={enviarAssinatura} />
+                  </label>
+                </div>
+                <p className="mt-2 text-xs text-zinc-400">Você pode adicionar quantas assinaturas forem necessárias.</p>
               </div>
-              <div className="mt-3 border-t border-zinc-100 pt-3">
-                <label className="cursor-pointer text-sm font-medium text-blue-600 underline hover:text-blue-800">
-                  Enviar imagem de assinatura (alternativa)
-                  <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={enviarAssinatura} />
-                </label>
-              </div>
-              <p className="mt-2 text-xs text-zinc-400">Data/hora registradas automaticamente na finalização.</p>
             </div>
           </Card>
 
