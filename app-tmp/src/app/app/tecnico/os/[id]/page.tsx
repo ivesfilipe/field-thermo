@@ -93,8 +93,8 @@ const CATEGORIA_LABEL: Record<string, string> = Object.fromEntries(CATEGORIAS_AN
 function Item({ rotulo, valor }: { rotulo: string; valor: React.ReactNode }) {
   return (
     <>
-      <dt className="text-zinc-500">{rotulo}</dt>
-      <dd className="font-medium text-zinc-800">{valor}</dd>
+      <div className="flex flex-col gap-0.5 rounded-lg border border-slate-200/70 bg-slate-50/70 px-3 py-2"><dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{rotulo}</dt><dd className="text-sm font-medium text-slate-900">{valor}</dd></div>{/*
+      */}
     </>
   );
 }

@@ -16,14 +16,14 @@ const COR_BOLINHA: Record<string, string> = {
 
 export function Card({ title, children, acao }: { title: string; children: React.ReactNode; acao?: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/80 px-4 py-2.5">
+    <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/70 px-5 py-3">
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">
           {title}
         </h2>
         {acao}
       </div>
-      <div className="p-4 text-slate-900">{children}</div>
+      <div className="p-5 text-slate-900">{children}</div>
     </div>
   );
 }
@@ -252,7 +252,7 @@ export function Erro({ msg }: { msg: string }) {
 
 export function Tabela({ cabecalhos, children }: { cabecalhos: React.ReactNode[]; children: React.ReactNode }) {
   return (
-    <div className="-mx-4 -my-1 overflow-x-auto">
+    <div className="overflow-x-auto rounded-lg border border-slate-200/80">
       <table className="w-full min-w-125 text-left text-sm">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
@@ -294,7 +294,7 @@ export function EstadoVazio({ texto }: { texto: string }) {
 
 export function PageHeader({ titulo, descricao, acoes }: { titulo: string; descricao?: string; acoes?: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3.5">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-white px-5 py-4 shadow-xs">
       <div>
         <h1 className="text-lg font-bold tracking-tight text-slate-900 md:text-xl">{titulo}</h1>
         {descricao && <p className="mt-0.5 text-xs text-slate-500">{descricao}</p>}
@@ -306,7 +306,7 @@ export function PageHeader({ titulo, descricao, acoes }: { titulo: string; descr
 
 export function KPI({ label, valor, cor = "text-blue-950" }: { label: string; valor: number | string; cor?: string; icone?: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-slate-200 border-l-4 border-l-blue-900 bg-white px-3.5 py-2.5">
+    <div className="rounded-xl border border-slate-200/90 border-l-4 border-l-blue-900 bg-white px-4 py-3.5 shadow-xs">
       <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</p>
       <p className={`mt-0.5 truncate text-xl font-bold leading-tight ${cor}`}>{valor}</p>
     </div>

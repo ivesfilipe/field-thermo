@@ -330,7 +330,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="flex min-h-screen bg-zinc-50 text-zinc-900">
+    <div className="flex min-h-screen bg-slate-100 text-slate-900">
       <div className="sticky top-0 hidden h-screen shrink-0 lg:block">
         <div className={`h-full transition-all duration-200 ${recolhida ? "w-16" : "w-64"}`}>
           {recolhida ? (
@@ -405,10 +405,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col pb-16 lg:pb-0">
-        <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-blue-900 bg-blue-950 px-4 py-3 shadow-sm md:px-6">
+        <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur md:px-6">
           <button
             onClick={() => setMenuAberto(true)}
-            className="rounded-lg border border-blue-800 p-2 text-blue-100 hover:bg-blue-900 lg:hidden"
+            className="rounded-lg border border-slate-200 p-2 text-slate-700 hover:bg-slate-100 lg:hidden"
             title="Abrir menu"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -416,24 +416,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </svg>
           </button>
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-white">{TituloPagina(pathname, perfil)}</p>
-            <p className="hidden truncate text-xs text-blue-300 sm:block">
+            <p className="truncate text-sm font-bold text-slate-900">{TituloPagina(pathname, perfil)}</p>
+            <p className="hidden truncate text-xs text-slate-500 sm:block">
               {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
             </p>
           </div>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2.5">
             {podeCriarOS && (
               <Link
                 href="/app/gestor/os/nova"
-                className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-blue-950 shadow-sm hover:bg-blue-50 sm:inline-block"
+                className="rounded-lg bg-blue-900 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-blue-950 sm:inline-block"
               >
                 + Nova OS
               </Link>
             )}
-            <span className="hidden rounded-full bg-blue-900 px-3 py-1 text-xs font-medium text-blue-200 md:inline-block">
+            <span className="hidden rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 md:inline-block">
               {PERFIS[perfil]}
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-800 text-xs font-bold text-white lg:hidden">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-900 text-xs font-bold text-white lg:hidden">
               {iniciais}
             </div>
           </div>
