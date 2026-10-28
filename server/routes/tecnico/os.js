@@ -565,6 +565,65 @@ router.post('/os/:id/avaliacao-google', (req, res) => {
     });
   }
 
+  const linkGoogle = config.GOOGLE_REVIEW_URL;
+  if (!linkGoogle) {
+    registrarHistorico({
+      usuario: req.user,
+      tipo: 'os',
+      registroId: os.id,
+      campo: 'avaliacao_google',
+      valorNovo: 'Erro no envio: link de avaliação do Google não configurado'
+    });
+    return res.status(500).json({ error: 'Link oficial de avaliação do Google não configurado no servidor.' });
+  }
+
+  const canal = req.body?.canal === 'email' ? 'email' : 'whatsapp';
+  const mensagem = [
+    'Olá! 😊 Obrigado por confiar em nosso trabalho. Se você ficou satisfeito com o atendimento, gostaríamos muito de contar com sua avaliação no Google. Sua opinião é muito importante para nós!',
+    '',
+    `⭐ Avalie nosso atendimento aqui: ${linkGoogle}`
+  ].join('\n');
+  const agora = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+  if (canal === 'email') {
+    const emailDestino = String(req.body?.email || os.local_responsavel_email || os.cliente_email || '').trim();
+    if (!emailDestino || !emailDestino.includes('@')) {
+      registrarHistorico({
+        usuario: req.user,
+        tipo: 'os',
+        registroId: os.id,
+        campo: 'avaliacao_google',
+        valorNovo: 'Erro no envio por e-mail: cliente sem e-mail válido cadastrado'
+      });
+      return res.status(400).json({
+        error: 'Este cliente/local não possui e-mail válido cadastrado para envio da avaliação.'
+      });
+    }
+
+    const assunto = `Avalie nosso atendimento no Google - OS ${os.numero} (MedicalThermo Herzog)`;
+    const mailtoUrl = `mailto:${emailDestino}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(mensagem)}`;
+
+    db.prepare(
+      'UPDATE execucoes SET avaliacao_google_enviada_em = ?, avaliacao_google_enviada_por = ? WHERE id = ?'
+    ).run(agora, req.user.id, execucao.id);
+
+    registrarHistorico({
+      usuario: req.user,
+      tipo: 'os',
+      registroId: os.id,
+      campo: 'avaliacao_google',
+      valorNovo: `Enviado via E-mail para ${emailDestino} em ${agora}`
+    });
+
+    return res.json({
+      ok: true,
+      canal: 'email',
+      enviada_em: agora,
+      mailto_url: mailtoUrl,
+      link_google: linkGoogle
+    });
+  }
+
   const telBruto = String(req.body?.telefone || os.local_responsavel_telefone || os.cliente_telefone || '').replace(/\D/g, '');
   if (!telBruto || telBruto.length < 8) {
     registrarHistorico({
@@ -579,27 +638,8 @@ router.post('/os/:id/avaliacao-google', (req, res) => {
     });
   }
 
-  const linkGoogle = config.GOOGLE_REVIEW_URL;
-  if (!linkGoogle) {
-    registrarHistorico({
-      usuario: req.user,
-      tipo: 'os',
-      registroId: os.id,
-      campo: 'avaliacao_google',
-      valorNovo: 'Erro no envio: link de avaliação do Google não configurado'
-    });
-    return res.status(500).json({ error: 'Link oficial de avaliação do Google não configurado no servidor.' });
-  }
-
   const telWhatsApp = telBruto.length <= 11 ? `55${telBruto}` : telBruto;
-  const mensagem = [
-    'Olá! 😊 Obrigado por confiar em nosso trabalho. Se você ficou satisfeito com o atendimento, gostaríamos muito de contar com sua avaliação no Google. Sua opinião é muito importante para nós!',
-    '',
-    `⭐ Avalie nosso atendimento aqui: ${linkGoogle}`
-  ].join('\n');
-
   const whatsappUrl = `https://wa.me/${telWhatsApp}?text=${encodeURIComponent(mensagem)}`;
-  const agora = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
   db.prepare(
     'UPDATE execucoes SET avaliacao_google_enviada_em = ?, avaliacao_google_enviada_por = ? WHERE id = ?'
@@ -615,6 +655,7 @@ router.post('/os/:id/avaliacao-google', (req, res) => {
 
   res.json({
     ok: true,
+    canal: 'whatsapp',
     enviada_em: agora,
     whatsapp_url: whatsappUrl,
     link_google: linkGoogle
