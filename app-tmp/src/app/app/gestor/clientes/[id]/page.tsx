@@ -52,6 +52,8 @@ interface OS {
   equipe_nome: string | null;
   servico: string;
   data_agendada: string | null;
+  hora_inicio: string | null;
+  hora_fim: string | null;
   prioridade: string;
   status: string;
   relatorio_id: number | null;
@@ -382,12 +384,15 @@ export default function ClientePage() {
           ) : ordens.length === 0 ? (
             <LinhaVazia texto="Nenhuma ordem de serviço para este cliente." />
           ) : (
-            <Tabela cabecalhos={["Nº", "Cliente — Equipe", "Data", "Prioridade", "Status", ""]}>
+            <Tabela cabecalhos={["Nº", "Cliente — Equipe", "Data / hora", "Prioridade", "Status", ""]}>
               {ordens.map((o) => (
                 <tr key={o.id} className="cursor-pointer transition-colors hover:bg-blue-50/50" onClick={() => router.push(`/app/gestor/os/${o.id}`)}>
                   <td className="px-3 py-2 font-medium text-blue-700">{o.numero}</td>
                   <td className="px-3 py-2">{o.cliente_nome} — {o.equipe_nome || "Sem equipe"}</td>
-                  <td className="px-3 py-2">{o.data_agendada || "-"}</td>
+                  <td className="whitespace-nowrap px-3 py-2">
+                    {o.data_agendada || "-"}
+                    {o.hora_inicio && <span className="block text-xs text-zinc-500">{o.hora_inicio}{o.hora_fim ? `–${o.hora_fim}` : ""}</span>}
+                  </td>
                   <td className="px-3 py-2"><Prioridade p={o.prioridade} /></td>
                   <td className="px-3 py-2"><Badge status={o.status} /></td>
                   <td className="px-3 py-2">

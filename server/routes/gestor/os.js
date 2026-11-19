@@ -136,7 +136,13 @@ router.get('/os', (req, res) => {
     const like = `%${busca}%`;
     params.push(like, like, like);
   }
-  sql += ' ORDER BY CASE o.prioridade WHEN \'urgente\' THEN 1 WHEN \'alta\' THEN 2 WHEN \'media\' THEN 3 ELSE 4 END, o.data_agendada';
+  sql += ` ORDER BY
+    CASE WHEN o.data_agendada IS NULL THEN 1 ELSE 0 END,
+    o.data_agendada ASC,
+    CASE WHEN o.hora_inicio IS NULL THEN 1 ELSE 0 END,
+    o.hora_inicio ASC,
+    CASE o.prioridade WHEN 'urgente' THEN 1 WHEN 'alta' THEN 2 WHEN 'media' THEN 3 ELSE 4 END,
+    o.id ASC`;
   res.json({ ordens: db.prepare(sql).all(...params) });
 });
 

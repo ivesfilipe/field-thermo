@@ -15,6 +15,8 @@ interface OS {
   servico: string;
   equipe_nome: string | null;
   data_agendada: string | null;
+  hora_inicio: string | null;
+  hora_fim: string | null;
   prioridade: string;
   status: string;
 }
@@ -149,7 +151,7 @@ export default function OsPage() {
       </div>
 
       <Card title={`Ordens encontradas (${ordens?.length ?? "..."})`}>
-        <Tabela cabecalhos={["Nº", "Cliente — Equipe", "Local", "Data", "Prioridade", "Status", "Ações"]}>
+        <Tabela cabecalhos={["Nº", "Cliente — Equipe", "Local", "Data / hora", "Prioridade", "Status", "Ações"]}>
           {ordens === null ? (
             <tr><td colSpan={99}><Loading /></td></tr>
           ) : ordens.length === 0 ? (
@@ -172,7 +174,10 @@ export default function OsPage() {
                     </span>
                   )}
                 </td>
-                <td className="whitespace-nowrap px-3 py-2">{o.data_agendada || "-"}</td>
+                <td className="whitespace-nowrap px-3 py-2">
+                  {o.data_agendada || "-"}
+                  {o.hora_inicio && <span className="block text-xs text-zinc-500">{o.hora_inicio}{o.hora_fim ? `–${o.hora_fim}` : ""}</span>}
+                </td>
                 <td className="px-3 py-2"><Prioridade p={o.prioridade} /></td>
                 <td className="px-3 py-2"><Badge status={o.status} /></td>
                 <td className="px-3 py-2">

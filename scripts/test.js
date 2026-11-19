@@ -154,6 +154,32 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     test('OS excluída ainda consultável por id', r15.status === 200 && r15.data.os.status === 'excluida', r15.status);
     const r16 = await api('/api/tecnico/os', 'GET', tecnico);
     test('técnico não vê OS excluída', r16.status === 200 && !r16.data.ordens.some((o) => o.id === osExcl), r16.status);
+
+    const listaEquipes = await api('/api/gestor/equipes', 'GET', gestor);
+    const equipeSul = listaEquipes.data.equipes.find((e) => e.nome === 'Equipe Sul');
+    const cOrdem = await api('/api/gestor/clientes', 'POST', gestor, { nome: 'Cliente Ordem de Execucao' });
+    const osOrdemTarde = await api('/api/gestor/os', 'POST', gestor, {
+      cliente_id: cOrdem.data.cliente.id, servico: 'Ordem B - tarde', prioridade: 'urgente',
+      data_agendada: '2026-08-18', hora_inicio: '15:00', hora_fim: '16:00', equipe_id: equipeSul.id
+    });
+    const osOrdemManha = await api('/api/gestor/os', 'POST', gestor, {
+      cliente_id: cOrdem.data.cliente.id, servico: 'Ordem A - manha', prioridade: 'baixa',
+      data_agendada: '2026-08-18', hora_inicio: '08:00', hora_fim: '09:00', equipe_id: equipeSul.id
+    });
+    const osOrdemDiaSeguinte = await api('/api/gestor/os', 'POST', gestor, {
+      cliente_id: cOrdem.data.cliente.id, servico: 'Ordem C - dia seguinte', prioridade: 'alta',
+      data_agendada: '2026-08-19', hora_inicio: '09:00', hora_fim: '10:00', equipe_id: equipeSul.id
+    });
+    const listaOrdem = await api(`/api/gestor/os?cliente_id=${cOrdem.data.cliente.id}`, 'GET', gestor);
+    const sequencia = listaOrdem.data.ordens.map((o) => o.numero);
+    test(
+      'lista de OS em ordem de execução (data e hora)',
+      listaOrdem.status === 200 && sequencia.length === 3 &&
+        sequencia[0] === osOrdemManha.data.os.numero &&
+        sequencia[1] === osOrdemTarde.data.os.numero &&
+        sequencia[2] === osOrdemDiaSeguinte.data.os.numero,
+      JSON.stringify(sequencia)
+    );
   }
 
   console.log('Fase 5 - Tecnico (execucao, fotos, assinatura, conclusao)');
