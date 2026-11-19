@@ -833,9 +833,6 @@ export default function CalendarioPage() {
                   {equipes.map((eq) => <option key={eq.id} value={eq.id}>{eq.nome}</option>)}
                 </Select>
               </div>
-              {selecionado.kind === "os" && selecionado.status_base === "concluida" && (
-                <p className="mt-2 text-xs text-amber-600">OS concluída: a correção altera somente os dados da OS. A execução e o relatório da equipe são preservados.</p>
-              )}
             </div>
 
             <div className="flex flex-wrap gap-2 border-t border-zinc-200 pt-3">

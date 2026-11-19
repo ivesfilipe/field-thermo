@@ -4,7 +4,11 @@ import { AuthProvider } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Thermo control - Gestão de serviços técnicos",
-  description: "Plataforma de gestão de serviços técnicos"
+  description: "Plataforma de gestão de serviços técnicos",
+  icons: {
+    icon: "/icon.png",
+    apple: "/apple-icon.png"
+  }
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -238,7 +238,8 @@ router.put('/os/:id', (req, res) => {
   const osFinalizada = ['concluida', 'aguardando_validacao', 'cancelada'].includes(os.status);
   const {
     cliente_id, local_id, responsavel_local, equipamento_id, servico, descricao,
-    prioridade, data_agendada, hora_inicio, hora_fim, equipe_id, confirmada, tipo_atendimento
+    prioridade, data_agendada, hora_inicio, hora_fim, equipe_id, confirmada, tipo_atendimento,
+    diagnostico, servico_executado, solucao, observacoes_equipe
   } = req.body || {};
   if (tipo_atendimento !== undefined && tipo_atendimento !== null && !MODELOS[tipo_atendimento]) {
     return res.status(400).json({ error: 'Tipo de atendimento inválido' });
@@ -311,6 +312,24 @@ router.put('/os/:id', (req, res) => {
     novos.hora_inicio, novos.hora_fim, novos.equipe_id, novos.confirmada,
     novos.tipo_atendimento, req.user.id, id
   );
+  // Se o gestor também editou campos da execução/relatório, atualiza livremente preservando fotos e assinaturas
+  if (
+    diagnostico !== undefined ||
+    servico_executado !== undefined ||
+    solucao !== undefined ||
+    observacoes_equipe !== undefined
+  ) {
+    const execAtual = db.prepare('SELECT * FROM execucoes WHERE os_id = ?').get(id);
+    if (execAtual) {
+      const novoDiag = diagnostico !== undefined ? (diagnostico || null) : execAtual.diagnostico;
+      const novoServExec = servico_executado !== undefined ? (servico_executado || null) : execAtual.servico_executado;
+      const novaSol = solucao !== undefined ? (solucao || null) : execAtual.solucao;
+      const novaObs = observacoes_equipe !== undefined ? (observacoes_equipe || null) : execAtual.observacoes;
+      db.prepare(
+        'UPDATE execucoes SET diagnostico = ?, servico_executado = ?, solucao = ?, observacoes = ? WHERE os_id = ?'
+      ).run(novoDiag, novoServExec, novaSol, novaObs, id);
+    }
+  }
   atualizarIdentificacaoRelatorio(id);
   res.json({ os: getOS(id) });
 });

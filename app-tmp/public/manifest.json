@@ -1,0 +1,23 @@
+{
+  "name": "Thermo Control — MedicalThermo Herzog",
+  "short_name": "Thermo Control",
+  "description": "Plataforma de gestão de serviços técnicos",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#172554",
+  "theme_color": "#172554",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
