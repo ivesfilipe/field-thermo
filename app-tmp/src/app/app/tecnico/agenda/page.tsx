@@ -97,9 +97,10 @@ function fmtDataSemana(d: Date): string {
 
 export default function MinhaAgendaPage() {
   const router = useRouter();
-  const [visao, setVisao] = useState<Visao>("dia");
+  const [visao, setVisao] = useState<Visao>("semana");
   const [ancora, setAncora] = useState(() => new Date());
   const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>("todos");
+  const [filtroStatus, setFiltroStatus] = useState<string>("");
   const [agenda, setAgenda] = useState<AgendaItem[] | null>(null);
   const [detalhe, setDetalhe] = useState<AgendaItem | null>(null);
   const [erro, setErro] = useState("");
@@ -108,14 +109,14 @@ export default function MinhaAgendaPage() {
 
   const periodo = useMemo(() => {
     const inicio =
-      visao === "mes"
+      visao === "mes" || visao === "lista"
         ? new Date(ancora.getFullYear(), ancora.getMonth(), 1)
         : visao === "semana"
         ? inicioSemana(ancora)
         : new Date(ancora.getFullYear(), ancora.getMonth(), ancora.getDate());
 
     const fim =
-      visao === "mes"
+      visao === "mes" || visao === "lista"
         ? new Date(ancora.getFullYear(), ancora.getMonth() + 1, 0)
         : visao === "semana"
         ? addDias(inicio, 6)
@@ -139,7 +140,7 @@ export default function MinhaAgendaPage() {
   useEffect(carregar, [carregar]);
 
   function navegar(dir: number) {
-    if (visao === "mes") setAncora(addMeses(ancora, dir));
+    if (visao === "mes" || visao === "lista") setAncora(addMeses(ancora, dir));
     else if (visao === "semana") setAncora(addDias(ancora, dir * 7));
     else setAncora(addDias(ancora, dir));
   }
@@ -149,7 +150,7 @@ export default function MinhaAgendaPage() {
   }
 
   const tituloPeriodo = useMemo(() => {
-    if (visao === "mes") return `${MESES[periodo.inicio.getMonth()]} de ${periodo.inicio.getFullYear()}`;
+    if (visao === "mes" || visao === "lista") return `${MESES[periodo.inicio.getMonth()]} de ${periodo.inicio.getFullYear()}`;
     if (visao === "semana") return `${fmtData(iso(periodo.inicio))} — ${fmtData(iso(periodo.fim))}`;
     return fmtData(iso(ancora));
   }, [visao, ancora, periodo]);
@@ -171,13 +172,16 @@ export default function MinhaAgendaPage() {
     }
   }
 
-  // Filtragem por tipo (todos / os / atividade)
+  // Filtragem por tipo (todos / os / atividade) e status
   const itensFiltrados = useMemo(() => {
     if (!agenda) return [];
-    if (filtroTipo === "os") return agenda.filter((i) => i.kind === "os");
-    if (filtroTipo === "atividade") return agenda.filter((i) => i.kind === "atividade");
-    return agenda;
-  }, [agenda, filtroTipo]);
+    return agenda.filter((i) => {
+      if (filtroTipo === "os" && i.kind !== "os") return false;
+      if (filtroTipo === "atividade" && i.kind !== "atividade") return false;
+      if (filtroStatus && i.status_base !== filtroStatus && i.status !== filtroStatus) return false;
+      return true;
+    });
+  }, [agenda, filtroTipo, filtroStatus]);
 
   const totalGeral = agenda?.length || 0;
   const totalOs = (agenda || []).filter((i) => i.kind === "os").length;
@@ -328,6 +332,26 @@ export default function MinhaAgendaPage() {
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
             <span>Atividades Técnicas ({totalAtividades.length})</span>
           </button>
+          <span className="mx-1 hidden h-6 w-px bg-slate-200 sm:inline-block" />
+          {[
+            { v: "", l: "Todos os status" },
+            { v: "pendente", l: "Pendentes" },
+            { v: "em_andamento", l: "Em atendimento" },
+            { v: "concluida", l: "Concluídas" }
+          ].map((st) => (
+            <button
+              key={st.v}
+              type="button"
+              onClick={() => setFiltroStatus(st.v)}
+              className={`rounded-lg px-2.5 py-1.5 font-medium transition ${
+                filtroStatus === st.v
+                  ? "bg-blue-900 text-white shadow-xs"
+                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              {st.l}
+            </button>
+          ))}
         </div>
       </Card>
 

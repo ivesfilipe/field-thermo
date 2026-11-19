@@ -9,7 +9,9 @@ const router = express.Router();
 router.use(authenticate, requireRole('tecnico'));
 
 router.get('/agenda', (req, res) => {
-  const { data_inicio, data_fim } = req.query;
+  const { data, data_inicio, data_fim } = req.query;
+  const inicio = data_inicio || data;
+  const fim = data_fim || data;
 
   const equipeIds = equipesDoUsuario(req.user.id);
 
@@ -25,27 +27,28 @@ router.get('/agenda', (req, res) => {
     paramsAtv.push(req.user.id);
   }
 
-  if (data_inicio) {
+  if (inicio) {
     condOs.push('o.data_agendada >= ?');
     condAtv.push('a.data >= ?');
-    paramsOs.push(data_inicio);
-    paramsAtv.push(data_inicio);
+    paramsOs.push(inicio);
+    paramsAtv.push(inicio);
   }
-  if (data_fim) {
+  if (fim) {
     condOs.push('o.data_agendada <= ?');
     condAtv.push('a.data <= ?');
-    paramsOs.push(data_fim);
-    paramsAtv.push(data_fim);
+    paramsOs.push(fim);
+    paramsAtv.push(fim);
   }
 
   const ordens = db
     .prepare(
       `SELECT o.id, o.numero, o.servico, o.prioridade, o.data_agendada, o.hora_inicio, o.hora_fim,
         o.confirmada, o.status, o.local_id,
-        c.nome AS cliente_nome, l.nome AS local_nome, ${sqlEnderecoLocalOuCliente('l', 'c')}, e.nome AS equipamento_nome,
+        c.nome AS cliente_nome, eq.nome AS equipe_nome, l.nome AS local_nome, ${sqlEnderecoLocalOuCliente('l', 'c')}, e.nome AS equipamento_nome,
         ${sqlEnderecoCompleto('l', 'local_endereco_completo', 'c')}
        FROM ordens_servico o
        LEFT JOIN clientes c ON c.id = o.cliente_id
+       LEFT JOIN equipes eq ON eq.id = o.equipe_id
        LEFT JOIN locais l ON l.id = o.local_id
        LEFT JOIN equipamentos e ON e.id = o.equipamento_id
        WHERE ${condOs.join(' AND ')}
@@ -76,6 +79,7 @@ router.get('/agenda', (req, res) => {
       titulo: o.servico,
       descricao: null,
       cliente_nome: o.cliente_nome,
+      equipe_nome: o.equipe_nome,
       local_nome: o.local_nome,
       local_endereco: o.local_endereco,
       local_endereco_completo: o.local_endereco_completo,
