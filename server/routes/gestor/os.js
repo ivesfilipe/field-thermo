@@ -370,6 +370,71 @@ function atualizarIdentificacaoRelatorio(osId) {
   db.prepare('UPDATE relatorios SET conteudo = ? WHERE id = ?').run(JSON.stringify(conteudo), rel.id);
 }
 
+router.patch('/os/:id/anexos/:anexoId', (req, res) => {
+  const osId = Number(req.params.id);
+  const anexoId = Number(req.params.anexoId);
+  const anexo = db.prepare('SELECT * FROM anexos WHERE id = ? AND os_id = ?').get(anexoId, osId);
+  if (!anexo) {
+    return res.status(404).json({ error: 'Anexo não encontrado' });
+  }
+  const legenda = req.body?.legenda !== undefined ? (String(req.body.legenda).trim() || null) : anexo.legenda;
+  db.prepare('UPDATE anexos SET legenda = ? WHERE id = ?').run(legenda, anexo.id);
+  res.json({ anexo: { ...anexo, legenda } });
+});
+
+router.post('/os/:id/copiar-assinatura', (req, res) => {
+  const destinoId = Number(req.params.id);
+  const { origem_os_id, copiar_cliente = true, copiar_tecnica = true } = req.body || {};
+  const origemId = Number(origem_os_id);
+  if (!origemId || origemId === destinoId) {
+    return res.status(400).json({ error: 'Informe uma OS de origem válida e diferente da atual' });
+  }
+  const osDestino = db.prepare('SELECT * FROM ordens_servico WHERE id = ?').get(destinoId);
+  if (!osDestino) {
+    return res.status(404).json({ error: 'OS de destino não encontrada' });
+  }
+  const osOrigem = db.prepare('SELECT * FROM ordens_servico WHERE id = ?').get(origemId);
+  if (!osOrigem) {
+    return res.status(404).json({ error: 'OS de origem não encontrada' });
+  }
+  const execOrigem = db.prepare('SELECT * FROM execucoes WHERE os_id = ?').get(origemId);
+  if (!execOrigem) {
+    return res.status(400).json({ error: 'A OS de origem não possui execução/assinatura registrada' });
+  }
+  const temCliente = Boolean(execOrigem.assinatura || (execOrigem.assinaturas && execOrigem.assinaturas !== '[]'));
+  const temTecnica = Boolean(execOrigem.assinatura_tecnico);
+  if ((copiar_cliente && !temCliente) && (copiar_tecnica && !temTecnica)) {
+    return res.status(400).json({ error: 'A OS de origem não possui assinatura para copiar' });
+  }
+  let execDestino = db.prepare('SELECT * FROM execucoes WHERE os_id = ?').get(destinoId);
+  if (!execDestino) {
+    const info = db.prepare("INSERT INTO execucoes (os_id, iniciada_em) VALUES (?, datetime('now', '-3 hours'))").run(destinoId);
+    execDestino = db.prepare('SELECT * FROM execucoes WHERE id = ?').get(info.lastInsertRowid);
+  }
+  const sets = [];
+  const vals = [];
+  if (copiar_cliente && temCliente) {
+    sets.push('assinatura = ?', 'assinatura_nome = ?', 'assinatura_cargo = ?', 'assinaturas = ?');
+    vals.push(execOrigem.assinatura, execOrigem.assinatura_nome, execOrigem.assinatura_cargo, execOrigem.assinaturas);
+  }
+  if (copiar_tecnica && temTecnica) {
+    sets.push('assinatura_tecnico = ?', 'assinatura_tecnico_nome = ?');
+    vals.push(execOrigem.assinatura_tecnico, execOrigem.assinatura_tecnico_nome);
+  }
+  if (!sets.length) {
+    return res.status(400).json({ error: 'Nenhuma assinatura disponível nos tipos selecionados na OS de origem' });
+  }
+  db.prepare(`UPDATE execucoes SET ${sets.join(', ')} WHERE id = ?`).run(...vals, execDestino.id);
+  registrarHistorico({
+    usuario: req.user,
+    tipo: 'os',
+    registroId: destinoId,
+    campo: 'assinatura',
+    valorNovo: `Copiada da ${osOrigem.numero}`
+  });
+  res.json({ os: getOS(destinoId) });
+});
+
 router.patch('/os/:id/cancelar', (req, res) => {
   const id = Number(req.params.id);
   const os = db.prepare('SELECT * FROM ordens_servico WHERE id = ?').get(id);

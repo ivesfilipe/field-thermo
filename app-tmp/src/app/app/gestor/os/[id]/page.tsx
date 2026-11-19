@@ -223,6 +223,13 @@ export default function OsDetalhePage() {
   const [linkRelatorio, setLinkRelatorio] = useState<string | null>(null);
   const [gerandoLinkRelatorio, setGerandoLinkRelatorio] = useState(false);
   const [editandoOs, setEditandoOs] = useState(false);
+  const [legendasFoto, setLegendasFoto] = useState<Record<number, string>>({});
+  const [modalCopiarAss, setModalCopiarAss] = useState(false);
+  const [outrasOs, setOutrasOs] = useState<Array<{ id: number; numero: string; cliente_nome: string; data_agendada: string | null }>>([]);
+  const [origemAssId, setOrigemAssId] = useState("");
+  const [copiarCliente, setCopiarCliente] = useState(true);
+  const [copiarTecnica, setCopiarTecnica] = useState(true);
+  const [copiandoAss, setCopiandoAss] = useState(false);
 
   const RESOLVEU_LABEL: Record<string, string> = { sim: "Sim", parcialmente: "Parcialmente", nao: "Não" };
 
@@ -450,6 +457,50 @@ export default function OsDetalhePage() {
     }
   }
 
+  async function salvarLegendaFoto(anexoId: number, legenda: string) {
+    try {
+      await api.patch(`/api/gestor/os/${id}/anexos/${anexoId}`, { legenda });
+      setMsg("Legenda da foto salva.");
+      carregar();
+    } catch (err) {
+      setErro((err as Error).message);
+    }
+  }
+
+  async function abrirModalCopiarAssinatura() {
+    setErro("");
+    setOrigemAssId("");
+    setCopiarCliente(true);
+    setCopiarTecnica(true);
+    setModalCopiarAss(true);
+    try {
+      const r = await api.get<{ ordens: Array<{ id: number; numero: string; cliente_nome: string; data_agendada: string | null }> }>("/api/gestor/os");
+      setOutrasOs((r.ordens || []).filter((o) => String(o.id) !== String(id)));
+    } catch {
+      setOutrasOs([]);
+    }
+  }
+
+  async function confirmarCopiarAssinatura() {
+    if (!origemAssId) return setErro("Selecione a OS de origem.");
+    setErro("");
+    setCopiandoAss(true);
+    try {
+      await api.post(`/api/gestor/os/${id}/copiar-assinatura`, {
+        origem_os_id: Number(origemAssId),
+        copiar_cliente: copiarCliente,
+        copiar_tecnica: copiarTecnica
+      });
+      setModalCopiarAss(false);
+      setMsg("Assinatura copiada com sucesso!");
+      carregar();
+    } catch (err) {
+      setErro((err as Error).message);
+    } finally {
+      setCopiandoAss(false);
+    }
+  }
+
   if (!os) {
     return <Alerta tipo="erro" msg={erro} onClose={() => setErro("")} />;
   }
@@ -468,7 +519,10 @@ export default function OsDetalhePage() {
         acoes={
           <>
             {os.status !== "excluida" && (
-              <Botao onClick={() => setEditandoOs(true)}>Editar OS</Botao>
+              <>
+                <Botao onClick={() => setEditandoOs(true)}>Editar OS</Botao>
+                <Botao variante="secundario" onClick={abrirModalCopiarAssinatura}>Copiar assinatura</Botao>
+              </>
             )}
             {os.status === "pendente" && (
               <Botao variante="sucesso" onClick={confirmarOS}>{os.confirmada ? "Desconfirmar" : "Confirmar"}</Botao>
@@ -511,6 +565,37 @@ export default function OsDetalhePage() {
           </span>
         )}
       </div>
+
+      {modalCopiarAss && (
+        <Modal titulo={`Copiar assinatura para ${os.numero}`} onFechar={() => setModalCopiarAss(false)}>
+          <div className="space-y-3">
+            <Select label="OS de origem (que possui a assinatura)" value={origemAssId} onChange={(e) => setOrigemAssId(e.target.value)}>
+              <option value="">Selecione a OS...</option>
+              {outrasOs.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.numero} — {o.cliente_nome}{o.data_agendada ? ` (${o.data_agendada.split("-").reverse().join("/")})` : ""}
+                </option>
+              ))}
+            </Select>
+            <div className="space-y-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm">
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={copiarCliente} onChange={(e) => setCopiarCliente(e.target.checked)} />
+                <span>Copiar assinatura do responsável (cliente)</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={copiarTecnica} onChange={(e) => setCopiarTecnica(e.target.checked)} />
+                <span>Copiar assinatura técnica</span>
+              </label>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-zinc-200 pt-3">
+              <Botao variante="secundario" onClick={() => setModalCopiarAss(false)}>Cancelar</Botao>
+              <Botao disabled={copiandoAss || !origemAssId} onClick={confirmarCopiarAssinatura}>
+                {copiandoAss ? "Copiando..." : "Copiar assinatura"}
+              </Botao>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {editandoOs && (
         <EditarOsModal
@@ -696,13 +781,37 @@ export default function OsDetalhePage() {
           {exec.observacoes && <p className="mt-2 text-sm text-zinc-600"><strong className="text-zinc-500">Observações:</strong> {exec.observacoes}</p>}
           {fotos.length > 0 && (
             <div className="mt-3">
-              <p className="mb-1.5 text-xs font-semibold text-zinc-600">Fotos anexadas ({fotos.length}) — clique para abrir:</p>
+              <p className="mb-1.5 text-xs font-semibold text-zinc-600">Fotos anexadas ({fotos.length}) — clique para abrir ou edite a legenda abaixo:</p>
               <GaleriaFotos
                 fotos={fotos.map((f, idx) => ({
                   src: mediaUrl(f.arquivo),
-                  legenda: `${CATEGORIA_LABEL[f.categoria] || "Foto"} #${idx + 1}`
+                  legenda: f.legenda || `${CATEGORIA_LABEL[f.categoria] || "Foto"} #${idx + 1}`
                 }))}
               />
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+                {fotos.map((f, idx) => {
+                  const val = legendasFoto[f.id] !== undefined ? legendasFoto[f.id] : (f.legenda || "");
+                  return (
+                    <div key={f.id} className="rounded-lg border border-zinc-200 bg-zinc-50 p-2">
+                      <label className="block text-[11px] font-semibold text-zinc-500">
+                        Legenda Foto #{idx + 1} ({CATEGORIA_LABEL[f.categoria] || f.categoria})
+                      </label>
+                      <input
+                        type="text"
+                        value={val}
+                        onChange={(e) => setLegendasFoto((prev) => ({ ...prev, [f.id]: e.target.value }))}
+                        onBlur={(e) => {
+                          if (e.target.value.trim() !== (f.legenda || "").trim()) {
+                            salvarLegendaFoto(f.id, e.target.value);
+                          }
+                        }}
+                        placeholder="Digite a legenda para o relatório..."
+                        className="mt-1 w-full rounded border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-800 focus:border-blue-600 focus:outline-none"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
           {os.anexos && os.anexos.filter((a) => a.categoria === "documento").length > 0 && (

@@ -1460,8 +1460,7 @@ function enviarPdfHtml(relatorio, req, res) {
           </div>
         </div>
         <div>
-          <div class="assinatura-nome">${e(relatorio.gestor_nome || 'Gestão Operacional')}</div>
-          <div class="assinatura-cargo">Gestor Técnico Responsável</div>
+          <div class="assinatura-nome">Gestor Técnico</div>
           <div class="assinatura-data">${relatorio.data_validacao ? `Aprovado em: ${e(formatarDataHora(relatorio.data_validacao))}` : 'Aprovado'}</div>
         </div>
       </div>

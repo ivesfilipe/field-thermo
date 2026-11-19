@@ -336,7 +336,7 @@ export default function AppHome() {
             </Card>
 
             <Card title="Últimas Ordens de Serviço" acao={<Botao variante="secundario" onClick={() => router.push("/app/tecnico/os")}>Ver todas</Botao>}>
-              <Tabela cabecalhos={["Nº", "Cliente — Serviço", "Data / hora", "Status"]}>
+              <Tabela cabecalhos={["Nº", "Cliente — Equipe", "Data / hora", "Status"]}>
                 {ordens === null ? (
                   <tr><td colSpan={99}><Loading /></td></tr>
                 ) : ordens.length === 0 ? (
@@ -346,8 +346,9 @@ export default function AppHome() {
                     <tr key={o.id} className="cursor-pointer transition-colors hover:bg-blue-50/50" onClick={() => router.push(`/app/tecnico/os/${o.id}`)}>
                       <td className="whitespace-nowrap px-3 py-2 font-medium text-blue-700">{o.numero}</td>
                       <td className="px-3 py-2">
-                        <span className="block max-w-48 truncate font-medium text-slate-900" title={o.cliente_nome}>{o.cliente_nome}</span>
-                        <span className="block max-w-48 truncate text-xs text-zinc-500" title={o.servico}>{o.servico}</span>
+                        <span className="block max-w-52 truncate font-medium text-slate-900" title={`${o.cliente_nome} — ${o.equipe_nome || "Sem equipe"}`}>
+                          {o.cliente_nome} — {o.equipe_nome || "Sem equipe"}
+                        </span>
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-700">
                         <span className="block font-medium">{fmtDataBr(o.data_agendada)}</span>
@@ -416,7 +417,7 @@ export default function AppHome() {
             </Card>
 
             <Card title="Últimas Ordens de Serviço" acao={<Botao variante="secundario" onClick={() => router.push("/app/gestor/os")}>Ver todas</Botao>}>
-              <Tabela cabecalhos={["Nº", "Cliente", "Serviço", "Data", "Status"]}>
+              <Tabela cabecalhos={["Nº", "Cliente — Equipe", "Data / hora", "Status"]}>
                 {ordens === null ? (
                   <tr><td colSpan={99}><Loading /></td></tr>
                 ) : ordens.length === 0 ? (
@@ -424,10 +425,18 @@ export default function AppHome() {
                 ) : (
                   ordens.slice(0, 6).map((o) => (
                     <tr key={o.id} className="cursor-pointer transition-colors hover:bg-blue-50/50" onClick={() => router.push(`/app/gestor/os/${o.id}`)}>
-                      <td className="px-3 py-2 font-medium text-blue-700">{o.numero}</td>
-                      <td className="px-3 py-2">{o.cliente_nome}</td>
-                      <td className="px-3 py-2">{o.servico}</td>
-                      <td className="whitespace-nowrap px-3 py-2">{o.data_agendada || "-"}</td>
+                      <td className="whitespace-nowrap px-3 py-2 font-medium text-blue-700">{o.numero}</td>
+                      <td className="px-3 py-2">
+                        <span className="block max-w-52 truncate font-medium text-slate-900" title={`${o.cliente_nome} — ${o.equipe_nome || "Sem equipe"}`}>
+                          {o.cliente_nome} — {o.equipe_nome || "Sem equipe"}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-700">
+                        <span className="block font-medium">{fmtDataBr(o.data_agendada)}</span>
+                        {(o.hora_inicio || o.hora_fim) && (
+                          <span className="text-zinc-500">{o.hora_inicio || "--:--"}–{o.hora_fim || "--:--"}</span>
+                        )}
+                      </td>
                       <td className="px-3 py-2"><Badge status={o.status} /></td>
                     </tr>
                   ))
