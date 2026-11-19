@@ -149,7 +149,7 @@ export default function OsPage() {
       </div>
 
       <Card title={`Ordens encontradas (${ordens?.length ?? "..."})`}>
-        <Tabela cabecalhos={["Nº", "Cliente", "Local", "Serviço", "Equipe", "Data", "Prioridade", "Status", ""]}>
+        <Tabela cabecalhos={["Nº", "Cliente — Equipe", "Local", "Data", "Prioridade", "Status", "Ações"]}>
           {ordens === null ? (
             <tr><td colSpan={99}><Loading /></td></tr>
           ) : ordens.length === 0 ? (
@@ -157,25 +157,38 @@ export default function OsPage() {
           ) : (
             ordens.map((o) => (
               <tr key={o.id} className="cursor-pointer transition-colors hover:bg-blue-50/50" onClick={() => router.push(`/app/gestor/os/${o.id}`)}>
-                <td className="px-3 py-2 font-medium text-blue-700">{o.numero}</td>
-                <td className="px-3 py-2">{o.cliente_nome}</td>
+                <td className="whitespace-nowrap px-3 py-2 font-medium text-blue-700">{o.numero}</td>
+                <td className="px-3 py-2">
+                  <span className="block max-w-64 truncate" title={`${o.cliente_nome} — ${o.equipe_nome || "Sem equipe"}`}>
+                    {o.cliente_nome} — {o.equipe_nome || "Sem equipe"}
+                  </span>
+                </td>
                 <td className="hidden px-3 py-2 md:table-cell">
                   {o.local_nome || "-"}
                   {(o.local_endereco_completo || o.local_endereco) && (
-                    <span className="block text-xs text-zinc-500">
+                    <span className="block max-w-48 truncate text-xs text-zinc-500" title={o.local_endereco_completo || o.local_endereco || undefined}>
                       {o.local_endereco_completo || o.local_endereco}
                       <LinksMapa endereco={(o.local_endereco_completo || o.local_endereco)!} />
                     </span>
                   )}
                 </td>
-                <td className="px-3 py-2">{o.servico}</td>
-                <td className="hidden px-3 py-2 lg:table-cell">{o.equipe_nome || "-"}</td>
                 <td className="whitespace-nowrap px-3 py-2">{o.data_agendada || "-"}</td>
                 <td className="px-3 py-2"><Prioridade p={o.prioridade} /></td>
                 <td className="px-3 py-2"><Badge status={o.status} /></td>
                 <td className="px-3 py-2">
-                  {o.status !== "em_andamento" && (
-                    <span onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/app/gestor/os/${o.id}`)}
+                      title={`Abrir OS ${o.numero}`}
+                      aria-label={`Abrir OS ${o.numero}`}
+                      className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-blue-600 transition-colors hover:bg-blue-100 hover:text-blue-800"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </button>
+                    {o.status !== "em_andamento" && (
                       <Botao
                         variante="perigo"
                         className="px-2 py-1 text-xs"
@@ -183,8 +196,8 @@ export default function OsPage() {
                       >
                         Excluir
                       </Botao>
-                    </span>
-                  )}
+                    )}
+                  </div>
                 </td>
               </tr>
             ))
