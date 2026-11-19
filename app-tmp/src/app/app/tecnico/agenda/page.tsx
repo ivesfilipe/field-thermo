@@ -621,9 +621,17 @@ export default function MinhaAgendaPage() {
                           </div>
                         ))}
                         {itensDoDia.length > 2 && (
-                          <p className="text-[9px] text-center font-bold text-slate-500">
-                            +{itensDoDia.length - 2} mais
-                          </p>
+                          <button
+                            type="button"
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              setAncora(new Date(c.data.getFullYear(), c.data.getMonth(), c.data.getDate()));
+                              setVisao("dia");
+                            }}
+                            className="w-full cursor-pointer rounded bg-blue-50 px-1 py-0.5 text-center text-[10px] font-bold text-blue-700 hover:bg-blue-100"
+                          >
+                            Ver mais (+{itensDoDia.length - 2})
+                          </button>
                         )}
                       </div>
                     </div>

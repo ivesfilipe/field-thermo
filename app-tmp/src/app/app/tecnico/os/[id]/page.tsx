@@ -971,17 +971,17 @@ export default function ExecucaoOsPage() {
               )}
 
               <Card title="2. Fotos">
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {fotos.map((f) => {
                     const legendaAtual = legendasEdit[f.id] !== undefined ? legendasEdit[f.id] : (f.legenda || "");
                     return (
-                      <div key={f.id} className="group relative rounded-lg border border-zinc-200 bg-zinc-50/70 p-2">
+                      <div key={f.id} className="group relative rounded-lg border border-zinc-200 bg-zinc-50/70 p-2.5">
                         <a href={mediaUrl(f.arquivo)} target="_blank" rel="noopener noreferrer" title="Clique para abrir a foto" className="block">
-                          <Image src={mediaUrl(f.arquivo)} alt={legendaAtual || `Anexo ${CATEGORIA_LABEL[f.categoria] || f.categoria}`} width={160} height={120} className="h-28 w-full rounded-md border border-zinc-200 object-cover transition hover:border-blue-600" />
+                          <Image src={mediaUrl(f.arquivo)} alt={legendaAtual || `Anexo ${CATEGORIA_LABEL[f.categoria] || f.categoria}`} width={320} height={180} className="h-36 w-full rounded-md border border-zinc-200 object-cover transition hover:border-blue-600" />
                         </a>
-                        <button type="button" onClick={() => removerAnexo(f.id)} className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs text-white shadow" title="Remover">×</button>
-                        <input
-                          type="text"
+                        <button type="button" onClick={() => removerAnexo(f.id)} className="absolute -top-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white shadow" title="Remover">×</button>
+                        <textarea
+                          rows={2}
                           value={legendaAtual}
                           onChange={(e) => setLegendasEdit((prev) => ({ ...prev, [f.id]: e.target.value }))}
                           onBlur={(e) => {
@@ -989,8 +989,8 @@ export default function ExecucaoOsPage() {
                               salvarLegendaAnexo(f.id, e.target.value);
                             }
                           }}
-                          placeholder="Legenda da foto..."
-                          className="mt-1.5 w-full rounded border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-800 placeholder:text-zinc-400 focus:border-blue-600 focus:outline-none"
+                          placeholder="Escreva a legenda da foto..."
+                          className="mt-2 w-full rounded-md border border-zinc-300 bg-white px-2.5 py-2 text-sm text-zinc-800 placeholder:text-zinc-400 focus:border-blue-600 focus:outline-none"
                         />
                       </div>
                     );

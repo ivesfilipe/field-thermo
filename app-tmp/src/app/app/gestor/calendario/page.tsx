@@ -168,6 +168,7 @@ export default function CalendarioPage() {
   const [msg, setMsg] = useState("");
   const [selecionado, setSelecionado] = useState<Evento | null>(null);
   const [modal, setModal] = useState<null | "novo" | "editar" | "historico" | "conflito">(null);
+  const [diaExpandido, setDiaExpandido] = useState<string | null>(null);
   const [slotClicado, setSlotClicado] = useState<{ data: string; hora: string } | null>(null);
   const [histAtivo, setHistAtivo] = useState<{ tipo: string; id: number } | null>(null);
   const [historico, setHistorico] = useState<Array<Record<string, unknown>> | null>(null);
@@ -603,7 +604,18 @@ export default function CalendarioPage() {
                           {conteudoEvento(e)}
                         </div>
                       ))}
-                      {eventosDia.length > 3 && <p className="text-xs text-zinc-400">+{eventosDia.length - 3} mais</p>}
+                      {eventosDia.length > 3 && (
+                        <button
+                          type="button"
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            setDiaExpandido(iso(d));
+                          }}
+                          className="w-full cursor-pointer rounded bg-blue-50 px-1.5 py-0.5 text-left text-[11px] font-semibold text-blue-700 transition hover:bg-blue-100"
+                        >
+                          Ver mais (+{eventosDia.length - 3})
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -920,6 +932,31 @@ export default function CalendarioPage() {
           <div className="flex gap-2">
             <Botao variante="perigo" onClick={() => { forcarRef.current = true; setModal(null); pendencia.enviar(); }}>Salvar mesmo assim</Botao>
             <Botao variante="secundario" onClick={() => setModal(null)}>Voltar e ajustar</Botao>
+          </div>
+        </Modal>
+      )}
+
+      {diaExpandido && (
+        <Modal titulo={`Programação de ${fmtData(diaExpandido)}`} onFechar={() => setDiaExpandido(null)} largura="max-w-xl">
+          <div className="space-y-2">
+            {filtrados
+              .filter((e) => e.data === diaExpandido)
+              .map((e) => (
+                <div
+                  key={`${e.kind}-${e.id}`}
+                  onClick={() => {
+                    setDiaExpandido(null);
+                    abrirEdicao(e);
+                  }}
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition hover:opacity-90 ${
+                    e.kind === "atividade"
+                      ? "border-violet-200 bg-violet-50 text-violet-900"
+                      : "border-blue-200 bg-blue-50/70 text-slate-900"
+                  }`}
+                >
+                  {conteudoEvento(e, horarioLabel(e))}
+                </div>
+              ))}
           </div>
         </Modal>
       )}

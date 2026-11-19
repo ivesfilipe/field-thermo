@@ -789,16 +789,16 @@ export default function OsDetalhePage() {
                   legenda: f.legenda || `${CATEGORIA_LABEL[f.categoria] || "Foto"} #${idx + 1}`
                 }))}
               />
-              <div className="mt-3 grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {fotos.map((f, idx) => {
                   const val = legendasFoto[f.id] !== undefined ? legendasFoto[f.id] : (f.legenda || "");
                   return (
-                    <div key={f.id} className="rounded-lg border border-zinc-200 bg-zinc-50 p-2">
-                      <label className="block text-[11px] font-semibold text-zinc-500">
-                        Legenda Foto #{idx + 1} ({CATEGORIA_LABEL[f.categoria] || f.categoria})
+                    <div key={f.id} className="rounded-lg border border-zinc-200 bg-zinc-50 p-2.5">
+                      <label className="block text-xs font-semibold text-zinc-600">
+                        Legenda Foto #{idx + 1}
                       </label>
-                      <input
-                        type="text"
+                      <textarea
+                        rows={2}
                         value={val}
                         onChange={(e) => setLegendasFoto((prev) => ({ ...prev, [f.id]: e.target.value }))}
                         onBlur={(e) => {
@@ -807,7 +807,7 @@ export default function OsDetalhePage() {
                           }
                         }}
                         placeholder="Digite a legenda para o relatório..."
-                        className="mt-1 w-full rounded border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-800 focus:border-blue-600 focus:outline-none"
+                        className="mt-1.5 w-full rounded-md border border-zinc-300 bg-white px-2.5 py-2 text-sm text-zinc-800 focus:border-blue-600 focus:outline-none"
                       />
                     </div>
                   );
