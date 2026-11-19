@@ -155,11 +155,39 @@ export default function EditarOsModal({ os, onFechar, onSalvo }: { os: OsEditave
             {locaisFiltrados.map((l) => <option key={l.id} value={l.id}>{l.nome}{l.endereco ? ` — ${l.endereco}` : ""}{l.cidade ? ` (${l.cidade})` : ""}</option>)}
           </Select>
           <Campo label="Responsável pelo local" value={form.responsavel_local} onChange={(e) => setForm({ ...form, responsavel_local: e.target.value })} />
-          <Campo label="Serviço" value={form.servico} onChange={(e) => setForm({ ...form, servico: e.target.value })} />
           <Select label="Tipo de atendimento" value={form.tipo_atendimento} onChange={(e) => setForm({ ...form, tipo_atendimento: e.target.value })}>
             <option value="">Padrão (sem modelo)</option>
             {Object.entries(MODELOS).map(([v, m]) => <option key={v} value={v}>{m.rotulo}</option>)}
           </Select>
+          <div className="md:col-span-2 rounded-lg border border-blue-200/80 bg-blue-50/40 p-3">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-1.5">
+              <span className="text-xs font-bold uppercase tracking-wide text-blue-950">Serviço a realizar</span>
+              <div className="flex flex-wrap gap-1">
+                {["Manutenção preventiva", "Manutenção corretiva", "Instalação", "PMOC", "Inspeção técnica", "Limpeza"].map((sug) => (
+                  <button
+                    key={sug}
+                    type="button"
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        servico: f.servico.trim() ? `${f.servico.trim()}\n• ${sug}` : sug
+                      }))
+                    }
+                    className="rounded-full border border-blue-200 bg-white px-2 py-0.5 text-[11px] font-medium text-blue-800 transition hover:bg-blue-100"
+                  >
+                    + {sug}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Textarea
+              label=""
+              rows={3}
+              value={form.servico}
+              onChange={(e) => setForm({ ...form, servico: e.target.value })}
+              placeholder="Descreva os serviços a serem realizados..."
+            />
+          </div>
           <Campo label="Data" type="date" value={form.data_agendada} onChange={(e) => setForm({ ...form, data_agendada: e.target.value })} />
           <div className="grid grid-cols-2 gap-2">
             <Campo label="Horário inicial" type="time" value={form.hora_inicio} onChange={(e) => setForm({ ...form, hora_inicio: e.target.value })} />

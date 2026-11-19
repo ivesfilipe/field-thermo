@@ -800,9 +800,12 @@ export default function ExecucaoOsPage() {
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card title="O que foi solicitado pelo Gestor (Demanda)">
+              <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50/70 p-3.5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-blue-800">Serviço a realizar</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-relaxed text-blue-950">{os.servico}</p>
+              </div>
               <dl className="grid grid-cols-2 gap-2.5 text-sm">
                 <Item rotulo="Cliente" valor={os.cliente_nome} />
-                <Item rotulo="Serviço" valor={os.servico} />
                 <Item rotulo="Local" valor={os.local_nome || "-"} />
                 <Item
                   rotulo="Endereço"

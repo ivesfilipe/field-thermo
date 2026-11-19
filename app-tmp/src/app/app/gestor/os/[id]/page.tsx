@@ -613,9 +613,12 @@ export default function OsDetalhePage() {
       <div className="grid grid-cols-1 gap-2 rounded-xl border border-slate-200/90 bg-white p-3 text-xs sm:grid-cols-3">{[{ k: "pendente", l: "1. Agendada / Pendente" }, { k: "em_andamento", l: "2. Em Atendimento" }, { k: "concluida", l: "3. Concluída e Relatório" }].map((etapa, idx) => { const ordem = ["pendente", "em_andamento", "concluida"]; const statusBase = os.status === "em_deslocamento" || os.status === "aguardando_validacao" ? (os.status === "em_deslocamento" ? "em_andamento" : "concluida") : os.status; const atualIdx = ordem.indexOf(statusBase); const concluidaEtapa = atualIdx > idx || statusBase === "concluida"; const ativa = atualIdx === idx && statusBase !== "concluida"; return (<div key={etapa.k} className={`flex items-center gap-2 rounded-lg border px-3 py-2 font-semibold ${ativa ? "border-blue-600 bg-blue-50 text-blue-900" : concluidaEtapa ? "border-emerald-200 bg-emerald-50/70 text-emerald-800" : "border-slate-100 bg-slate-50 text-slate-400"}`}><span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${ativa ? "bg-blue-700 text-white" : concluidaEtapa ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-500"}`}>{concluidaEtapa ? "✓" : idx + 1}</span><span className="truncate">{etapa.l}</span></div>); })}</div>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="O que foi solicitado pelo Gestor (Demanda)">
-          <dl className="grid grid-cols-2 gap-y-2.5 text-sm">
+          <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50/70 p-3.5">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-blue-800">Serviço a realizar</p>
+            <p className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-relaxed text-blue-950">{os.servico}</p>
+          </div>
+          <dl className="grid grid-cols-2 gap-2.5 text-sm">
             <Item rotulo="Cliente" valor={os.cliente_nome} />
-            <Item rotulo="Serviço" valor={os.servico} />
             <Item rotulo="Local" valor={os.local_nome || "-"} />
             <Item rotulo="Endereço" valor={
               <span>
