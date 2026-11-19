@@ -8,19 +8,17 @@ import { Alerta, Badge, Botao, Campo, Card, LinksMapa, LinhaVazia, Loading, Page
 interface OS {
   id: number;
   numero: string;
-  servico: string;
-  prioridade: string;
-  status: string;
-  data_agendada: string | null;
-  hora_inicio?: string | null;
-  hora_fim?: string | null;
   cliente_nome: string;
-  equipe_nome?: string | null;
   local_nome: string | null;
   local_endereco: string | null;
   local_endereco_completo?: string | null;
-  equipamento_nome: string | null;
-  equipamento_codigo_mt?: string | null;
+  servico: string;
+  equipe_nome: string | null;
+  data_agendada: string | null;
+  hora_inicio: string | null;
+  hora_fim: string | null;
+  prioridade: string;
+  status: string;
 }
 
 const ABAS_STATUS = [
@@ -30,21 +28,13 @@ const ABAS_STATUS = [
   { v: "concluida", l: "Concluídas" }
 ];
 
-function fmtData(d: string | null): string {
-  if (!d) return "-";
-  const p = d.split("-");
-  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d;
-}
-
 export default function MinhasOsPage() {
   const router = useRouter();
-  const hoje = new Date().toISOString().slice(0, 10);
   const [ordens, setOrdens] = useState<OS[] | null>(null);
   const [erro, setErro] = useState("");
   const [msg, setMsg] = useState("");
   const [iniciando, setIniciando] = useState<number | null>(null);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
-  const [apenasHoje, setApenasHoje] = useState(true);
   const [filtro, setFiltro] = useState({
     busca: "",
     status: "",
@@ -55,9 +45,6 @@ export default function MinhasOsPage() {
 
   const carregar = useCallback(() => {
     const params = new URLSearchParams();
-    if (apenasHoje && !filtro.data_inicio && !filtro.data_fim) {
-      params.set("data", hoje);
-    }
     if (filtro.busca) params.set("busca", filtro.busca);
     if (filtro.status) params.set("status", filtro.status);
     if (filtro.prioridade) params.set("prioridade", filtro.prioridade);
@@ -68,11 +55,11 @@ export default function MinhasOsPage() {
       .get<{ ordens: OS[] }>(`/api/tecnico/os${qs ? `?${qs}` : ""}`)
       .then((r) => setOrdens(r.ordens))
       .catch(() => setOrdens([]));
-  }, [apenasHoje, filtro, hoje]);
+  }, [filtro]);
 
   useEffect(carregar, [carregar]);
 
-  const temFiltro = Object.values(filtro).some((v) => v !== "") || !apenasHoje;
+  const temFiltro = Object.values(filtro).some((v) => v !== "");
 
   async function iniciar(o: OS) {
     setErro("");
@@ -98,21 +85,12 @@ export default function MinhasOsPage() {
 
       <PageHeader
         titulo="Minhas Ordens de Serviço"
-        descricao={apenasHoje && !filtro.data_inicio && !filtro.data_fim ? `Ordens de serviço de hoje (${fmtData(hoje)})` : "Acompanhe, filtre por status e execute as ordens da sua equipe"}
-        acoes={
-          <Botao
-            variante="secundario"
-            onClick={() => router.push("/app/tecnico/agenda")}
-          >
-            Ver Agenda
-          </Botao>
-        }
+        descricao="Acompanhe, filtre por status e execute as ordens de serviço da sua equipe"
       />
 
-      {/* Barra de filtros no mesmo padrão do Gestor */}
       <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap gap-1.5">
             {ABAS_STATUS.map((aba) => {
               const ativo = filtro.status === aba.v;
               return (
@@ -128,23 +106,7 @@ export default function MinhasOsPage() {
                 </button>
               );
             })}
-            <span className="mx-1 hidden h-4 w-px bg-zinc-200 sm:inline-block" />
-            <button
-              type="button"
-              onClick={() => {
-                setApenasHoje(!apenasHoje);
-                setFiltro((f) => ({ ...f, data_inicio: "", data_fim: "" }));
-              }}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                apenasHoje && !filtro.data_inicio && !filtro.data_fim
-                  ? "bg-emerald-700 text-white shadow-sm"
-                  : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
-              }`}
-            >
-              {apenasHoje && !filtro.data_inicio && !filtro.data_fim ? "Somente Hoje" : "Todas as datas"}
-            </button>
           </div>
-
           <div className="flex flex-1 items-center justify-end gap-2 sm:flex-initial">
             <input
               value={filtro.busca}
@@ -159,10 +121,7 @@ export default function MinhasOsPage() {
               <Botao
                 variante="secundario"
                 className="px-3 py-1.5 text-xs"
-                onClick={() => {
-                  setApenasHoje(true);
-                  setFiltro({ busca: "", status: "", prioridade: "", data_inicio: "", data_fim: "" });
-                }}
+                onClick={() => setFiltro({ busca: "", status: "", prioridade: "", data_inicio: "", data_fim: "" })}
               >
                 Limpar
               </Botao>
@@ -179,30 +138,14 @@ export default function MinhasOsPage() {
               <option value="alta">Alta</option>
               <option value="urgente">Urgente</option>
             </Select>
-            <Campo
-              label="Período (de)"
-              type="date"
-              value={filtro.data_inicio}
-              onChange={(e) => {
-                setApenasHoje(false);
-                setFiltro({ ...filtro, data_inicio: e.target.value });
-              }}
-            />
-            <Campo
-              label="Período (até)"
-              type="date"
-              value={filtro.data_fim}
-              onChange={(e) => {
-                setApenasHoje(false);
-                setFiltro({ ...filtro, data_fim: e.target.value });
-              }}
-            />
+            <Campo label="Período (de)" type="date" value={filtro.data_inicio} onChange={(e) => setFiltro({ ...filtro, data_inicio: e.target.value })} />
+            <Campo label="Período (até)" type="date" value={filtro.data_fim} onChange={(e) => setFiltro({ ...filtro, data_fim: e.target.value })} />
           </div>
         )}
       </div>
 
       <Card title={`Ordens encontradas (${ordens?.length ?? "..."})`}>
-        <Tabela cabecalhos={["Nº", "Cliente — Serviço", "Local", "Data / hora", "Prioridade", "Status", "Ações"]}>
+        <Tabela cabecalhos={["Nº", "Cliente — Equipe", "Local", "Data / hora", "Prioridade", "Status", "Ações"]}>
           {ordens === null ? (
             <tr><td colSpan={99}><Loading /></td></tr>
           ) : ordens.length === 0 ? (
@@ -210,63 +153,59 @@ export default function MinhasOsPage() {
           ) : (
             ordens.map((o) => {
               const podeIniciar = ["pendente", "em_andamento"].includes(o.status);
-              const horario = o.hora_inicio || o.hora_fim ? `${o.hora_inicio || "--:--"}–${o.hora_fim || "--:--"}` : null;
               return (
                 <tr key={o.id} className="cursor-pointer transition-colors hover:bg-blue-50/50" onClick={() => router.push(`/app/tecnico/os/${o.id}`)}>
-                  <td className="whitespace-nowrap px-3 py-2 font-semibold text-blue-700">
-                    {o.numero}
-                    {["urgente", "alta"].includes(o.prioridade) && (
-                      <span className="ml-1 font-bold text-red-600" title="Atender com prioridade">*</span>
-                    )}
-                  </td>
+                  <td className="whitespace-nowrap px-3 py-2 font-medium text-blue-700">{o.numero}</td>
                   <td className="px-3 py-2">
-                    <span className="font-medium text-slate-900">{o.cliente_nome}</span>
-                    <span className="block text-xs text-zinc-500">
-                      {o.servico}
-                      {o.equipamento_codigo_mt ? ` • ${o.equipamento_codigo_mt}` : ""}
+                    <span className="block max-w-64 truncate" title={`${o.cliente_nome} — ${o.equipe_nome || "Sem equipe"}`}>
+                      {o.cliente_nome} — {o.equipe_nome || "Sem equipe"}
                     </span>
                   </td>
-                  <td className="px-3 py-2">
-                    <span className="text-slate-800">{o.local_nome || "-"}</span>
+                  <td className="hidden px-3 py-2 md:table-cell">
+                    {o.local_nome || "-"}
                     {(o.local_endereco_completo || o.local_endereco) && (
-                      <span className="block text-xs text-zinc-500">
+                      <span className="block max-w-48 truncate text-xs text-zinc-500" title={o.local_endereco_completo || o.local_endereco || undefined}>
                         {o.local_endereco_completo || o.local_endereco}
-                        <LinksMapa endereco={o.local_endereco_completo || o.local_endereco} pararPropagacao />
+                        <LinksMapa endereco={(o.local_endereco_completo || o.local_endereco)!} pararPropagacao />
                       </span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-700">
-                    <span className="block font-medium">{fmtData(o.data_agendada)}</span>
-                    {horario && <span className="text-zinc-500">{horario}</span>}
+                  <td className="whitespace-nowrap px-3 py-2">
+                    {o.data_agendada || "-"}
+                    {o.hora_inicio && <span className="block text-xs text-zinc-500">{o.hora_inicio}{o.hora_fim ? `–${o.hora_fim}` : ""}</span>}
                   </td>
                   <td className="px-3 py-2"><Prioridade p={o.prioridade} /></td>
                   <td className="px-3 py-2"><Badge status={o.status} /></td>
-                  <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                    {podeIniciar ? (
-                      <Botao
-                        variante="sucesso"
-                        className="px-3 py-1.5 text-xs"
-                        disabled={iniciando === o.id}
-                        onClick={() => iniciar(o)}
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/app/tecnico/os/${o.id}`)}
+                        title={`Abrir OS ${o.numero}`}
+                        aria-label={`Abrir OS ${o.numero}`}
+                        className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-blue-600 transition-colors hover:bg-blue-100 hover:text-blue-800"
                       >
-                        {iniciando === o.id ? "..." : o.status === "em_andamento" ? "Continuar" : "Iniciar"}
-                      </Botao>
-                    ) : (
-                      <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={() => router.push(`/app/tecnico/os/${o.id}`)}>
-                        Abrir
-                      </Botao>
-                    )}
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </button>
+                      {podeIniciar && (
+                        <Botao
+                          variante="sucesso"
+                          className="px-2 py-1 text-xs"
+                          disabled={iniciando === o.id}
+                          onClick={() => iniciar(o)}
+                        >
+                          {iniciando === o.id ? "..." : o.status === "em_andamento" ? "Continuar" : "Iniciar"}
+                        </Botao>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
             })
           )}
         </Tabela>
-        {ordens !== null && ordens.length > 0 && (
-          <p className="mt-3 text-xs text-zinc-500">
-            <span className="font-bold text-red-600">*</span> = atender com prioridade (urgente/alta)
-          </p>
-        )}
       </Card>
     </div>
   );
