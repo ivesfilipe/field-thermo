@@ -111,19 +111,22 @@ router.get('/relatorios/publico/:token/pdf', (req, res) => {
 router.use(authenticate, requireRole('comercial', 'gestor', 'admin'));
 
 router.get('/relatorios', (req, res) => {
-  const { cliente_id, data_inicio, data_fim, tipo, prioridade, status } = req.query;
+  const { cliente_id, data_inicio, data_fim, tipo, prioridade, status, busca, equipe_id } = req.query;
   const filtroComercial = req.user.perfil === 'comercial' ? ' AND r.enviado_comercial = 1' : '';
   let sql = `
     SELECT r.id, r.token, r.data_validacao, r.recomendacoes, r.enviado_comercial_em,
       o.id AS os_id, o.numero AS os_numero, o.servico AS os_servico, o.prioridade AS os_prioridade, o.responsavel_local,
+      o.data_agendada, o.hora_inicio, o.hora_fim, o.status AS os_status, o.equipe_id,
       c.id AS cliente_id, c.nome AS cliente_nome, c.telefone AS cliente_telefone, c.email AS cliente_email,
-      l.nome AS local_nome, l.responsavel_nome AS local_responsavel, l.responsavel_telefone AS local_responsavel_telefone, l.responsavel_email AS local_responsavel_email,
+      l.nome AS local_nome, l.endereco AS local_endereco, l.responsavel_nome AS local_responsavel, l.responsavel_telefone AS local_responsavel_telefone, l.responsavel_email AS local_responsavel_email,
+      eq.nome AS equipe_nome,
       ex.necessidade_adicional,
       op.id AS oportunidade_id, op.tipo AS oportunidade_tipo, op.status AS oportunidade_status
     FROM relatorios r
     JOIN ordens_servico o ON o.id = r.os_id
     LEFT JOIN clientes c ON c.id = o.cliente_id
     LEFT JOIN locais l ON l.id = o.local_id
+    LEFT JOIN equipes eq ON eq.id = o.equipe_id
     LEFT JOIN execucoes ex ON ex.os_id = o.id
     LEFT JOIN oportunidades op ON op.relatorio_id = r.id
     WHERE r.status = 'aprovado'${filtroComercial}`;
@@ -131,6 +134,10 @@ router.get('/relatorios', (req, res) => {
   if (cliente_id) {
     sql += ' AND o.cliente_id = ?';
     params.push(cliente_id);
+  }
+  if (equipe_id) {
+    sql += ' AND o.equipe_id = ?';
+    params.push(equipe_id);
   }
   if (data_inicio) {
     sql += ' AND o.data_agendada >= ?';
@@ -149,8 +156,19 @@ router.get('/relatorios', (req, res) => {
     params.push(prioridade);
   }
   if (status) {
-    sql += ' AND op.status = ?';
-    params.push(status);
+    if (status === 'sem_oportunidade') {
+      sql += ' AND op.id IS NULL';
+    } else if (status === 'com_oportunidade') {
+      sql += ' AND op.id IS NOT NULL';
+    } else {
+      sql += ' AND op.status = ?';
+      params.push(status);
+    }
+  }
+  if (busca) {
+    sql += ' AND (o.numero LIKE ? OR o.servico LIKE ? OR c.nome LIKE ? OR eq.nome LIKE ?)';
+    const like = `%${busca}%`;
+    params.push(like, like, like, like);
   }
   sql += ' ORDER BY r.data_validacao DESC';
   const relatorios = db.prepare(sql).all(...params);
