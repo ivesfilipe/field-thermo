@@ -48,6 +48,8 @@ interface Equipamento {
 interface OS {
   id: number;
   numero: string;
+  cliente_nome: string;
+  equipe_nome: string | null;
   servico: string;
   data_agendada: string | null;
   prioridade: string;
@@ -380,15 +382,30 @@ export default function ClientePage() {
           ) : ordens.length === 0 ? (
             <LinhaVazia texto="Nenhuma ordem de serviço para este cliente." />
           ) : (
-            <Tabela cabecalhos={["Nº", "Serviço", "Data", "Prioridade", "Status", ""]}>
+            <Tabela cabecalhos={["Nº", "Cliente — Equipe", "Data", "Prioridade", "Status", ""]}>
               {ordens.map((o) => (
                 <tr key={o.id} className="cursor-pointer transition-colors hover:bg-blue-50/50" onClick={() => router.push(`/app/gestor/os/${o.id}`)}>
                   <td className="px-3 py-2 font-medium text-blue-700">{o.numero}</td>
-                  <td className="px-3 py-2">{o.servico}</td>
+                  <td className="px-3 py-2">{o.cliente_nome} — {o.equipe_nome || "Sem equipe"}</td>
                   <td className="px-3 py-2">{o.data_agendada || "-"}</td>
                   <td className="px-3 py-2"><Prioridade p={o.prioridade} /></td>
                   <td className="px-3 py-2"><Badge status={o.status} /></td>
-                  <td className="px-3 py-2 text-xs text-blue-600">Abrir →</td>
+                  <td className="px-3 py-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/app/gestor/os/${o.id}`);
+                      }}
+                      title={`Abrir OS ${o.numero}`}
+                      aria-label={`Abrir OS ${o.numero}`}
+                      className="inline-flex cursor-pointer items-center justify-center rounded p-1 text-blue-600 transition-colors hover:bg-blue-100 hover:text-blue-800"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </button>
+                  </td>
                 </tr>
               ))}
             </Tabela>
