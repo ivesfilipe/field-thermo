@@ -608,7 +608,7 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     test('filtro por veículo', fVeic.status === 200 && fVeic.data.registros.every((r) => r.veiculo_id === veiculoId2) && fVeic.data.registros.length === 2, `${fVeic.status} ${fVeic.data.registros.length}`);
     const fMot = await api(`/api/gestor/km?motorista_id=${uA.data.usuario.id}`, 'GET', gestor);
     test('filtro por motorista', fMot.status === 200 && fMot.data.registros.every((r) => r.motorista_id === uA.data.usuario.id), `${fMot.status} ${fMot.data.registros.length}`);
-    const fPer = await api(`/api/gestor/km?data_inicio=2026-11-01&data_fim=2026-11-30`, 'GET', gestor);
+    const fPer = await api(`/api/gestor/km?data_inicio=2029-11-01&data_fim=2029-11-30`, 'GET', gestor);
     test('filtro por período', fPer.status === 200 && fPer.data.registros.length === 0, `${fPer.status} ${fPer.data.registros.length}`);
     const fSt = await api('/api/gestor/km?status=em_utilizacao', 'GET', gestor);
     test('filtro por status', fSt.status === 200 && fSt.data.registros.length === 1 && fSt.data.registros[0].id === regOutro, `${fSt.status} ${fSt.data.registros.length}`);
@@ -651,48 +651,48 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     test('cadastra equipamento MT no local', mt1.status === 201 && /^MT-/.test(mt1.data.equipamento.codigo_mt || ''), `${mt1.status} ${JSON.stringify(mt1.data.equipamento)}`);
     const mt1Id = mt1.data.equipamento.id;
 
-    const os1 = await api('/api/gestor/os', 'POST', gestor, { cliente_id: cMId, local_id: l1Id, equipamento_id: mt1Id, servico: 'Preventiva mapa A', tipo_atendimento: 'preventiva', data_agendada: '2026-09-10', hora_inicio: '08:00', hora_fim: '10:00', equipe_id: eqM1Id });
-    const os2 = await api('/api/gestor/os', 'POST', gestor, { cliente_id: cMId, local_id: l2Id, servico: 'Corretiva mapa B', tipo_atendimento: 'corretiva', data_agendada: '2026-09-10', hora_inicio: '13:00', hora_fim: '15:00', equipe_id: eqM2Id });
-    const os3 = await api('/api/gestor/os', 'POST', gestor, { cliente_id: cMId, local_id: l3Id, servico: 'OS sem localização', data_agendada: '2026-09-10', hora_inicio: '16:00', hora_fim: '17:00', equipe_id: eqM1Id });
+    const os1 = await api('/api/gestor/os', 'POST', gestor, { cliente_id: cMId, local_id: l1Id, equipamento_id: mt1Id, servico: 'Preventiva mapa A', tipo_atendimento: 'preventiva', data_agendada: '2027-09-10', hora_inicio: '08:00', hora_fim: '10:00', equipe_id: eqM1Id });
+    const os2 = await api('/api/gestor/os', 'POST', gestor, { cliente_id: cMId, local_id: l2Id, servico: 'Corretiva mapa B', tipo_atendimento: 'corretiva', data_agendada: '2027-09-10', hora_inicio: '13:00', hora_fim: '15:00', equipe_id: eqM2Id });
+    const os3 = await api('/api/gestor/os', 'POST', gestor, { cliente_id: cMId, local_id: l3Id, servico: 'OS sem localização', data_agendada: '2027-09-10', hora_inicio: '16:00', hora_fim: '17:00', equipe_id: eqM1Id });
     test('cria OS em locais diferentes para cada equipe', os1.status === 201 && os2.status === 201 && os3.status === 201, `${os1.status} ${os2.status} ${os3.status}`);
     const os1Id = os1.data.os.id;
     const os2Id = os2.data.os.id;
     const os3Id = os3.data.os.id;
 
-    const mapa = await api('/api/gestor/mapa?data=2026-09-10', 'GET', gestor);
+    const mapa = await api('/api/gestor/mapa?data=2027-09-10', 'GET', gestor);
     test('os dois atendimentos aparecem no mapa', mapa.status === 200 && mapa.data.ordens.some((o) => o.id === os1Id && o.tem_localizacao) && mapa.data.ordens.some((o) => o.id === os2Id && o.tem_localizacao), `${mapa.status} ${JSON.stringify(mapa.data.ordens.map((o) => o.numero))}`);
     const item1 = mapa.data.ordens.find((o) => o.id === os1Id);
     test('dados do marcador: equipe, nº OS, cliente, local, tipo, status', !!item1 && item1.equipe_id === eqM1Id && item1.numero && item1.cliente_nome === 'Cliente Mapa' && item1.local_nome === 'Local Mapa A' && item1.tipo_atendimento === 'preventiva' && item1.status === 'agendada', JSON.stringify(item1));
     test('MT vinculado aparece no detalhe', !!item1 && !!item1.mt && /^MT-/.test(item1.mt.codigo_mt), JSON.stringify(item1.mt));
     test('OS sem localização é sinalizada', mapa.data.ordens.some((o) => o.id === os3Id && !o.tem_localizacao), mapa.status);
 
-    const fEq = await api(`/api/gestor/mapa?data=2026-09-10&equipe_id=${eqM1Id}`, 'GET', gestor);
+    const fEq = await api(`/api/gestor/mapa?data=2027-09-10&equipe_id=${eqM1Id}`, 'GET', gestor);
     test('filtro por equipe', fEq.status === 200 && fEq.data.ordens.some((o) => o.id === os1Id) && !fEq.data.ordens.some((o) => o.id === os2Id), `${fEq.status} ${fEq.data.ordens.map((o) => o.numero)}`);
-    const fSt = await api('/api/gestor/mapa?data=2026-09-10&status=agendada', 'GET', gestor);
+    const fSt = await api('/api/gestor/mapa?data=2027-09-10&status=agendada', 'GET', gestor);
     test('filtro por status (agendada)', fSt.status === 200 && fSt.data.ordens.length >= 1 && fSt.data.ordens.every((o) => o.status === 'agendada'), `${fSt.status} ${fSt.data.ordens.map((o) => o.status)}`);
-    const fDt = await api('/api/gestor/mapa?data_inicio=2026-09-01&data_fim=2026-09-30', 'GET', gestor);
+    const fDt = await api('/api/gestor/mapa?data_inicio=2027-09-01&data_fim=2027-09-30', 'GET', gestor);
     test('filtro por período de data', fDt.status === 200 && fDt.data.ordens.some((o) => o.id === os1Id) && fDt.data.ordens.some((o) => o.id === os2Id), `${fDt.status} ${fDt.data.ordens.length}`);
-    const fCl = await api(`/api/gestor/mapa?data=2026-09-10&cliente_id=${cMId}`, 'GET', gestor);
+    const fCl = await api(`/api/gestor/mapa?data=2027-09-10&cliente_id=${cMId}`, 'GET', gestor);
     test('filtro por cliente', fCl.status === 200 && fCl.data.ordens.length >= 1 && fCl.data.ordens.every((o) => o.cliente_id === cMId), `${fCl.status} ${fCl.data.ordens.length}`);
     const semData = await api('/api/gestor/mapa?data=2025-01-01', 'GET', gestor);
     test('data sem agendamentos retorna vazio', semData.status === 200 && semData.data.ordens.length === 0, `${semData.status} ${semData.data.ordens.length}`);
 
     const desl = await api(`/api/tecnico/os/${os1Id}/iniciar-deslocamento`, 'POST', tokenTecMap);
     test('técnico inicia deslocamento', desl.status === 200 && desl.data.os.status === 'em_deslocamento', `${desl.status} ${JSON.stringify(desl.data.os)}`);
-    const mapaDesl = await api('/api/gestor/mapa?data=2026-09-10', 'GET', gestor);
+    const mapaDesl = await api('/api/gestor/mapa?data=2027-09-10', 'GET', gestor);
     test('mapa reflete status em deslocamento', mapaDesl.status === 200 && mapaDesl.data.ordens.find((o) => o.id === os1Id).status === 'em_deslocamento', mapaDesl.status);
     const ini = await api(`/api/tecnico/os/${os1Id}/iniciar`, 'POST', tokenTecMap);
     test('técnico inicia atendimento após deslocamento', ini.status === 200 && ini.data.os.status === 'em_andamento', `${ini.status} ${JSON.stringify(ini.data.os)}`);
-    const mapaAt = await api('/api/gestor/mapa?data=2026-09-10', 'GET', gestor);
+    const mapaAt = await api('/api/gestor/mapa?data=2027-09-10', 'GET', gestor);
     const itemAt = mapaAt.data.ordens.find((o) => o.id === os1Id);
     test('mapa reflete em atendimento + executor', !!itemAt && itemAt.status === 'em_atendimento' && itemAt.executor_nome === 'Tec Map' && !!itemAt.iniciada_em, JSON.stringify(itemAt));
 
     const troca = await api(`/api/gestor/os/${os2Id}`, 'PUT', gestor, { equipe_id: eqM1Id });
     test('altera equipe da OS', troca.status === 200 && troca.data.os.equipe_id === eqM1Id, `${troca.status} ${JSON.stringify(troca.data.os)}`);
-    const mapaEquipe = await api(`/api/gestor/mapa?data=2026-09-10&equipe_id=${eqM1Id}`, 'GET', gestor);
+    const mapaEquipe = await api(`/api/gestor/mapa?data=2027-09-10&equipe_id=${eqM1Id}`, 'GET', gestor);
     test('mapa reflete a nova equipe', mapaEquipe.status === 200 && mapaEquipe.data.ordens.some((o) => o.id === os2Id), mapaEquipe.status);
 
-    const cal = await api('/api/gestor/calendario?data_inicio=2026-09-10&data_fim=2026-09-10', 'GET', gestor);
+    const cal = await api('/api/gestor/calendario?data_inicio=2027-09-10&data_fim=2027-09-10', 'GET', gestor);
     test('integração com o calendário (mesma fonte de dados)', cal.status === 200 && cal.data.eventos.some((e) => e.kind === 'os' && e.id === os1Id && e.equipe_id === eqM1Id), `${cal.status} ${cal.data.eventos && cal.data.eventos.length}`);
 
     const t403 = await api('/api/gestor/mapa', 'GET', tecnico);

@@ -107,7 +107,8 @@ router.get('/clientes/:id', (req, res) => {
 
 router.post('/clientes', (req, res) => {
   const { nome, documento, email, telefone, endereco, cidade, estado, cep, local_nome, responsavel_nome, responsavel_email, responsavel_telefone, latitude, longitude } = req.body || {};
-  const nomeFinal = (nome && String(nome).trim()) || 'Cliente sem nome'; if (false) {
+  const nomeFinal = nome && String(nome).trim();
+  if (!nomeFinal) {
     return res.status(400).json({ error: 'Informe o nome do cliente' });
   }
   const criar = db.transaction(() => {
