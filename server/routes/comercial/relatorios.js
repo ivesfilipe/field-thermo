@@ -1386,14 +1386,7 @@ function enviarPdfHtml(relatorio, req, res) {
       : ''
   }
 
-  <!-- Descrição do Serviço Realizado -->
-  <section class="secao">
-    <div class="secao-titulo">
-      <h2>Descrição do Serviço Realizado</h2>
-    </div>
-    <div class="texto-caixa">${e(relatorio.servico_executado || relatorio.os_descricao || 'Atendimento técnico executado conforme especificações.')}</div>
-  </section>
-
+  <!-- Solução Aplicada (se houver) -->
   ${
     relatorio.solucao
       ? `<section class="secao">

@@ -55,6 +55,15 @@ export default function KmGestorPage() {
   const [ajusteForm, setAjusteForm] = useState({ km_inicial: "", local_inicial: "", equipe_id: "", motorista_id: "", motorista_nome: "", veiculo_id: "" });
   const [salvando, setSalvando] = useState(false);
   const [msg, setMsg] = useState("");
+  const [modalNovoKm, setModalNovoKm] = useState(false);
+  const [novoKmForm, setNovoKmForm] = useState({
+    equipe_id: "", veiculo_id: "", motorista_id: "", motorista_nome: "",
+    data: new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date()),
+    km_inicial: "", local_inicial: "", km_final: "", local_final: "", observacao: ""
+  });
+  const [modalVeiculos, setModalVeiculos] = useState(false);
+  const [novoVeiculo, setNovoVeiculo] = useState({ placa: "", descricao: "" });
+  const [salvandoVei, setSalvandoVei] = useState(false);
 
   const carregar = useCallback(() => {
     const qs = new URLSearchParams();
@@ -108,6 +117,90 @@ export default function KmGestorPage() {
     }
   }
 
+  async function criarNovoKm() {
+    if (!novoKmForm.equipe_id || !novoKmForm.veiculo_id || !novoKmForm.km_inicial) {
+      return setErro("Preencha equipe, veículo e KM inicial.");
+    }
+    setErro("");
+    setMsg("");
+    setSalvando(true);
+    try {
+      const motId = novoKmForm.motorista_id && novoKmForm.motorista_id !== "custom" ? Number(novoKmForm.motorista_id) : undefined;
+      await api.post("/api/gestor/km", {
+        equipe_id: Number(novoKmForm.equipe_id),
+        veiculo_id: Number(novoKmForm.veiculo_id),
+        motorista_id: motId,
+        motorista_nome: novoKmForm.motorista_id === "custom" ? novoKmForm.motorista_nome : undefined,
+        data: novoKmForm.data || undefined,
+        km_inicial: Number(novoKmForm.km_inicial),
+        local_inicial: novoKmForm.local_inicial || "-",
+        km_final: novoKmForm.km_final !== "" ? Number(novoKmForm.km_final) : undefined,
+        local_final: novoKmForm.local_final || undefined,
+        observacao: novoKmForm.observacao || undefined
+      });
+      setMsg("Registro de KM adicionado.");
+      setModalNovoKm(false);
+      setNovoKmForm((f) => ({ ...f, km_inicial: "", local_inicial: "", km_final: "", local_final: "", observacao: "" }));
+      carregar();
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : "Erro ao adicionar KM");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function resetarKms() {
+    const alvo = filtros.veiculo_id
+      ? "os registros de KM do veículo filtrado"
+      : filtros.equipe_id
+      ? "os registros de KM da equipe filtrada"
+      : "TODOS os registros de KM cadastrados";
+    if (!window.confirm(`Deseja realmente resetar (apagar) ${alvo}? Esta ação não pode ser desfeita.`)) return;
+    setErro("");
+    setMsg("");
+    try {
+      const qs = new URLSearchParams();
+      if (filtros.veiculo_id) qs.set("veiculo_id", filtros.veiculo_id);
+      if (filtros.equipe_id) qs.set("equipe_id", filtros.equipe_id);
+      const r = await api.del<{ ok: boolean; removidos: number }>(`/api/gestor/km/resetar${qs.toString() ? `?${qs}` : ""}`);
+      setMsg(`KMs resetados com sucesso (${r.removidos} registro(s) removidos).`);
+      carregar();
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : "Erro ao resetar KMs");
+    }
+  }
+
+  async function adicionarVeiculo() {
+    if (!novoVeiculo.placa.trim()) return setErro("Informe a placa do veículo.");
+    setErro("");
+    setSalvandoVei(true);
+    try {
+      await api.post("/api/gestor/veiculos", {
+        placa: novoVeiculo.placa.trim().toUpperCase(),
+        descricao: novoVeiculo.descricao.trim() || undefined
+      });
+      setNovoVeiculo({ placa: "", descricao: "" });
+      setMsg("Veículo cadastrado.");
+      carregar();
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : "Erro ao cadastrar veículo");
+    } finally {
+      setSalvandoVei(false);
+    }
+  }
+
+  async function excluirVeiculo(v: Veiculo) {
+    if (!window.confirm(`Excluir o veículo ${v.placa}?`)) return;
+    setErro("");
+    try {
+      await api.del(`/api/gestor/veiculos/${v.id}`);
+      setMsg(`Veículo ${v.placa} excluído.`);
+      carregar();
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : "Erro ao excluir veículo");
+    }
+  }
+
   const porEquipe = new Map<number, Registro[]>();
   for (const r of registros || []) {
     if (!porEquipe.has(r.equipe_id)) porEquipe.set(r.equipe_id, []);
@@ -116,7 +209,17 @@ export default function KmGestorPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader titulo="Controle de Quilometragem" descricao="Acompanhe os registros de utilização organizados por equipe" />
+      <PageHeader
+        titulo="Controle de Quilometragem"
+        descricao="Acompanhe, adicione registros de KM, cadastre veículos e gerencie a frota por equipe"
+        acoes={
+          <div className="flex flex-wrap gap-2">
+            <Botao onClick={() => setModalNovoKm(true)}>+ Novo KM</Botao>
+            <Botao variante="secundario" onClick={() => setModalVeiculos(true)}>Veículos ({veiculos.length})</Botao>
+            <Botao variante="perigo" onClick={resetarKms}>Resetar KMs</Botao>
+          </div>
+        }
+      />
       <Alerta tipo="erro" msg={erro} onClose={() => setErro("")} />
       <Alerta tipo="sucesso" msg={msg} onClose={() => setMsg("")} />
 
@@ -233,6 +336,72 @@ export default function KmGestorPage() {
       )}
       {registros !== null && registros.length === 0 && (
         <Card title="Registros"><EstadoVazio texto="Nenhum registro encontrado." /></Card>
+      )}
+
+      {modalNovoKm && (
+        <Modal titulo="Adicionar registro de KM" onFechar={() => setModalNovoKm(false)} largura="max-w-xl">
+          <div className="grid gap-3 md:grid-cols-2">
+            <Select label="Equipe *" value={novoKmForm.equipe_id} onChange={(e) => setNovoKmForm({ ...novoKmForm, equipe_id: e.target.value })}>
+              <option value="">Selecione a equipe...</option>
+              {equipes.map((eq) => <option key={eq.id} value={eq.id}>{eq.nome}</option>)}
+            </Select>
+            <Select label="Veículo *" value={novoKmForm.veiculo_id} onChange={(e) => setNovoKmForm({ ...novoKmForm, veiculo_id: e.target.value })}>
+              <option value="">Selecione o veículo...</option>
+              {veiculos.map((v) => <option key={v.id} value={v.id}>{v.placa}{v.descricao ? ` — ${v.descricao}` : ""}</option>)}
+            </Select>
+            <Select label="Motorista" value={novoKmForm.motorista_id} onChange={(e) => setNovoKmForm({ ...novoKmForm, motorista_id: e.target.value, motorista_nome: "" })}>
+              <option value="">Selecione...</option>
+              {membros.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
+              <option value="custom">Outro nome (digitar)...</option>
+            </Select>
+            <Campo label="Data" type="date" value={novoKmForm.data} onChange={(e) => setNovoKmForm({ ...novoKmForm, data: e.target.value })} />
+            {novoKmForm.motorista_id === "custom" && (
+              <div className="md:col-span-2">
+                <Campo label="Nome do motorista" value={novoKmForm.motorista_nome} onChange={(e) => setNovoKmForm({ ...novoKmForm, motorista_nome: e.target.value })} placeholder="Digite o nome" />
+              </div>
+            )}
+            <Campo label="KM inicial *" type="number" min={0} value={novoKmForm.km_inicial} onChange={(e) => setNovoKmForm({ ...novoKmForm, km_inicial: e.target.value })} />
+            <Campo label="Local inicial" value={novoKmForm.local_inicial} onChange={(e) => setNovoKmForm({ ...novoKmForm, local_inicial: e.target.value })} placeholder="Ex.: Base" />
+            <Campo label="KM final (opcional)" type="number" min={0} value={novoKmForm.km_final} onChange={(e) => setNovoKmForm({ ...novoKmForm, km_final: e.target.value })} />
+            <Campo label="Local final (opcional)" value={novoKmForm.local_final} onChange={(e) => setNovoKmForm({ ...novoKmForm, local_final: e.target.value })} placeholder="Ex.: Cliente" />
+            <div className="md:col-span-2">
+              <Campo label="Observação" value={novoKmForm.observacao} onChange={(e) => setNovoKmForm({ ...novoKmForm, observacao: e.target.value })} />
+            </div>
+            <div className="flex justify-end gap-2 md:col-span-2 border-t border-zinc-200 pt-3">
+              <Botao variante="secundario" onClick={() => setModalNovoKm(false)}>Cancelar</Botao>
+              <Botao disabled={salvando} onClick={criarNovoKm}>{salvando ? "Salvando..." : "Salvar KM"}</Botao>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {modalVeiculos && (
+        <Modal titulo="Gerenciar Veículos" onFechar={() => setModalVeiculos(false)} largura="max-w-xl">
+          <div className="space-y-4">
+            <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+              <Campo label="Placa *" value={novoVeiculo.placa} onChange={(e) => setNovoVeiculo({ ...novoVeiculo, placa: e.target.value.toUpperCase() })} placeholder="ABC1D23" />
+              <Campo label="Descrição / Modelo" value={novoVeiculo.descricao} onChange={(e) => setNovoVeiculo({ ...novoVeiculo, descricao: e.target.value })} placeholder="Ex.: Fiat Strada Branca" />
+              <Botao disabled={salvandoVei} onClick={adicionarVeiculo}>{salvandoVei ? "..." : "+ Adicionar"}</Botao>
+            </div>
+            <div className="max-h-72 space-y-2 overflow-y-auto border-t border-zinc-200 pt-3">
+              {veiculos.length === 0 ? (
+                <p className="text-center text-sm text-zinc-400">Nenhum veículo cadastrado.</p>
+              ) : (
+                veiculos.map((v) => (
+                  <div key={v.id} className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm">
+                    <div>
+                      <span className="font-mono font-bold text-slate-900">{v.placa}</span>
+                      {v.descricao && <span className="ml-2 text-zinc-600">— {v.descricao}</span>}
+                    </div>
+                    <button type="button" onClick={() => excluirVeiculo(v)} className="text-xs font-semibold text-red-600 hover:underline">
+                      Excluir
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </Modal>
       )}
 
       {ajustando && (

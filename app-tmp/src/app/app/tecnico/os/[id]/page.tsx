@@ -6,6 +6,7 @@ import Image from "next/image";
 import { api, mediaUrl } from "@/lib/api";
 import { Alerta, Badge, Botao, Campo, Card, GaleriaFotos, LinksMapa, PageHeader, Prioridade, Select, Textarea } from "@/components/ui";
 import { getModelo } from "@/lib/modelos";
+import QrAvaliacao from "@/components/qr-avaliacao";
 
 interface AssinaturaItem {
   id: number;
@@ -81,6 +82,7 @@ interface OS {
   tipo_atendimento: string | null;
   execucao: Execucao | null;
   anexos: Anexo[] | null;
+  google_review_url?: string | null;
 }
 
 const CATEGORIAS_ANEXO = [
@@ -269,6 +271,7 @@ export default function ExecucaoOsPage() {
   const [categoriaAnexo, setCategoriaAnexo] = useState("durante");
   const [legendaAnexo, setLegendaAnexo] = useState("");
   const [legendasEdit, setLegendasEdit] = useState<Record<number, string>>({});
+  const [nomeTecnicoAssinatura, setNomeTecnicoAssinatura] = useState("");
   const extratorAssinaturaRef = useRef<(() => Promise<Blob | null>) | null>(null);
 
   const extrairListaAssinaturas = useCallback((ex: Execucao | null): AssinaturaItem[] => {
@@ -281,6 +284,7 @@ export default function ExecucaoOsPage() {
 
   const aplicarExecucao = useCallback((ex: Execucao | null, preservarCampos = false) => {
     const listaAss = extrairListaAssinaturas(ex);
+    setNomeTecnicoAssinatura((atual) => (preservarCampos && atual ? atual : (ex?.assinatura_tecnico_nome || "")));
     setForm((atual) => ({
       servico_executado: preservarCampos ? atual.servico_executado : (ex?.servico_executado || ""),
       assinatura_nome: preservarCampos ? atual.assinatura_nome : "",
@@ -333,6 +337,9 @@ export default function ExecucaoOsPage() {
       assinatura_nome: primeira ? primeira.nome : form.assinatura_nome,
       assinatura_cargo: primeira ? primeira.cargo : form.assinatura_cargo
     };
+    if (nomeTecnicoAssinatura.trim()) {
+      payload.assinatura_tecnico_nome = nomeTecnicoAssinatura.trim();
+    }
     if (form.assinaturas.length > 0) {
       payload.assinaturas = form.assinaturas;
     }
@@ -374,7 +381,7 @@ export default function ExecucaoOsPage() {
         const fileTec = new File([blobTec], "assinatura_tecnica.png", { type: "image/png" });
         const fdTec = new FormData();
         fdTec.append("assinatura", fileTec);
-        fdTec.append("nome", os?.equipe_nome || "Técnico Responsável");
+        fdTec.append("nome", nomeTecnicoAssinatura.trim() || os?.equipe_nome || "Técnico Responsável");
         await api.uploadForm(`/api/tecnico/os/${id}/assinatura-tecnica`, fdTec);
       }
     }
@@ -482,7 +489,7 @@ export default function ExecucaoOsPage() {
       const file = new File([blob], "assinatura_tecnica.png", { type: "image/png" });
       const fd = new FormData();
       fd.append("assinatura", file);
-      fd.append("nome", os?.equipe_nome || "Técnico Responsável");
+      fd.append("nome", nomeTecnicoAssinatura.trim() || os?.equipe_nome || "Técnico Responsável");
       await api.uploadForm(`/api/tecnico/os/${id}/assinatura-tecnica`, fd);
       setMsg("Assinatura técnica registrada com sucesso.");
       carregar(true);
@@ -499,7 +506,7 @@ export default function ExecucaoOsPage() {
     try {
       const fd = new FormData();
       fd.append("assinatura", file);
-      fd.append("nome", os?.equipe_nome || "Técnico Responsável");
+      fd.append("nome", nomeTecnicoAssinatura.trim() || os?.equipe_nome || "Técnico Responsável");
       await api.uploadForm(`/api/tecnico/os/${id}/assinatura-tecnica`, fd);
       setMsg("Assinatura técnica registrada com sucesso.");
       carregar(true);
@@ -1022,12 +1029,20 @@ export default function ExecucaoOsPage() {
               </Card>
 
               <Card title="4. Assinatura Técnica (Executante)">
+                <div className="mb-3">
+                  <Campo
+                    label="Nome do técnico"
+                    value={nomeTecnicoAssinatura}
+                    onChange={(e) => setNomeTecnicoAssinatura(e.target.value)}
+                    placeholder="Digite o nome do técnico responsável pelo atendimento"
+                  />
+                </div>
                 {os.execucao?.assinatura_tecnico ? (
                   <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">Assinatura Técnica Homologada</span>
-                        <p className="mt-1 text-sm font-bold text-zinc-900">{os.execucao.assinatura_tecnico_nome || "Técnico Responsável"}</p>
+                        <p className="mt-1 text-sm font-bold text-zinc-900">{nomeTecnicoAssinatura.trim() || os.execucao.assinatura_tecnico_nome || "Técnico Responsável"}</p>
                         <p className="text-xs text-zinc-500">Execução técnica de campo registrada no laudo</p>
                       </div>
                       <button
@@ -1054,7 +1069,7 @@ export default function ExecucaoOsPage() {
                     <div className="mt-3 border-t border-zinc-200 pt-3">
                       <label className="cursor-pointer text-sm font-medium text-blue-600 underline hover:text-blue-800">
                         Enviar imagem de assinatura técnica (alternativa)
-                        <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={enviarAssinaturaTecnica} />
+                        <input type="file" accept="image/*" className="hidden" onChange={enviarAssinaturaTecnica} />
                       </label>
                     </div>
                   </div>
@@ -1071,7 +1086,13 @@ export default function ExecucaoOsPage() {
               </div>
 
               <Card title="Avaliação no Google (Opcional)">
-                <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+                <div className="space-y-4">
+                  <QrAvaliacao
+                    url={os.google_review_url}
+                    titulo="QR Code — Avaliação no Google"
+                    subtitulo="Mostre a tela do celular para o cliente escanear e avaliar"
+                  />
+                  <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                   <div className="text-slate-600">
                     <p>Envie o link de avaliação do Google apenas se considerar apropriado para este atendimento.</p>
                     <div className="mt-1 text-xs text-slate-500">
@@ -1101,6 +1122,7 @@ export default function ExecucaoOsPage() {
                       {enviandoGoogle ? "Enviando..." : "Enviar avaliação do Google"}
                     </Botao>
                   )}
+                </div>
                 </div>
               </Card>
             </>
@@ -1143,6 +1165,13 @@ export default function ExecucaoOsPage() {
               )}
 
               <Card title="Avaliação do Cliente no Google (Opcional)">
+                <div className="mb-4">
+                  <QrAvaliacao
+                    url={os.google_review_url}
+                    titulo="QR Code — Avaliação no Google"
+                    subtitulo="Mostre a tela do celular para o cliente escanear e avaliar"
+                  />
+                </div>
                 {os.execucao?.avaliacao_google_enviada_em ? (
                   <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                     <div className="flex items-center gap-2 text-emerald-700">

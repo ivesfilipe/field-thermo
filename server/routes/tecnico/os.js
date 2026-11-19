@@ -296,7 +296,7 @@ router.put('/os/:id/execucao', (req, res) => {
   const camposTexto = [
     'condicao_sintomas', 'condicao_equipamento', 'condicao_observacoes',
     'diagnostico', 'causa', 'servico_executado', 'solucao', 'resultado', 'pendencias',
-    'recomendacoes', 'observacoes', 'assinatura_nome', 'assinatura_cargo',
+    'recomendacoes', 'observacoes', 'assinatura_nome', 'assinatura_cargo', 'assinatura_tecnico_nome',
     'necessidade_descricao'
   ];
   for (const c of camposTexto) {

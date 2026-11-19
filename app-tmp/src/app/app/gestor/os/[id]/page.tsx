@@ -7,6 +7,7 @@ import { api, mediaUrl, API_URL, getToken } from "@/lib/api";
 import { Alerta, Badge, Botao, Campo, Card, GaleriaFotos, LinksMapa, Modal, PageHeader, Prioridade, Select, Textarea } from "@/components/ui";
 import { getModelo, camposPreenchidos, valorRotulo } from "@/lib/modelos";
 import EditarOsModal from "@/components/editar-os-modal";
+import QrAvaliacao from "@/components/qr-avaliacao";
 
 interface Execucao {
   id: number;
@@ -1053,6 +1054,11 @@ export default function OsDetalhePage() {
               <div className="flex flex-wrap items-center gap-2">
                 {caminhoAvaliacao ? (
                   <>
+                    <QrAvaliacao
+                      url={typeof window !== "undefined" ? urlAvaliacao() : ""}
+                      titulo="QR Code da Avaliação"
+                      subtitulo="Escaneie com a câmera do celular para avaliar"
+                    />
                     <input className="hidden"
                       type="text"
                       readOnly

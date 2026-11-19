@@ -78,7 +78,7 @@ router.get('/km', (req, res) => {
   const kmDia = db
     .prepare(
       `SELECT COALESCE(SUM(km_percorrido), 0) AS km_dia FROM registros_km
-       WHERE data = date('now') AND status = 'finalizado'`
+       WHERE data = date('now', '-3 hours') AND status = 'finalizado'`
     )
     .get().km_dia;
 
@@ -117,6 +117,102 @@ router.get('/km', (req, res) => {
     veiculos,
     membros
   });
+});
+
+// Gestor adiciona novo registro de KM
+router.post('/km', (req, res) => {
+  const {
+    equipe_id, veiculo_id, motorista_id, motorista_nome,
+    data, km_inicial, local_inicial, km_final, local_final, observacao
+  } = req.body || {};
+  if (!equipe_id || !veiculo_id) {
+    return res.status(400).json({ error: 'Equipe e veículo são obrigatórios' });
+  }
+  const kmIni = Number(km_inicial);
+  if (!Number.isFinite(kmIni) || kmIni < 0) {
+    return res.status(400).json({ error: 'KM inicial inválido' });
+  }
+  const temFim = km_final !== undefined && km_final !== null && String(km_final).trim() !== '';
+  const kmFim = temFim ? Number(km_final) : null;
+  if (temFim && (!Number.isFinite(kmFim) || kmFim < kmIni)) {
+    return res.status(400).json({ error: 'KM final deve ser maior ou igual ao KM inicial' });
+  }
+  const kmPercorrido = temFim ? kmFim - kmIni : null;
+  const status = temFim ? 'finalizado' : 'em_utilizacao';
+  const dataReg = data || db.prepare("SELECT date('now', '-3 hours') AS d").get().d;
+  const agora = db.prepare("SELECT datetime('now', '-3 hours') AS d").get().d;
+  const motId = motorista_id ? Number(motorista_id) : null;
+  const motNome = motorista_nome ? String(motorista_nome).trim() : null;
+  const info = db
+    .prepare(
+      `INSERT INTO registros_km
+         (equipe_id, veiculo_id, motorista_id, motorista_nome, data, data_hora_inicio, km_inicial, local_inicial,
+          data_hora_fim, km_final, local_final, km_percorrido, observacao, status, iniciado_por, finalizado_por)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .run(
+      Number(equipe_id), Number(veiculo_id), motId, motNome, dataReg, agora, kmIni,
+      String(local_inicial || '-').trim(),
+      temFim ? agora : null, kmFim, temFim ? String(local_final || '-').trim() : null,
+      kmPercorrido, observacao ? String(observacao).trim() : null,
+      status, req.user.id, temFim ? req.user.id : null
+    );
+  registrarHistorico({ usuario: req.user, tipo: 'km', registroId: info.lastInsertRowid, campo: 'criacao', valorNovo: `KM ${kmIni}${temFim ? ` -> ${kmFim}` : ''}` });
+  res.status(201).json({ registro: db.prepare(`${BASE} WHERE r.id = ?`).get(info.lastInsertRowid) });
+});
+
+// Gestor reseta os KMs cadastrados (todos ou por veículo/equipe)
+router.delete('/km/resetar', (req, res) => {
+  const { veiculo_id, equipe_id } = req.query;
+  let sql = 'DELETE FROM registros_km WHERE 1 = 1';
+  const params = [];
+  if (veiculo_id) {
+    sql += ' AND veiculo_id = ?';
+    params.push(Number(veiculo_id));
+  }
+  if (equipe_id) {
+    sql += ' AND equipe_id = ?';
+    params.push(Number(equipe_id));
+  }
+  const info = db.prepare(sql).run(...params);
+  registrarHistorico({
+    usuario: req.user,
+    tipo: 'km',
+    registroId: 0,
+    campo: 'reset',
+    valorNovo: `${info.changes} registro(s) de KM removidos`
+  });
+  res.json({ ok: true, removidos: info.changes });
+});
+
+// Gestor gerencia veículos diretamente
+router.get('/veiculos', (req, res) => {
+  res.json({ veiculos: db.prepare('SELECT * FROM veiculos ORDER BY placa').all() });
+});
+
+router.post('/veiculos', (req, res) => {
+  const placa = String(req.body?.placa || '').trim().toUpperCase();
+  if (!placa) return res.status(400).json({ error: 'Placa é obrigatória' });
+  const existente = db.prepare('SELECT id FROM veiculos WHERE placa = ?').get(placa);
+  if (existente) return res.status(409).json({ error: 'Já existe um veículo com esta placa' });
+  const descricao = String(req.body?.descricao || '').trim() || null;
+  const info = db.prepare('INSERT INTO veiculos (placa, descricao) VALUES (?, ?)').run(placa, descricao);
+  const veiculo = db.prepare('SELECT * FROM veiculos WHERE id = ?').get(info.lastInsertRowid);
+  registrarHistorico({ usuario: req.user, tipo: 'veiculo', registroId: veiculo.id, campo: 'criacao', valorNovo: placa });
+  res.status(201).json({ veiculo });
+});
+
+router.delete('/veiculos/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const veiculo = db.prepare('SELECT * FROM veiculos WHERE id = ?').get(id);
+  if (!veiculo) return res.status(404).json({ error: 'Veículo não encontrado' });
+  const emUso = db.prepare('SELECT id FROM registros_km WHERE veiculo_id = ? LIMIT 1').get(id);
+  if (emUso) {
+    return res.status(400).json({ error: 'Veículo possui registros de KM. Resete os KMs deste veículo antes de excluí-lo.' });
+  }
+  db.prepare('DELETE FROM veiculos WHERE id = ?').run(id);
+  registrarHistorico({ usuario: req.user, tipo: 'veiculo', registroId: id, campo: 'exclusao', valorAnterior: veiculo.placa });
+  res.json({ ok: true });
 });
 
 router.get('/km/:id', (req, res) => {
