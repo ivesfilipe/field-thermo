@@ -272,6 +272,7 @@ export default function ExecucaoOsPage() {
   const [legendaAnexo, setLegendaAnexo] = useState("");
   const [legendasEdit, setLegendasEdit] = useState<Record<number, string>>({});
   const [nomeTecnicoAssinatura, setNomeTecnicoAssinatura] = useState("");
+  const [enviandoFotos, setEnviandoFotos] = useState(0);
   const extratorAssinaturaRef = useRef<(() => Promise<Blob | null>) | null>(null);
 
   const extrairListaAssinaturas = useCallback((ex: Execucao | null): AssinaturaItem[] => {
@@ -403,22 +404,85 @@ export default function ExecucaoOsPage() {
     }
   }
 
+  async function comprimirImagem(file: File): Promise<File> {
+    if (!file.type.startsWith("image/") || file.size < 220 * 1024) return file;
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(file);
+      const img = new window.Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const MAX = 1400;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          const ratio = Math.min(MAX / width, MAX / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return resolve(file);
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob || blob.size >= file.size) return resolve(file);
+            const nomeBase = file.name.replace(/\.[^.]+$/, "") || "foto";
+            resolve(new File([blob], `${nomeBase}.jpg`, { type: "image/jpeg" }));
+          },
+          "image/jpeg",
+          0.78
+        );
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(file);
+      };
+      img.src = url;
+    });
+  }
+
   async function enviarAnexos(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
+    e.target.value = "";
     setErro("");
+    setEnviandoFotos(files.length);
     try {
+      const comprimidos = await Promise.all(files.map(comprimirImagem));
       const fd = new FormData();
       fd.append("categoria", categoriaAnexo);
       if (legendaAnexo.trim()) fd.append("legenda", legendaAnexo.trim());
-      for (const f of files) fd.append("arquivos", f);
-      await api.uploadForm(`/api/tecnico/os/${id}/anexos`, fd);
+      for (const f of comprimidos) fd.append("arquivos", f);
+      const resp = await api.uploadForm<{ anexos?: Anexo[] }>(`/api/tecnico/os/${id}/anexos`, fd);
       setLegendaAnexo("");
-      carregar(true);
+      if (resp?.anexos?.length) {
+        setOs((atual) =>
+          atual
+            ? {
+                ...atual,
+                anexos: [
+                  ...(atual.anexos || []),
+                  ...resp.anexos!.map((a) => ({
+                    id: a.id,
+                    categoria: a.categoria || categoriaAnexo,
+                    arquivo: a.arquivo,
+                    nome_original: a.nome_original || null,
+                    legenda: a.legenda || null,
+                    criado_em: a.criado_em || new Date().toISOString()
+                  }))
+                ]
+              }
+            : atual
+        );
+      } else {
+        carregar(true);
+      }
     } catch (err) {
       setErro((err as Error).message);
+    } finally {
+      setEnviandoFotos(0);
     }
-    e.target.value = "";
   }
 
   async function salvarLegendaAnexo(anexoId: number, legenda: string) {
@@ -945,12 +1009,13 @@ export default function ExecucaoOsPage() {
                   </ul>
                 )}
                 <div className="mt-3">
-                  <label className="inline-block cursor-pointer rounded-md border border-blue-600 bg-blue-50 px-4 py-2 text-center text-sm font-semibold text-blue-800 hover:bg-blue-100">
-                    + Adicionar fotos da galeria
+                  <label className={`inline-block rounded-md border border-blue-600 px-4 py-2 text-center text-sm font-semibold ${enviandoFotos > 0 ? "cursor-wait bg-blue-100 text-blue-600 opacity-80" : "cursor-pointer bg-blue-50 text-blue-800 hover:bg-blue-100"}`}>
+                    {enviandoFotos > 0 ? `Enviando ${enviandoFotos} foto(s)...` : "+ Adicionar fotos da galeria"}
                     <input
                       type="file"
                       accept="image/*"
                       multiple
+                      disabled={enviandoFotos > 0}
                       className="hidden"
                       onChange={enviarAnexos}
                     />
