@@ -949,8 +949,14 @@ export default function ExecucaoOsPage() {
                     placeholder="Ex.: Compressor antes da limpeza..."
                   />
                   <label className="cursor-pointer rounded-md border border-blue-600 bg-blue-50 px-3 py-2 text-center text-sm font-semibold text-blue-800 hover:bg-blue-100">
-                    + Adicionar fotos
-                    <input type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={enviarAnexos} />
+                    {categoriaAnexo === "documento" ? "+ Adicionar documento" : "+ Adicionar da galeria"}
+                    <input
+                      type="file"
+                      accept={categoriaAnexo === "documento" ? "application/pdf,image/*" : "image/*"}
+                      multiple
+                      className="hidden"
+                      onChange={enviarAnexos}
+                    />
                   </label>
                 </div>
                 <p className="mt-2 text-xs text-zinc-400">Adicione fotos com legenda. Você também pode editar a legenda abaixo de cada foto.</p>
