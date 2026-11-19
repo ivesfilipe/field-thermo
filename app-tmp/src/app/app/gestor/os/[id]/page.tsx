@@ -16,6 +16,7 @@ interface Execucao {
   causa: string | null;
   medicoes: Array<{ tipo: string; unidade: string; valor: string; observacao: string }> | null;
   servico_executado: string | null;
+  solucao?: string | null;
   atividades_executadas: Array<{ titulo: string; resultado: string; observacao: string }> | null;
   resultado: string | null;
   pendencias: string | null;
@@ -205,9 +206,6 @@ export default function OsDetalhePage() {
   const [historico, setHistorico] = useState<Historico[] | null>(null);
   const [erro, setErro] = useState("");
   const [msg, setMsg] = useState("");
-  const [recomendacoes, setRecomendacoes] = useState("");
-  const [complementoMotivo, setComplementoMotivo] = useState("");
-  const [enviarComercial, setEnviarComercial] = useState(false);
   const [mostrarAtividade, setMostrarAtividade] = useState(false);
   const [atvForm, setAtvForm] = useState({ titulo: "", tipo: "outro", data: "", hora_inicio: "", hora_fim: "", observacoes: "" });
   const [conflictos, setConflicts] = useState<string[] | null>(null);
@@ -374,31 +372,6 @@ export default function OsDetalhePage() {
 
   useEffect(carregar, [carregar]);
 
-  async function validar(aprovado: boolean) {
-    setErro("");
-    setMsg("");
-    try {
-      const body: Record<string, unknown> = { aprovado, recomendacoes: recomendacoes || undefined };
-      if (!aprovado) {
-        const motivo = complementoMotivo.trim();
-        if (!motivo) {
-          setErro("Informe o motivo do complemento solicitado.");
-          return;
-        }
-        body.complemento_motivo = motivo;
-      } else {
-        body.enviar_comercial = enviarComercial;
-      }
-      await api.patch(`/api/gestor/os/${id}/validar`, body);
-      setMsg(aprovado ? "Atendimento aprovado." : "Complemento solicitado — a OS voltou para o técnico.");
-      setRecomendacoes("");
-      setComplementoMotivo("");
-      carregar();
-    } catch (err) {
-      setErro((err as Error).message);
-    }
-  }
-
   async function cancelar() {
     setErro("");
     if (!confirm("Cancelar esta OS?")) return;
@@ -496,7 +469,7 @@ export default function OsDetalhePage() {
             {os.relatorio && os.relatorio.status === "aprovado" && (
               <Botao variante="secundario" onClick={baixarPdf}>Baixar Relatório (PDF)</Botao>
             )}
-            {["concluida", "cancelada"].includes(os.status) && (
+            {["concluida", "aguardando_validacao", "cancelada"].includes(os.status) && (
               <Botao variante="secundario" onClick={() => {
                 const motivo = window.prompt("Motivo da reabertura da OS:");
                 if (motivo) reabrirOS(motivo);
@@ -523,9 +496,9 @@ export default function OsDetalhePage() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 rounded-xl border border-slate-200/90 bg-white p-3 text-xs sm:grid-cols-4">{[{ k: "pendente", l: "1. Agendada / Pendente" }, { k: "em_andamento", l: "2. Em Atendimento" }, { k: "aguardando_validacao", l: "3. Validação do Gestor" }, { k: "concluida", l: "4. Concluída e Relatório" }].map((etapa, idx) => { const ordem = ["pendente", "em_andamento", "aguardando_validacao", "concluida"]; const atualIdx = ordem.indexOf(os.status === "em_deslocamento" ? "em_andamento" : os.status); const concluidaEtapa = atualIdx > idx || os.status === "concluida"; const ativa = atualIdx === idx && os.status !== "concluida"; return (<div key={etapa.k} className={`flex items-center gap-2 rounded-lg border px-3 py-2 font-semibold ${ativa ? "border-blue-600 bg-blue-50 text-blue-900" : concluidaEtapa ? "border-emerald-200 bg-emerald-50/70 text-emerald-800" : "border-slate-100 bg-slate-50 text-slate-400"}`}><span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${ativa ? "bg-blue-700 text-white" : concluidaEtapa ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-500"}`}>{concluidaEtapa ? "✓" : idx + 1}</span><span className="truncate">{etapa.l}</span></div>); })}</div>
+      <div className="grid grid-cols-1 gap-2 rounded-xl border border-slate-200/90 bg-white p-3 text-xs sm:grid-cols-3">{[{ k: "pendente", l: "1. Agendada / Pendente" }, { k: "em_andamento", l: "2. Em Atendimento" }, { k: "concluida", l: "3. Concluída e Relatório" }].map((etapa, idx) => { const ordem = ["pendente", "em_andamento", "concluida"]; const statusBase = os.status === "em_deslocamento" || os.status === "aguardando_validacao" ? (os.status === "em_deslocamento" ? "em_andamento" : "concluida") : os.status; const atualIdx = ordem.indexOf(statusBase); const concluidaEtapa = atualIdx > idx || statusBase === "concluida"; const ativa = atualIdx === idx && statusBase !== "concluida"; return (<div key={etapa.k} className={`flex items-center gap-2 rounded-lg border px-3 py-2 font-semibold ${ativa ? "border-blue-600 bg-blue-50 text-blue-900" : concluidaEtapa ? "border-emerald-200 bg-emerald-50/70 text-emerald-800" : "border-slate-100 bg-slate-50 text-slate-400"}`}><span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${ativa ? "bg-blue-700 text-white" : concluidaEtapa ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-500"}`}>{concluidaEtapa ? "✓" : idx + 1}</span><span className="truncate">{etapa.l}</span></div>); })}</div>
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card title="Identificação">
+        <Card title="O que foi solicitado pelo Gestor (Demanda)">
           <dl className="grid grid-cols-2 gap-y-2.5 text-sm">
             <Item rotulo="Cliente" valor={os.cliente_nome} />
             <Item rotulo="Serviço" valor={os.servico} />
@@ -576,7 +549,31 @@ export default function OsDetalhePage() {
       </div>
 
       {exec && (
-        <Card title="Execução do técnico">
+        <Card title="Execução realizada pela equipe (Relatório)">
+          {exec.diagnostico && (
+            <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-800">Diagnóstico da equipe</p>
+              <p className="whitespace-pre-wrap text-sm text-amber-950">{exec.diagnostico}</p>
+            </div>
+          )}
+          {exec.servico_executado && (
+            <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50 p-3">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-blue-700">Serviço executado</p>
+              <p className="whitespace-pre-wrap text-sm text-blue-900">{exec.servico_executado}</p>
+            </div>
+          )}
+          {exec.solucao && (
+            <div className="mb-3 rounded-lg border border-emerald-100 bg-emerald-50 p-3">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">Solução aplicada</p>
+              <p className="whitespace-pre-wrap text-sm text-emerald-950">{exec.solucao}</p>
+            </div>
+          )}
+          {exec.observacoes && (
+            <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-700">Observações da equipe</p>
+              <p className="whitespace-pre-wrap text-sm text-slate-900">{exec.observacoes}</p>
+            </div>
+          )}
           {(() => {
             const m = getModelo(os.tipo_atendimento);
             const tipo = os.tipo_atendimento || "";
@@ -596,12 +593,6 @@ export default function OsDetalhePage() {
               </div>
             );
           })()}
-          {exec.servico_executado && (
-            <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50 p-3">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-blue-700">Descrição do serviço realizado</p>
-              <p className="whitespace-pre-wrap text-sm text-blue-900">{exec.servico_executado}</p>
-            </div>
-          )}
           <dl className="grid grid-cols-2 gap-y-2.5 text-sm md:grid-cols-3">
             <Item rotulo="Assumida por" valor={exec.executor_nome || "-"} />
             <Item rotulo="Iniciada em" valor={exec.iniciada_em?.slice(0, 16) || "-"} />
@@ -824,23 +815,6 @@ export default function OsDetalhePage() {
         )}
       </Card>
 
-      {os.status === "aguardando_validacao" && (
-        <Card title="Validar atendimento">
-          <div className="space-y-3">
-            <Textarea label="Recomendações para o comercial" value={recomendacoes} onChange={(e) => setRecomendacoes(e.target.value)} rows={3} placeholder="Ex.: Recomenda-se substituir a peça em 6 meses" />
-            <Textarea label="Motivo do complemento (ao solicitar)" value={complementoMotivo} onChange={(e) => setComplementoMotivo(e.target.value)} rows={2} placeholder="Ex.: Faltam fotos do equipamento e a assinatura do responsável" />
-            <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm font-medium text-zinc-700">
-              <input type="checkbox" checked={enviarComercial} onChange={(e) => setEnviarComercial(e.target.checked)} className="h-4 w-4 accent-blue-600" />
-              Enviar ao comercial — existe necessidade de proposta/orçamento
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <Botao variante="sucesso" onClick={() => validar(true)}>Aprovar</Botao>
-              <Botao variante="perigo" onClick={() => validar(false)}>Solicitar complemento ao técnico</Botao>
-            </div>
-          </div>
-        </Card>
-      )}
-
       {os.relatorio && (
         <Card
           title="Relatório técnico"
@@ -859,7 +833,7 @@ export default function OsDetalhePage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2.5">
                 <Badge status={os.relatorio.status} />
-                <span className="text-xs text-slate-500">Validado em {os.relatorio.data_validacao?.slice(0, 16) || "-"}</span>
+                <span className="text-xs text-slate-500">Liberado em {os.relatorio.data_validacao?.slice(0, 16) || "-"}</span>
                 {os.relatorio.enviado_comercial === 1 && <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">Enviado ao comercial</span>}
                 {os.relatorio.status === "reprovado" && os.relatorio.complemento_motivo && (
                   <span className="text-xs text-red-600">Complemento: {os.relatorio.complemento_motivo}</span>

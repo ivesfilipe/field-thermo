@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { api, PERFIS, type Perfil } from "@/lib/api";
+import { PERFIS, type Perfil } from "@/lib/api";
 
 const ICONES: Record<string, React.ReactNode> = {
   inicio: (
@@ -204,29 +204,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [recolhida, setRecolhida] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
-  const [pendentesAval, setPendentesAval] = useState(0);
-
-  useEffect(() => {
-    if (!usuario) return;
-    let parou = false;
-    const perfilAtual = usuario.perfil as Perfil;
-    const buscar = async () => {
-      try {
-        if (perfilAtual === "gestor" || perfilAtual === "admin") {
-          const r = await api.get<{ ordens: { status: string }[] }>("/api/gestor/os?status=aguardando_validacao");
-          if (!parou) setPendentesAval((r.ordens || []).length);
-        }
-      } catch {
-        /* sem notificação se a API falhar */
-      }
-    };
-    buscar();
-    const timer = setInterval(buscar, 30000);
-    return () => {
-      parou = true;
-      clearInterval(timer);
-    };
-  }, [usuario]);
 
   useEffect(() => {
     if (!carregando && !usuario) router.replace("/login");
@@ -284,11 +261,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 >
                   <span className="shrink-0">{ICONES[item.icone]}</span>
                   <span className="truncate">{item.label}</span>
-                  {item.href === "/app/gestor/os" && pendentesAval > 0 ? (
-                    <span className="ml-auto shrink-0 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-slate-950" title={`${pendentesAval} OS aguardando validação`}>
-                      {pendentesAval}
-                    </span>
-                  ) : ativo ? (
+                  {ativo ? (
                     <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-white" />
                   ) : null}
                 </Link>
@@ -348,9 +321,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         >
                           <span className="relative">
                             {ICONES[item.icone]}
-                            {item.label.includes("Avalia") && pendentesAval > 0 && (
-                              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-blue-950" title={`${pendentesAval} avaliação(ões) pendente(s)`} />
-                            )}
                           </span>
                         </Link>
                       );

@@ -115,7 +115,6 @@ export default function AppHome() {
   const totalPorStatus = (s: string) => (ordens || []).filter((o) => o.status === s).length;
   const hoje = new Date().toISOString().slice(0, 10);
   const ordensHoje = (ordens || []).filter((o) => o.data_agendada === dataSelecionada);
-  const ordensParaValidar = (ordens || []).filter((o) => o.status === "aguardando_validacao");
 
   function mudarData(dias: number) {
     const [y, m, d] = dataSelecionada.split("-").map(Number);
@@ -225,10 +224,9 @@ export default function AppHome() {
         </>
       ) : perfil === "tecnico" ? (
         <>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-3 gap-3">
             <KPI label="Pendentes" valor={totalPorStatus("pendente")} cor="text-amber-700" />
             <KPI label="Em andamento" valor={totalPorStatus("em_andamento")} cor="text-blue-700" />
-            <KPI label="Aguardando validação" valor={totalPorStatus("aguardando_validacao")} cor="text-violet-700" />
             <KPI label="Concluídas" valor={totalPorStatus("concluida")} cor="text-emerald-700" />
           </div>
 
@@ -264,33 +262,16 @@ export default function AppHome() {
         </>
       ) : (
         <>
-          {ordensParaValidar.length > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-violet-200 bg-violet-50/90 px-5 py-3.5 text-sm text-violet-950 shadow-xs">
-              <div>
-                <p className="font-bold">
-                  Atenção: {ordensParaValidar.length} {ordensParaValidar.length === 1 ? "Ordem de Serviço aguarda" : "Ordens de Serviço aguardam"} sua validação
-                </p>
-                <p className="text-xs text-violet-700">
-                  Valide o atendimento finalizado pelo técnico para liberar o Relatório Técnico e o envio por e-mail ao cliente.
-                </p>
-              </div>
-              <Botao onClick={() => router.push(`/app/gestor/os/${ordensParaValidar[0].id}`)}>
-                Validar agora ({ordensParaValidar[0].numero})
-              </Botao>
-            </div>
-          )}
-
           <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-xs">
             <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2">
               <span className="text-xs font-bold uppercase tracking-wider text-blue-950">2. Indicadores Operacionais</span>
               <span className="text-[11px] font-medium text-slate-400">Visão em tempo real</span>
             </div>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
               <KPI label="OS de hoje" valor={indicadores?.os_hoje ?? totalPorStatus("pendente")} cor="text-blue-700" />
               <KPI label="Em andamento" valor={indicadores?.os_em_andamento ?? totalPorStatus("em_andamento")} cor="text-cyan-700" />
               <KPI label="Aguardando atend." valor={indicadores?.os_aguardando_atendimento ?? 0} cor="text-amber-700" />
               <KPI label="Atrasadas" valor={indicadores?.os_atrasadas ?? 0} cor="text-red-700" />
-              <KPI label="Aguard. validação" valor={indicadores?.os_aguardando_validacao ?? totalPorStatus("aguardando_validacao")} cor="text-violet-700" />
               <KPI label="Atividades prog." valor={indicadores?.atividades_programadas ?? 0} cor="text-emerald-700" />
             </div>
           </div>

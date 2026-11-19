@@ -146,6 +146,12 @@ function gerarRelatorioIA({ os, execucao, anexos }) {
       if (texto(a.resultado)) return `${base} — ${capitalizar(a.resultado)}${texto(a.observacao) ? `. Observação: ${a.observacao}` : ''}.`;
       return `${base}${texto(a.observacao) ? ` — ${a.observacao}` : ''}.`;
     });
+  if (texto(execucao.servico_executado) && !atividadesLinhas.some((l) => l.includes(execucao.servico_executado))) {
+    atividadesLinhas.unshift(capitalizar(execucao.servico_executado));
+  }
+  if (texto(execucao.solucao) && !atividadesLinhas.some((l) => l.includes(execucao.solucao))) {
+    atividadesLinhas.push(`Solução: ${capitalizar(execucao.solucao)}`);
+  }
 
   const anexosPorCategoria = Object.entries(categorias)
     .filter(([, lista]) => lista.length)
@@ -190,6 +196,9 @@ function gerarRelatorioIA({ os, execucao, anexos }) {
     },
     condicao_encontrada: condicao,
     diagnostico_tecnico: diagnostico,
+    servico_executado: texto(execucao.servico_executado) ? capitalizar(execucao.servico_executado) : null,
+    solucao: texto(execucao.solucao) ? capitalizar(execucao.solucao) : null,
+    observacoes: texto(execucao.observacoes) ? capitalizar(execucao.observacoes) : null,
     modelo: modelo,
     atividades_executadas: atividadesLinhas,
     resultado: execucao.resultado ? RESULTADOS[execucao.resultado] || execucao.resultado : null,

@@ -76,7 +76,7 @@ if (sqlOs && !sqlOs.includes('excluida')) {
 }
 
 const colunasExec = colunasDaTabela('execucoes');
-for (const col of ['necessidade_adicional', 'complemento_solicitado', 'dados_modelo']) {
+for (const col of ['necessidade_adicional', 'complemento_solicitado', 'dados_modelo', 'solucao']) {
   if (!colunasExec.includes(col)) {
     db.prepare(`ALTER TABLE execucoes ADD COLUMN ${col} ${col === 'necessidade_adicional' ? "TEXT NOT NULL DEFAULT 'nao'" : 'TEXT'}`).run();
   }

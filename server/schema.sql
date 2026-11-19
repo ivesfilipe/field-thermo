@@ -99,6 +99,7 @@ CREATE TABLE IF NOT EXISTS execucoes (
   causa TEXT,
   medicoes TEXT,
   servico_executado TEXT,
+  solucao TEXT,
   atividades_executadas TEXT,
   resultado TEXT,
   pendencias TEXT,

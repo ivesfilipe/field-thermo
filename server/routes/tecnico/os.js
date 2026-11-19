@@ -10,6 +10,7 @@ const { TIPOS_NECESSIDADE } = require('../../constantes');
 const { gerarRelatorioIA } = require('../../ia');
 const { sqlEnderecoCompleto, sqlEnderecoLocalOuCliente } = require('../../endereco');
 const { enviarEmailServidor, montarHtmlAvaliacaoGoogle } = require('../../services/email');
+const { concluirOS } = require('../../services/conclusaoOS');
 
 const router = express.Router();
 
@@ -174,6 +175,8 @@ router.get('/os/:id', (req, res) => {
     os.execucao.dados_modelo = safeJsonObj(os.execucao.dados_modelo);
     os.execucao.assinaturas = normalizarAssinaturas(os.execucao);
   }
+  os.relatorio = db.prepare('SELECT * FROM relatorios WHERE os_id = ?').get(os.id) || null;
+  os.avaliacao = db.prepare('SELECT * FROM avaliacoes WHERE os_id = ?').get(os.id) || null;
   os.anexos = getAnexos(os.id);
   os.google_review_url = config.GOOGLE_REVIEW_URL;
   res.json({ os });
@@ -184,10 +187,10 @@ function podeEditarExecucao(os) {
     return 'Ordem de serviço não encontrada';
   }
   if (os.status === 'concluida') {
-    return 'OS já validada pelo gestor';
+    return 'OS já concluída. Solicite ao gestor que reabra a OS para editar.';
   }
   if (os.status === 'aguardando_validacao') {
-    return 'OS já finalizada pelo técnico e aguardando validação';
+    return 'OS aguardando conclusão automática. Tente novamente em instantes.';
   }
   return null;
 }
@@ -268,8 +271,8 @@ router.put('/os/:id/execucao', (req, res) => {
   const atualizar = {};
   const camposTexto = [
     'condicao_sintomas', 'condicao_equipamento', 'condicao_observacoes',
-    'diagnostico', 'causa', 'servico_executado', 'resultado', 'pendencias',
-    'recomendacoes', 'assinatura_nome', 'assinatura_cargo',
+    'diagnostico', 'causa', 'servico_executado', 'solucao', 'resultado', 'pendencias',
+    'recomendacoes', 'observacoes', 'assinatura_nome', 'assinatura_cargo',
     'necessidade_descricao'
   ];
   for (const c of camposTexto) {
@@ -570,20 +573,22 @@ router.post('/os/:id/concluir', (req, res) => {
     relatorioIa = gerarRelatorioIA({ os: enriquecerExecutor(os, execucao), execucao, anexos }).conteudo;
   }
 
-  db.prepare("UPDATE ordens_servico SET status = 'aguardando_validacao' WHERE id = ?").run(os.id);
   db.prepare(
     `UPDATE execucoes SET concluida_em = datetime('now'), concluida_por = ?, complemento_solicitado = NULL, relatorio_ia = ? WHERE id = ?`
   ).run(req.user.id, JSON.stringify(relatorioIa), execucao.id);
-  const relatorio = db.prepare('SELECT id FROM relatorios WHERE os_id = ?').get(os.id);
-  if (relatorio) {
-    db.prepare("UPDATE relatorios SET status = 'pendente', validado_por = NULL, data_validacao = NULL, complemento_motivo = NULL, conteudo = ? WHERE os_id = ?").run(JSON.stringify(relatorioIa), os.id);
-  } else {
-    db.prepare('INSERT INTO relatorios (os_id, status, conteudo) VALUES (?, ?, ?)').run(os.id, 'pendente', JSON.stringify(relatorioIa));
+
+  try {
+    concluirOS({ osId: os.id, usuario: req.user, relatorioIa });
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
   }
-  registrarHistorico({ usuario: req.user, tipo: 'os', registroId: os.id, campo: 'finalizacao_tecnico', valorNovo: tinhaComplemento ? 'reenviado após complemento' : 'enviado para validação do gestor' });
+
+  registrarHistorico({ usuario: req.user, tipo: 'os', registroId: os.id, campo: 'finalizacao_tecnico', valorNovo: tinhaComplemento ? 'reconcluída após reabertura' : 'concluída pelo técnico' });
   const osAtualizada = getMinhaOS(req, os.id);
   if (osAtualizada) {
     osAtualizada.execucao = getExecucao(os.id);
+    osAtualizada.relatorio = db.prepare('SELECT * FROM relatorios WHERE os_id = ?').get(os.id) || null;
+    osAtualizada.avaliacao = db.prepare('SELECT * FROM avaliacoes WHERE os_id = ?').get(os.id) || null;
     osAtualizada.google_review_url = config.GOOGLE_REVIEW_URL;
   }
   res.json({ os: osAtualizada });

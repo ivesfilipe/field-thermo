@@ -68,6 +68,16 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Erro interno do servidor' });
 });
 
+try {
+  const { concluirOSLegadas } = require('./services/conclusaoOS');
+  const concluidas = concluirOSLegadas();
+  if (concluidas > 0) {
+    console.log(`${concluidas} OS legada(s) aguardando validação foram concluídas automaticamente.`);
+  }
+} catch (err) {
+  console.error('Falha ao concluir OS legadas:', err.message);
+}
+
 module.exports = app;
 
 const isMain = require.main === module;

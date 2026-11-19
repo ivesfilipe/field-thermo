@@ -10,6 +10,7 @@ process.env.PORT = '0';
 
 const app = require('../server/index');
 require('../server/seed');
+const db = require('../server/db');
 
 let server;
 let base = '';
@@ -200,21 +201,45 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     const r7 = await upload(`/api/tecnico/os/${osId}/assinatura`, tecnico, 'assinatura', 'ass.png', PNG);
     test('upload assinatura', r7.status === 201 && r7.data.assinatura.includes('/uploads/'), r7.status);
     const r8 = await api(`/api/tecnico/os/${osId}/concluir`, 'POST', tecnico);
-    test('conclui execucao', r8.status === 200 && r8.data.os.status === 'aguardando_validacao', r8.status);
+    test(
+      'conclui execucao direto, sem aprovacao do gestor',
+      r8.status === 200 && r8.data.os.status === 'concluida' &&
+        r8.data.os.relatorio.status === 'aprovado' &&
+        r8.data.os.relatorio.enviado_comercial === 1 &&
+        r8.data.os.avaliacao && r8.data.os.avaliacao.status === 'pendente',
+      `${r8.status} ${JSON.stringify({ status: r8.data.os?.status, rel: r8.data.os?.relatorio?.status, env: r8.data.os?.relatorio?.enviado_comercial, aval: r8.data.os?.avaliacao?.status })}`
+    );
     const r9 = await api(`/api/tecnico/os/${osId}/concluir`, 'POST', tecnico);
     test('concluir duas vezes -> 400', r9.status === 400, r9.status);
     const r10 = await fetch(base + r6.data.anexos[0].arquivo, { method: 'GET' });
     test('foto servida estaticamente', r10.status === 200, r10.status);
   }
 
-  console.log('Fase 4b - Gestor valida atendimento');
+  console.log('Fase 4b - Conclusao automatica e reabertura da OS');
   {
-    const r1 = await api(`/api/gestor/os/${osId}/validar`, 'PATCH', gestor, { aprovado: true, recomendacoes: 'Rec: trocar peca' });
-    test('valida OS aprovada', r1.status === 200 && r1.data.os.status === 'concluida' && r1.data.os.relatorio.status === 'aprovado' && r1.data.os.relatorio.enviado_comercial === 1, r1.status);
+    const r1 = await api(`/api/gestor/os/${osId}`, 'GET', gestor);
+    test(
+      'OS concluida automaticamente com relatorio liberado',
+      r1.status === 200 && r1.data.os.status === 'concluida' && r1.data.os.relatorio.status === 'aprovado' &&
+        r1.data.os.relatorio.enviado_comercial === 1 && r1.data.os.avaliacao.status === 'pendente',
+      `${r1.status} ${JSON.stringify({ status: r1.data.os?.status, rel: r1.data.os?.relatorio?.status })}`
+    );
     const opAuto = await api('/api/comercial/oportunidades', 'GET', comercial);
-    test('aprovacao com necessidade -> oportunidade criada automaticamente', opAuto.status === 200 && opAuto.data.oportunidades.some((o) => o.status === 'novo' && o.tipo === 'substituicao_equipamento'), opAuto.status);
-    const r2 = await api(`/api/gestor/os/${osId}/validar`, 'PATCH', gestor, { aprovado: true });
-    test('revalidar -> 400', r2.status === 400, r2.status);
+    test('conclusao com necessidade -> oportunidade criada automaticamente', opAuto.status === 200 && opAuto.data.oportunidades.some((o) => o.status === 'novo' && o.tipo === 'substituicao_equipamento'), opAuto.status);
+
+    const reabrir = await api(`/api/gestor/os/${osId}/reabrir`, 'PATCH', gestor, { motivo: 'Corrigir assinatura' });
+    test(
+      'reabre OS concluida e retira relatorio do comercial',
+      reabrir.status === 200 && reabrir.data.os.status === 'em_andamento' &&
+        reabrir.data.os.relatorio.status === 'pendente' && reabrir.data.os.relatorio.enviado_comercial === 0,
+      `${reabrir.status} ${JSON.stringify({ status: reabrir.data.os?.status, rel: reabrir.data.os?.relatorio?.status, env: reabrir.data.os?.relatorio?.enviado_comercial })}`
+    );
+    const comAposReabrir = await api('/api/comercial/relatorios', 'GET', comercial);
+    test('relatorio reaberto sai do comercial', comAposReabrir.status === 200 && !comAposReabrir.data.relatorios.some((r) => r.os_id === osId), comAposReabrir.status);
+
+    const conc = await api(`/api/tecnico/os/${osId}/concluir`, 'POST', tecnico);
+    test('tecnico conclui novamente apos reabertura', conc.status === 200 && conc.data.os.status === 'concluida' && conc.data.os.relatorio.status === 'aprovado', `${conc.status} ${JSON.stringify({ status: conc.data.os?.status, rel: conc.data.os?.relatorio?.status })}`);
+
     const r3 = await api(`/api/gestor/os/${osId}/cancelar`, 'PATCH', gestor);
     test('cancelar OS concluida -> 400', r3.status === 400, r3.status);
   }
@@ -223,7 +248,7 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   let opId;
   {
     const r1 = await api('/api/comercial/relatorios', 'GET', comercial);
-    test('relatorios aprovados visiveis', r1.status === 200 && r1.data.relatorios.length >= 1 && r1.data.relatorios[0].recomendacoes === 'Rec: trocar peca', r1.status);
+    test('relatorios liberados visiveis', r1.status === 200 && r1.data.relatorios.length >= 1, r1.status);
     const relatorioId = r1.data.relatorios[0].id;
     const r2 = await api('/api/comercial/oportunidades', 'GET', comercial);
     const opAuto = r2.data.oportunidades.find((o) => o.relatorio_id === relatorioId);
@@ -253,24 +278,22 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     test('tecnico informa necessidade adicional', c2.status === 200 && c2.data.execucao.necessidade_adicional === 'nova_manutencao', c2.status);
     await upload(`/api/tecnico/os/${osDocId}/assinatura`, tecnico, 'assinatura', 'ass.png', PNG);
     const c3 = await api(`/api/tecnico/os/${osDocId}/concluir`, 'POST', tecnico);
-    test('tecnico finaliza -> aguardando validacao', c3.status === 200 && c3.data.os.status === 'aguardando_validacao', c3.status);
+    test('tecnico finaliza -> OS concluida', c3.status === 200 && c3.data.os.status === 'concluida' && c3.data.os.relatorio.status === 'aprovado', `${c3.status} ${JSON.stringify({ status: c3.data.os?.status, rel: c3.data.os?.relatorio?.status })}`);
     const c4 = await api('/api/comercial/relatorios', 'GET', comercial);
-    test('sem validacao -> comercial ainda nao recebe', c4.status === 200 && !c4.data.relatorios.some((r) => r.os_numero === c1.data.os.numero), c4.status);
+    test('conclusao -> comercial recebe relatorio na hora', c4.status === 200 && c4.data.relatorios.some((r) => r.os_numero === c1.data.os.numero), c4.status);
 
-    const c5 = await api(`/api/gestor/os/${osDocId}/validar`, 'PATCH', gestor, { aprovado: false, complemento_motivo: 'Faltam fotos do equipamento' });
-    test('gestor solicita complemento -> OS volta ao tecnico', c5.status === 200 && c5.data.os.status === 'em_andamento' && c5.data.os.relatorio.status === 'reprovado' && c5.data.os.relatorio.complemento_motivo === 'Faltam fotos do equipamento', c5.status);
+    const c5 = await api(`/api/gestor/os/${osDocId}/reabrir`, 'PATCH', gestor, { motivo: 'Faltam fotos do equipamento' });
+    test('gestor reabre OS concluida -> volta ao tecnico', c5.status === 200 && c5.data.os.status === 'em_andamento' && c5.data.os.relatorio.status === 'pendente' && c5.data.os.relatorio.enviado_comercial === 0 && c5.data.os.execucao.complemento_solicitado.includes('Faltam fotos do equipamento'), `${c5.status} ${JSON.stringify({ status: c5.data.os?.status, rel: c5.data.os?.relatorio?.status })}`);
     const c6 = await api('/api/comercial/relatorios', 'GET', comercial);
-    test('complemento solicitado -> relatorio nao segue ao comercial', c6.status === 200 && !c6.data.relatorios.some((r) => r.os_numero === c1.data.os.numero), c6.status);
+    test('OS reaberta -> relatorio sai do comercial', c6.status === 200 && !c6.data.relatorios.some((r) => r.os_numero === c1.data.os.numero), c6.status);
     const c7 = await api(`/api/tecnico/os/${osDocId}`, 'GET', tecnico);
-    test('tecnico ve o motivo do complemento', c7.status === 200 && c7.data.os.execucao.complemento_solicitado === 'Faltam fotos do equipamento', c7.status);
+    test('tecnico ve o motivo da reabertura', c7.status === 200 && c7.data.os.execucao.complemento_solicitado.includes('Faltam fotos do equipamento'), c7.status);
 
     const c8 = await api(`/api/tecnico/os/${osDocId}/concluir`, 'POST', tecnico);
-    test('tecnico reenvia apos complemento', c8.status === 200 && c8.data.os.status === 'aguardando_validacao', c8.status);
-    const c9 = await api(`/api/gestor/os/${osDocId}/validar`, 'PATCH', gestor, { aprovado: true, recomendacoes: 'Rec: agendar nova manutencao em 6 meses' });
-    test('gestor aprova -> relatorio disponibilizado ao comercial', c9.status === 200 && c9.data.os.relatorio.status === 'aprovado' && c9.data.os.relatorio.enviado_comercial === 1, c9.status);
+    test('tecnico conclui novamente apos reabertura', c8.status === 200 && c8.data.os.status === 'concluida' && c8.data.os.relatorio.status === 'aprovado', c8.status);
     const c10 = await api('/api/comercial/relatorios', 'GET', comercial);
     const recDoc = c10.data.relatorios.find((r) => r.os_numero === c1.data.os.numero);
-    test('comercial recebe relatorio apos validacao', c10.status === 200 && !!recDoc && recDoc.necessidade_adicional === 'nova_manutencao', c10.status);
+    test('comercial recebe relatorio apos re-conclusao', c10.status === 200 && !!recDoc && recDoc.necessidade_adicional === 'nova_manutencao', c10.status);
     const c11 = await api(`/api/comercial/relatorios/${recDoc.id}`, 'GET', comercial);
     test('comercial visualiza relatorio completo', c11.status === 200 && Array.isArray(c11.data.relatorio.fotos) && c11.data.relatorio.diagnostico === 'Diagnostico tecnico original' && c11.data.relatorio.servico_executado === 'Preventiva executada' && c11.data.relatorio.oportunidade && c11.data.relatorio.oportunidade.status === 'novo', c11.status);
     const c12 = await api(`/api/comercial/relatorios/${recDoc.id}`, 'PUT', comercial, { diagnostico: 'hack' });
@@ -292,7 +315,7 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     test('pdf sem token -> 401', pdf3.status === 401, pdf3.status);
 
     const g1 = await api('/api/comercial/relatorios', 'GET', gestor);
-    test('gestor lista relatorios validados', g1.status === 200 && g1.data.relatorios.length >= 1, g1.status);
+    test('gestor lista relatorios liberados', g1.status === 200 && g1.data.relatorios.length >= 1, g1.status);
     const g2 = await api(`/api/comercial/relatorios/${recDoc.id}`, 'GET', gestor);
     test('gestor visualiza relatorio completo', g2.status === 200 && g2.data.relatorio.diagnostico === 'Diagnostico tecnico original', g2.status);
     const g3 = await fetch(base + `/api/comercial/relatorios/${recDoc.id}/pdf`, { headers: { Authorization: `Bearer ${gestor}` } });
@@ -306,9 +329,9 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     await api(`/api/tecnico/os/${osSemId}/iniciar`, 'POST', tecnico);
     await api(`/api/tecnico/os/${osSemId}/execucao`, 'PUT', tecnico, { servico_executado: 'Lampada trocada', necessidade_adicional: 'nao', assinatura_nome: 'Responsavel Teste' });
     await upload(`/api/tecnico/os/${osSemId}/assinatura`, tecnico, 'assinatura', 'ass.png', PNG);
-    await api(`/api/tecnico/os/${osSemId}/concluir`, 'POST', tecnico);
-    const d2 = await api(`/api/gestor/os/${osSemId}/validar`, 'PATCH', gestor, { aprovado: true });
-    test('aprovacao sem necessidade -> nao envia ao comercial', d2.status === 200 && d2.data.os.relatorio.enviado_comercial === 0, d2.status);
+    const d1b = await api(`/api/tecnico/os/${osSemId}/concluir`, 'POST', tecnico);
+    const d2 = await api(`/api/gestor/os/${osSemId}`, 'GET', gestor);
+    test('conclusao sem necessidade -> nao envia ao comercial', d1b.status === 200 && d2.status === 200 && d2.data.os.relatorio.enviado_comercial === 0, `${d1b.status} ${d2.data.os?.relatorio?.enviado_comercial}`);
     const d3 = await api('/api/comercial/relatorios', 'GET', comercial);
     test('relatorio sem oportunidade nao aparece para o comercial', d3.status === 200 && !d3.data.relatorios.some((r) => r.os_numero === d1.data.os.numero), d3.status);
     const d4 = await api(`/api/comercial/relatorios?status=necessita_contato`, 'GET', comercial);
@@ -466,12 +489,10 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     const upAss = await upload(`/api/tecnico/os/${osEquipeId}/assinatura`, tokenA2, 'assinatura', 'ass.png', PNG);
     test('assinatura registrada na execução', upAss.status === 201, upAss.status);
     const fin = await api(`/api/tecnico/os/${osEquipeId}/concluir`, 'POST', tokenA2);
-    test('finalizar registra quem concluiu + data/hora de conclusão', fin.status === 200 && fin.data.os.status === 'aguardando_validacao', fin.status);
+    test('finalizar registra quem concluiu + data/hora de conclusão', fin.status === 200 && fin.data.os.status === 'concluida', fin.status);
     const det = await api(`/api/tecnico/os/${osEquipeId}`, 'GET', tokenA2);
     test('concluida_por e concluida_em registrados', det.status === 200 && det.data.os.execucao.concluida_por === idsA[1] && !!det.data.os.execucao.concluida_em && det.data.os.execucao.concluida_por_nome === 'Tecnico A2', `${det.status} ${det.data.os.execucao.concluida_por}`);
-    test('OS retorna ao gestor para validação', det.status === 200 && det.data.os.status === 'aguardando_validacao', det.status);
-    const val = await api(`/api/gestor/os/${osEquipeId}/validar`, 'PATCH', gestor, { aprovado: true });
-    test('gestor valida a OS executada pela equipe', val.status === 200 && val.data.os.status === 'concluida', val.status);
+    test('OS concluida e relatorio liberado automaticamente', det.status === 200 && det.data.os.status === 'concluida' && det.data.os.relatorio.status === 'aprovado', det.status);
   }
 
   console.log('Fase 9 - Avaliação do cliente por OS');
@@ -497,10 +518,9 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     await api(`/api/tecnico/os/${osId1}/iniciar`, 'POST', tecnico);
     await api(`/api/tecnico/os/${osId1}/execucao`, 'PUT', tecnico, { servico_executado: 'Serviço para avaliação', assinatura_nome: 'Responsável Avaliação' });
     await upload(`/api/tecnico/os/${osId1}/assinatura`, tecnico, 'assinatura', 'ass2.png', PNG);
-    await api(`/api/tecnico/os/${osId1}/concluir`, 'POST', tecnico);
-    const val = await api(`/api/gestor/os/${osId1}/validar`, 'PATCH', gestor, { aprovado: true });
-    test('validação libera a avaliação automaticamente', val.status === 200 && val.data.os.status === 'concluida' && val.data.os.avaliacao && val.data.os.avaliacao.status === 'pendente', `${val.status} ${JSON.stringify(val.data.os?.avaliacao)}`);
-    const token1 = val.data.os.avaliacao.token;
+    const conc = await api(`/api/tecnico/os/${osId1}/concluir`, 'POST', tecnico);
+    test('conclusão libera a avaliação automaticamente', conc.status === 200 && conc.data.os.status === 'concluida' && conc.data.os.avaliacao && conc.data.os.avaliacao.status === 'pendente', `${conc.status} ${JSON.stringify(conc.data.os?.avaliacao)}`);
+    const token1 = conc.data.os.avaliacao.token;
     test('cada OS possui token exclusivo', typeof token1 === 'string' && token1.length >= 30, token1);
 
     const publ1 = await api(`/api/avaliacao/${token1}`);
@@ -535,9 +555,8 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     await api(`/api/tecnico/os/${osId2}/iniciar`, 'POST', tecnico);
     await api(`/api/tecnico/os/${osId2}/execucao`, 'PUT', tecnico, { servico_executado: 'Serviço 2', assinatura_nome: 'Responsável Avaliação' });
     await upload(`/api/tecnico/os/${osId2}/assinatura`, tecnico, 'assinatura', 'ass3.png', PNG);
-    await api(`/api/tecnico/os/${osId2}/concluir`, 'POST', tecnico);
-    const val2 = await api(`/api/gestor/os/${osId2}/validar`, 'PATCH', gestor, { aprovado: true });
-    const token2 = val2.data.os.avaliacao.token;
+    const conc2 = await api(`/api/tecnico/os/${osId2}/concluir`, 'POST', tecnico);
+    const token2 = conc2.data.os.avaliacao.token;
     test('mesmo cliente recebe link diferente por OS', token2 !== token1, token2);
 
     const gestLista = await api('/api/gestor/avaliacoes', 'GET', gestor);
@@ -1007,8 +1026,167 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     test('OS com local continua exibindo o endereço do local (não o do cliente)', detComLocal.status === 200 && detComLocal.data.os.local_endereco === 'Rua do Local Oficial, 789' && (detComLocal.data.os.local_endereco_completo || '').includes('Rua do Local Oficial, 789'), `${detComLocal.status} ${JSON.stringify(detComLocal.data.os?.local_endereco)}`);
   }
 
+  console.log('Fase 15 - Migracao de OS legadas aguardando validacao');
+  {
+    const cLeg = await api('/api/gestor/clientes', 'POST', gestor, { nome: 'Cliente Legado ' + Date.now() });
+    const osLeg = await api('/api/gestor/os', 'POST', gestor, {
+      cliente_id: cLeg.data.cliente.id, servico: 'OS legada aguardando validacao',
+      data_agendada: '2027-02-01', equipe_id: 1
+    });
+    const osLegId = osLeg.data.os.id;
+    await api(`/api/tecnico/os/${osLegId}/iniciar`, 'POST', tecnico);
+    await api(`/api/tecnico/os/${osLegId}/execucao`, 'PUT', tecnico, { servico_executado: 'Servico legado', necessidade_adicional: 'nao', assinatura_nome: 'Responsavel Legado' });
+    await upload(`/api/tecnico/os/${osLegId}/assinatura`, tecnico, 'assinatura', 'ass-legado.png', PNG);
+    db.prepare("INSERT INTO relatorios (os_id, status, conteudo, enviado_comercial) VALUES (?, 'pendente', 'Relatorio legado', 0)").run(osLegId);
+    db.prepare("UPDATE ordens_servico SET status = 'aguardando_validacao' WHERE id = ?").run(osLegId);
+
+    const { concluirOSLegadas } = require('../server/services/conclusaoOS');
+    const migrados = concluirOSLegadas();
+    test('migracao conclui OS legadas aguardando validacao', migrados >= 1, migrados);
+
+    const leg = await api(`/api/gestor/os/${osLegId}`, 'GET', gestor);
+    test(
+      'OS legada concluida com relatorio liberado e avaliacao criada',
+      leg.status === 200 && leg.data.os.status === 'concluida' && leg.data.os.relatorio.status === 'aprovado' &&
+        leg.data.os.relatorio.enviado_comercial === 0 && leg.data.os.avaliacao && leg.data.os.avaliacao.status === 'pendente',
+      JSON.stringify({ status: leg.data.os?.status, rel: leg.data.os?.relatorio?.status, env: leg.data.os?.relatorio?.enviado_comercial, aval: leg.data.os?.avaliacao?.status })
+    );
+    const pendentes = await api('/api/gestor/os?status=aguardando_validacao', 'GET', gestor);
+    test('nao restam OS aguardando validacao', pendentes.status === 200 && pendentes.data.ordens.length === 0, pendentes.data.ordens?.length);
+  }
+
+  console.log('Fase 16 - Fluxo Equipe Separacao Abas (Ordem x Execucao / Relatorio)');
+  {
+    // 1. Gestor cria OS
+    const cFluxo = await api('/api/gestor/clientes', 'POST', gestor, {
+      nome: 'Cliente Hospital Modelo ' + Date.now(),
+      telefone: '11999998888',
+      email: 'gestor@hospital.com',
+      endereco: 'Av. Paulista, 1000'
+    });
+    const cDetalhe = await api(`/api/gestor/clientes/${cFluxo.data.cliente.id}`, 'GET', gestor);
+    const localIdFluxo = cDetalhe.data.locais[0]?.id;
+    const eqFluxo = await api('/api/gestor/equipamentos', 'POST', gestor, {
+      cliente_id: cFluxo.data.cliente.id,
+      local_id: localIdFluxo,
+      nome: 'Chiller Central 01',
+      codigo_mt: 'MT-9988',
+      tipo: 'Chiller',
+      fabricante: 'Carrier',
+      modelo: '30XW',
+      capacidade: '150 TR'
+    });
+    const descGestorOriginal = 'Verificar ruído excessivo no compressor B e vazamento de gás. Não desligar sem autorização da manutenção.';
+    const osCriada = await api('/api/gestor/os', 'POST', gestor, {
+      cliente_id: cFluxo.data.cliente.id,
+      local_id: localIdFluxo,
+      equipamento_id: eqFluxo.data.equipamento?.id,
+      servico: 'Manutenção Corretiva Chiller',
+      descricao: descGestorOriginal,
+      prioridade: 'alta',
+      data_agendada: '2026-11-20',
+      hora_inicio: '09:00',
+      hora_fim: '12:00',
+      equipe_id: 1
+    });
+    const osId = osCriada.data.os.id;
+    test('1. Gestor cria OS com sucesso', osCriada.status === 201 && !!osId, `${osCriada.status}`);
+
+    // 2. Equipe recebe OS
+    const listaTecnico = await api('/api/tecnico/os', 'GET', tecnico);
+    const osNaLista = (listaTecnico.data.ordens || []).find((o) => o.id === osId);
+    test('2. Equipe recebe OS na sua lista', !!osNaLista, `OS ${osId} encontrada`);
+
+    // 3 e 4. Equipe abre OS e confirma informações da Aba 1 (Ordem de Serviço)
+    const osDetalheTec = await api(`/api/tecnico/os/${osId}`, 'GET', tecnico);
+    test('3. Equipe abre Ordem de Serviço', osDetalheTec.status === 200, `${osDetalheTec.status}`);
+    const osT = osDetalheTec.data.os;
+    test(
+      '4. Equipe confirma informações do Gestor na Aba 1',
+      osT &&
+      osT.cliente_nome?.includes('Cliente Hospital Modelo') &&
+      osT.servico === 'Manutenção Corretiva Chiller' &&
+      osT.descricao === descGestorOriginal &&
+      osT.equipamento_codigo_mt === eqFluxo.data.equipamento.codigo_mt &&
+      osT.equipamento_nome === 'Chiller Central 01' &&
+      osT.data_agendada === '2026-11-20' &&
+      osT.hora_inicio === '09:00' &&
+      osT.status === 'pendente',
+      JSON.stringify({
+        cliente: osT?.cliente_nome, servico: osT?.servico, desc: osT?.descricao,
+        mt: osT?.equipamento_codigo_mt, eq: osT?.equipamento_nome,
+        data: osT?.data_agendada, hora: osT?.hora_inicio, st: osT?.status
+      })
+    );
+
+    // 5. Inicia atendimento e abre Aba 2 (Execução / Relatório)
+    const resInicio = await api(`/api/tecnico/os/${osId}/iniciar`, 'POST', tecnico);
+    test('5. Equipe inicia atendimento para abrir Execução', resInicio.status === 200 && resInicio.data.os.status === 'em_andamento', `${resInicio.status}`);
+
+    // 6. Preenche diagnóstico, serviço executado, solução, observações, fotos e assinatura
+    const resExec = await api(`/api/tecnico/os/${osId}/execucao`, 'PUT', tecnico, {
+      diagnostico: 'Constatado desgaste no acoplamento e vibração na válvula solenoide.',
+      servico_executado: 'Substituído acoplamento, reaperreadas conexões e calibrada a pressão de descarga.',
+      solucao: 'Compressor operando normalmente sem ruídos e vibração dentro dos parâmetros.',
+      observacoes: 'Recomendado acompanhar a temperatura do óleo nos próximos 3 dias.',
+      assinatura_nome: 'Dr. Roberto Gerente Predial',
+      assinatura_cargo: 'Gerente de Manutenção'
+    });
+    test('6a. Preenche diagnóstico, serviço executado, solução e observações', resExec.status === 200, `${resExec.status}`);
+
+    const resFoto = await upload(`/api/tecnico/os/${osId}/anexos`, tecnico, 'arquivos', 'foto-depois.png', PNG);
+    test('6b. Faz upload de foto do atendimento', resFoto.status === 201, `${resFoto.status}`);
+
+    const resAss = await upload(`/api/tecnico/os/${osId}/assinatura`, tecnico, 'assinatura', 'assinatura-cliente.png', PNG);
+    test('6c. Registra assinatura do responsável', resAss.status === 201, `${resAss.status}`);
+
+    // 7. Finaliza o atendimento
+    const resConcluir = await api(`/api/tecnico/os/${osId}/concluir`, 'POST', tecnico);
+    test('7. Equipe finaliza atendimento', resConcluir.status === 200 && resConcluir.data.os.status === 'concluida', `${resConcluir.status}`);
+
+    // 8. Gestor abre a mesma OS
+    const osDetalheGestor = await api(`/api/gestor/os/${osId}`, 'GET', gestor);
+    test('8. Gestor abre a mesma OS', osDetalheGestor.status === 200, `${osDetalheGestor.status}`);
+    const osG = osDetalheGestor.data.os;
+
+    // 9. Confirma que todas as informações da execução estão disponíveis
+    test(
+      '9. Gestor confirma todas as informações da execução disponíveis',
+      osG.execucao &&
+      osG.execucao.diagnostico === 'Constatado desgaste no acoplamento e vibração na válvula solenoide.' &&
+      osG.execucao.servico_executado === 'Substituído acoplamento, reaperreadas conexões e calibrada a pressão de descarga.' &&
+      osG.execucao.solucao === 'Compressor operando normalmente sem ruídos e vibração dentro dos parâmetros.' &&
+      osG.execucao.observacoes === 'Recomendado acompanhar a temperatura do óleo nos próximos 3 dias.' &&
+      osG.execucao.iniciada_em &&
+      osG.execucao.concluida_em &&
+      osG.anexos && osG.anexos.length >= 1 &&
+      (osG.execucao.assinatura || (osG.execucao.assinaturas && osG.execucao.assinaturas.length >= 1)),
+      JSON.stringify(osG.execucao)
+    );
+
+    // 10. Confirmar que nenhuma informação cadastrada pelo Gestor foi alterada indevidamente
+    test(
+      '10. Confirma que dados cadastrados pelo Gestor permaneceram 100% intactos',
+      osG &&
+      osG.id === osId &&
+      osG.cliente_id === cFluxo.data.cliente.id &&
+      osG.servico === 'Manutenção Corretiva Chiller' &&
+      osG.descricao === descGestorOriginal &&
+      osG.prioridade === 'alta' &&
+      osG.data_agendada === '2026-11-20' &&
+      osG.hora_inicio === '09:00' &&
+      osG.hora_fim === '12:00' &&
+      osG.equipamento_id === eqFluxo.data.equipamento?.id &&
+      osG.equipamento_codigo_mt === eqFluxo.data.equipamento?.codigo_mt,
+      JSON.stringify({
+        id: osG?.id, cliente_id: osG?.cliente_id, servico: osG?.servico, desc: osG?.descricao,
+        mt: osG?.equipamento_codigo_mt, eq_id: osG?.equipamento_id
+      })
+    );
+  }
+
   server.close();
-  require('../server/db').close();
+  db.close();
   fs.rmSync(TEST_DIR, { recursive: true, force: true });
 
   console.log(`\nResultado: ${passou} passaram, ${falhou} falharam`);

@@ -28,7 +28,6 @@ const ABAS_STATUS = [
   { v: "", l: "Todas" },
   { v: "pendente", l: "Pendentes" },
   { v: "em_andamento", l: "Em andamento" },
-  { v: "aguardando_validacao", l: "Aguardando validação" },
   { v: "concluida", l: "Concluídas" },
   { v: "cancelada", l: "Canceladas" }
 ];

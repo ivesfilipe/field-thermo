@@ -7,7 +7,6 @@ const {
   registrarHistorico,
   verificarConflitoEResponder
 } = require('../../calendario');
-const { TIPOS_NECESSIDADE } = require('../../constantes');
 const { MODELOS } = require('../../modelos');
 const { sqlEnderecoCompleto } = require('../../endereco');
 const config = require('../../config');
@@ -361,93 +360,6 @@ router.get('/agenda', (req, res) => {
   res.json({ agenda: db.prepare(sql).all(...params) });
 });
 
-router.patch('/os/:id/validar', (req, res) => {
-  const id = Number(req.params.id);
-  const os = db.prepare('SELECT * FROM ordens_servico WHERE id = ?').get(id);
-  if (!os) {
-    return res.status(404).json({ error: 'Ordem de serviço não encontrada' });
-  }
-  if (os.status !== 'aguardando_validacao') {
-    return res.status(400).json({ error: 'Somente OS aguardando validação pode ser validada' });
-  }
-  const execucao = db.prepare('SELECT * FROM execucoes WHERE os_id = ?').get(id);
-  if (!execucao) {
-    return res.status(400).json({ error: 'OS sem execução registrada' });
-  }
-  const { aprovado, recomendacoes, complemento_motivo, enviar_comercial } = req.body || {};
-  if (aprovado === undefined) {
-    return res.status(400).json({ error: 'Informe o campo aprovado (true/false)' });
-  }
-  const relatorioExistente = db.prepare('SELECT id FROM relatorios WHERE os_id = ?').get(id);
-
-  if (!aprovado) {
-    const motivo = (complemento_motivo || '').trim();
-    if (!motivo) {
-      return res.status(400).json({ error: 'Informe o motivo do complemento solicitado' });
-    }
-    db.prepare(
-      `UPDATE relatorios SET status = 'reprovado', validado_por = ?, data_validacao = datetime('now'),
-         recomendacoes = ?, complemento_motivo = ?, enviado_comercial = 0, enviado_comercial_em = NULL
-       WHERE os_id = ?`
-    ).run(req.user.id, recomendacoes ?? null, motivo, id);
-    db.prepare('UPDATE execucoes SET complemento_solicitado = ? WHERE id = ?').run(motivo, execucao.id);
-    db.prepare("UPDATE ordens_servico SET status = 'em_andamento' WHERE id = ?").run(id);
-    if (relatorioExistente) {
-      registrarHistorico({ usuario: req.user, tipo: 'relatorio', registroId: relatorioExistente.id, campo: 'complemento', valorNovo: motivo });
-    }
-    registrarHistorico({ usuario: req.user, tipo: 'os', registroId: id, campo: 'status', valorAnterior: 'aguardando_validacao', valorNovo: 'em_andamento (complemento solicitado)' });
-    return res.json({ os: getOS(id) });
-  }
-
-  const status = 'aprovado';
-  const novoTokenRel = crypto.randomBytes(16).toString('hex');
-  if (relatorioExistente) {
-    db.prepare(
-      `UPDATE relatorios SET status = ?, validado_por = ?, data_validacao = datetime('now'),
-         recomendacoes = ?, complemento_motivo = NULL, token = COALESCE(token, ?) WHERE os_id = ?`
-    ).run(status, req.user.id, recomendacoes ?? null, novoTokenRel, id);
-  } else {
-    db.prepare(
-      'INSERT INTO relatorios (os_id, status, validado_por, data_validacao, recomendacoes, token) VALUES (?, ?, ?, datetime(\'now\'), ?, ?)'
-    ).run(id, status, req.user.id, recomendacoes ?? null, novoTokenRel);
-  }
-  const relatorio = db.prepare('SELECT * FROM relatorios WHERE os_id = ?').get(id);
-  const temOportunidade = enviar_comercial === true || (execucao.necessidade_adicional && execucao.necessidade_adicional !== 'nao');
-  if (temOportunidade) {
-    db.prepare(
-      'UPDATE relatorios SET enviado_comercial = 1, enviado_comercial_em = datetime(\'now\') WHERE id = ?'
-    ).run(relatorio.id);
-    const jaExiste = db.prepare('SELECT id FROM oportunidades WHERE relatorio_id = ?').get(relatorio.id);
-    if (!jaExiste) {
-      const tipoOportunidade = execucao.necessidade_adicional && execucao.necessidade_adicional !== 'nao'
-        ? execucao.necessidade_adicional
-        : 'outro_servico';
-      const descricao = [
-        os.servico,
-        TIPOS_NECESSIDADE[tipoOportunidade],
-        recomendacoes ? `Recomendações: ${recomendacoes}` : null
-      ].filter(Boolean).join(' — ');
-      db.prepare(
-        'INSERT INTO oportunidades (relatorio_id, tipo, descricao, status, criado_por) VALUES (?, ?, ?, ?, ?)'
-      ).run(relatorio.id, tipoOportunidade, descricao, 'novo', req.user.id);
-      const novaOportunidade = db.prepare('SELECT id FROM oportunidades WHERE relatorio_id = ?').get(relatorio.id);
-      registrarHistorico({ usuario: req.user, tipo: 'oportunidade', registroId: novaOportunidade.id, campo: 'criacao_automatica', valorNovo: descricao });
-    }
-    registrarHistorico({ usuario: req.user, tipo: 'relatorio', registroId: relatorio.id, campo: 'envio_comercial', valorNovo: 'relatório validado disponibilizado ao comercial' });
-  } else {
-    db.prepare('UPDATE relatorios SET enviado_comercial = 0, enviado_comercial_em = NULL WHERE id = ?').run(relatorio.id);
-  }
-  db.prepare("UPDATE ordens_servico SET status = 'concluida' WHERE id = ?").run(id);
-  const avaliacaoExistente = db.prepare('SELECT id FROM avaliacoes WHERE os_id = ?').get(id);
-  if (!avaliacaoExistente) {
-    db.prepare('INSERT INTO avaliacoes (os_id, token) VALUES (?, ?)').run(id, crypto.randomBytes(16).toString('hex'));
-    registrarHistorico({ usuario: req.user, tipo: 'os', registroId: id, campo: 'avaliacao', valorNovo: 'avaliação de cliente liberada' });
-  }
-  registrarHistorico({ usuario: req.user, tipo: 'relatorio', registroId: relatorio.id, campo: 'validacao', valorAnterior: 'pendente', valorNovo: 'aprovado' });
-  registrarHistorico({ usuario: req.user, tipo: 'os', registroId: id, campo: 'status', valorAnterior: 'aguardando_validacao', valorNovo: 'concluida' });
-  res.json({ os: getOS(id) });
-});
-
 router.post('/os/:id/avaliacao/link', (req, res) => {
   const id = Number(req.params.id);
   const os = db.prepare('SELECT * FROM ordens_servico WHERE id = ?').get(id);
@@ -455,7 +367,7 @@ router.post('/os/:id/avaliacao/link', (req, res) => {
     return res.status(404).json({ error: 'Ordem de serviço não encontrada' });
   }
   if (os.status !== 'concluida') {
-    return res.status(400).json({ error: 'A avaliação é liberada somente após a OS ser concluída e validada' });
+    return res.status(400).json({ error: 'A avaliação é liberada somente após a OS ser concluída' });
   }
   let avaliacao = db.prepare('SELECT * FROM avaliacoes WHERE os_id = ?').get(id);
   if (!avaliacao) {
@@ -615,8 +527,13 @@ router.patch('/os/:id/reabrir', (req, res) => {
   db.prepare("UPDATE ordens_servico SET status = 'em_andamento' WHERE id = ?").run(id);
   const execucao = db.prepare('SELECT id FROM execucoes WHERE os_id = ?').get(id);
   if (execucao) {
-    db.prepare('UPDATE execucoes SET complemento_solicitado = ?, concluida_em = NULL WHERE id = ?').run(`Reaberta pelo gestor: ${motivo}`, execucao.id);
+    db.prepare('UPDATE execucoes SET complemento_solicitado = ?, concluida_em = NULL, concluida_por = NULL WHERE id = ?').run(`Reaberta pelo gestor: ${motivo}`, execucao.id);
   }
+  db.prepare(
+    `UPDATE relatorios SET status = 'pendente', validado_por = NULL, data_validacao = NULL,
+       enviado_comercial = 0, enviado_comercial_em = NULL, complemento_motivo = ?
+     WHERE os_id = ?`
+  ).run(motivo, id);
   registrarHistorico({ usuario: req.user, tipo: 'os', registroId: id, campo: 'reabertura', valorNovo: motivo });
   res.json({ os: getOS(id) });
 });
