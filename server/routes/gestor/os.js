@@ -414,8 +414,22 @@ router.post('/os/:id/copiar-assinatura', (req, res) => {
   const sets = [];
   const vals = [];
   if (copiar_cliente && temCliente) {
+    let assinaturasCopiadas = execOrigem.assinaturas;
+    const dataAtividadeDestino = osDestino.data_agendada || execDestino.concluida_em || null;
+    if (assinaturasCopiadas) {
+      try {
+        const arr = JSON.parse(assinaturasCopiadas);
+        if (Array.isArray(arr)) {
+          assinaturasCopiadas = JSON.stringify(
+            arr.map((a) => ({ ...a, criado_em: dataAtividadeDestino || a.criado_em || null }))
+          );
+        }
+      } catch {
+        // mantém valor original se não for JSON válido
+      }
+    }
     sets.push('assinatura = ?', 'assinatura_nome = ?', 'assinatura_cargo = ?', 'assinaturas = ?');
-    vals.push(execOrigem.assinatura, execOrigem.assinatura_nome, execOrigem.assinatura_cargo, execOrigem.assinaturas);
+    vals.push(execOrigem.assinatura, execOrigem.assinatura_nome, execOrigem.assinatura_cargo, assinaturasCopiadas);
   }
   if (copiar_tecnica && temTecnica) {
     sets.push('assinatura_tecnico = ?', 'assinatura_tecnico_nome = ?');

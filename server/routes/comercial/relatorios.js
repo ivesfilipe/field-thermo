@@ -696,7 +696,7 @@ function enviarPdfHtml(relatorio, req, res) {
         : '<div class="linha-vazia-ass"></div>';
       const nomeAss = (ass && ass.nome) || (idx === 0 ? (relatorio.assinatura_nome || relatorio.local_responsavel || relatorio.cliente_nome) : '') || 'Responsável pelo Local';
       const cargoAss = (ass && ass.cargo) || (idx === 0 ? relatorio.assinatura_cargo : '') || 'Responsável no local';
-      const dataAss = formatarData((ass && ass.criado_em) || relatorio.atendimento_concluido_em || relatorio.data_agendada);
+      const dataAss = formatarData(relatorio.data_agendada || (ass && ass.criado_em) || relatorio.atendimento_concluido_em);
       const tituloBloco = listaAssinaturas.length > 1 ? `Aceite do Cliente / Local (${idx + 1})` : 'Aceite do Cliente / Local';
       return `
       <div class="bloco-assinatura">
@@ -1430,7 +1430,7 @@ function enviarPdfHtml(relatorio, req, res) {
         <div>
           <div class="assinatura-nome">${e(relatorio.assinatura_tecnico_nome || relatorio.tecnico_nome || 'Técnico Responsável')}</div>
           <div class="assinatura-cargo">${e(relatorio.equipe_nome || 'Equipe Técnica de Campo')}</div>
-          <div class="assinatura-data">Concluído em: ${e(formatarData(relatorio.atendimento_concluido_em || relatorio.data_agendada))}</div>
+          <div class="assinatura-data">Concluído em: ${e(formatarData(relatorio.data_agendada || relatorio.atendimento_concluido_em))}</div>
         </div>
       </div>
 
