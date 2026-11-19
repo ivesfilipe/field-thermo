@@ -171,9 +171,8 @@ router.get('/relatorios', (req, res) => {
     params.push(like, like, like, like);
   }
   sql += ` ORDER BY
-    CASE WHEN o.data_agendada IS NULL THEN 1 ELSE 0 END,
-    o.data_agendada DESC,
-    CASE WHEN o.hora_inicio IS NULL THEN 1 ELSE 0 END,
+    COALESCE(NULLIF(o.data_agendada, ''), substr(r.data_validacao, 1, 10)) DESC,
+    CASE WHEN o.hora_inicio IS NULL OR o.hora_inicio = '' THEN 1 ELSE 0 END,
     o.hora_inicio DESC,
     o.id DESC`;
   const relatorios = db.prepare(sql).all(...params);
@@ -314,18 +313,18 @@ router.get('/relatorios/:id', (req, res) => {
   relatorio.tipo_necessidade_label = TIPOS_NECESSIDADE[relatorio.necessidade_adicional] || relatorio.necessidade_adicional;
   relatorio.oportunidade = relatorio.oportunidade_id
     ? {
-        id: relatorio.oportunidade_id,
-        status: relatorio.oportunidade_status,
-        descricao: relatorio.oportunidade_descricao,
-        valor_estimado: relatorio.oportunidade_valor,
-        data_contato: relatorio.oportunidade_data_contato,
-        resultado_contato: relatorio.oportunidade_resultado,
-        proposta_vinculada: relatorio.oportunidade_proposta,
-        previsao_fechamento: relatorio.oportunidade_previsao,
-        criado_em: relatorio.oportunidade_criado_em,
-        responsavel: relatorio.oportunidade_responsavel,
-        responsavel_id: relatorio.oportunidade_responsavel_id
-      }
+      id: relatorio.oportunidade_id,
+      status: relatorio.oportunidade_status,
+      descricao: relatorio.oportunidade_descricao,
+      valor_estimado: relatorio.oportunidade_valor,
+      data_contato: relatorio.oportunidade_data_contato,
+      resultado_contato: relatorio.oportunidade_resultado,
+      proposta_vinculada: relatorio.oportunidade_proposta,
+      previsao_fechamento: relatorio.oportunidade_previsao,
+      criado_em: relatorio.oportunidade_criado_em,
+      responsavel: relatorio.oportunidade_responsavel,
+      responsavel_id: relatorio.oportunidade_responsavel_id
+    }
     : null;
   const historico = db
     .prepare(
@@ -406,7 +405,7 @@ function resolverImagem(src, base) {
       const b64 = fs.readFileSync(localPath).toString('base64');
       return `data:${mime};base64,${b64}`;
     }
-  } catch {}
+  } catch { }
   if (src.startsWith('http://') || src.startsWith('https://')) return src;
   return `${base}${src.startsWith('/') ? '' : '/'}${src}`;
 }
@@ -614,16 +613,16 @@ function enviarPdfHtml(relatorio, req, res) {
         </div>
         <ul class="lista-docs">
           ${docsParaPdf
-            .map(
-              (d) => `
+        .map(
+          (d) => `
             <li>
               <a href="${e(base + d.arquivo)}" target="_blank">
                 ${e(d.nome_original || d.arquivo.split('/').pop())}
               </a>
             </li>
           `
-            )
-            .join('')}
+        )
+        .join('')}
         </ul>
       </section>
     `;
@@ -646,31 +645,28 @@ function enviarPdfHtml(relatorio, req, res) {
           <h2>Parecer Técnico e Recomendações</h2>
         </div>
         <div class="grade-parecer">
-          ${
-            recomendacoesGerais
-              ? `<div class="card-parecer card-recomendacao">
+          ${recomendacoesGerais
+        ? `<div class="card-parecer card-recomendacao">
                   <h4>Orientações e Recomendações</h4>
                   <p>${recomendacoesGerais}</p>
                 </div>`
-              : ''
-          }
-          ${
-            relatorio.pendencias
-              ? `<div class="card-parecer card-pendencia">
+        : ''
+      }
+          ${relatorio.pendencias
+        ? `<div class="card-parecer card-pendencia">
                   <h4>Pendências Identificadas</h4>
                   <p>${e(relatorio.pendencias)}</p>
                 </div>`
-              : ''
-          }
-          ${
-            relatorio.necessidade_adicional && relatorio.necessidade_adicional !== 'nao'
-              ? `<div class="card-parecer card-necessidade">
+        : ''
+      }
+          ${relatorio.necessidade_adicional && relatorio.necessidade_adicional !== 'nao'
+        ? `<div class="card-parecer card-necessidade">
                   <h4>Oportunidade de Melhoria / Ação Futura</h4>
                   <p><strong>Tipo:</strong> ${e(TIPOS_NECESSIDADE[relatorio.necessidade_adicional] || relatorio.necessidade_adicional)}</p>
                   ${relatorio.necessidade_descricao ? `<p>${e(relatorio.necessidade_descricao)}</p>` : ''}
                 </div>`
-              : ''
-          }
+        : ''
+      }
         </div>
       </section>
     `;
@@ -726,8 +722,8 @@ function enviarPdfHtml(relatorio, req, res) {
           <h2>${e(conteudoIa.modelo.tipo || 'Modelo de Atendimento Técnico')}</h2>
         </div>
         <ul class="lista-docs">${conteudoIa.modelo.campos
-          .map((c) => `<li>${e(c)}</li>`)
-          .join('')}</ul>
+      .map((c) => `<li>${e(c)}</li>`)
+      .join('')}</ul>
       </section>`
     : '';
 
@@ -1277,14 +1273,13 @@ function enviarPdfHtml(relatorio, req, res) {
         <span class="campo-rotulo">Cliente:</span>
         <span class="campo-valor">${e(relatorio.cliente_nome)}</span>
       </div>
-      ${
-        relatorio.cliente_documento
-          ? `<div class="linha-campo">
+      ${relatorio.cliente_documento
+      ? `<div class="linha-campo">
               <span class="campo-rotulo">Documento / CNPJ:</span>
               <span class="campo-valor">${e(relatorio.cliente_documento)}</span>
             </div>`
-          : ''
-      }
+      : ''
+    }
       <div class="linha-campo">
         <span class="campo-rotulo">Unidade / Local:</span>
         <span class="campo-valor">${e(relatorio.local_nome || '-')}</span>
@@ -1360,40 +1355,36 @@ function enviarPdfHtml(relatorio, req, res) {
   </div>
 
   <!-- Diagnóstico e Condição Inicial -->
-  ${
-    relatorio.condicao_sintomas || relatorio.condicao_equipamento || relatorio.causa || relatorio.diagnostico
+  ${relatorio.condicao_sintomas || relatorio.condicao_equipamento || relatorio.causa || relatorio.diagnostico
       ? `<section class="secao">
           <div class="secao-titulo">
             <h2>Condição Inicial e Diagnóstico Técnico</h2>
           </div>
           <div class="grid-2">
-            ${
-              relatorio.condicao_sintomas || relatorio.condicao_equipamento
-                ? `<div class="card-bloco">
+            ${relatorio.condicao_sintomas || relatorio.condicao_equipamento
+        ? `<div class="card-bloco">
                     <h3>Estado Inicial Relatado</h3>
                     ${relatorio.condicao_sintomas ? `<p style="margin: 0 0 6px;"><strong>Sintomas:</strong> ${e(relatorio.condicao_sintomas)}</p>` : ''}
                     ${relatorio.condicao_equipamento ? `<p style="margin: 0 0 6px;"><strong>Condição do equipamento:</strong> ${e(relatorio.condicao_equipamento)}</p>` : ''}
                     ${relatorio.condicao_observacoes ? `<p style="margin: 0; color: #64748b;">${e(relatorio.condicao_observacoes)}</p>` : ''}
                   </div>`
-                : ''
-            }
-            ${
-              relatorio.diagnostico || relatorio.causa
-                ? `<div class="card-bloco">
+        : ''
+      }
+            ${relatorio.diagnostico || relatorio.causa
+        ? `<div class="card-bloco">
                     <h3>Diagnóstico e Causa</h3>
                     ${relatorio.causa ? `<p style="margin: 0 0 6px;"><strong>Causa identificada:</strong> ${e(relatorio.causa)}</p>` : ''}
                     ${relatorio.diagnostico ? `<p style="margin: 0;"><strong>Diagnóstico técnico:</strong> ${e(relatorio.diagnostico)}</p>` : ''}
                   </div>`
-                : ''
-            }
+        : ''
+      }
           </div>
         </section>`
       : ''
-  }
+    }
 
   <!-- Solução Aplicada (se houver) -->
-  ${
-    relatorio.solucao
+  ${relatorio.solucao
       ? `<section class="secao">
           <div class="secao-titulo">
             <h2>Solução Aplicada</h2>
@@ -1401,7 +1392,7 @@ function enviarPdfHtml(relatorio, req, res) {
           <div class="texto-caixa">${e(relatorio.solucao)}</div>
         </section>`
       : ''
-  }
+    }
 
   <!-- Modelo Técnico Específico (se houver) -->
   ${modeloHtml}
