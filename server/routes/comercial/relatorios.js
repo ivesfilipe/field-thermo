@@ -470,18 +470,24 @@ function enviarPdfHtml(relatorio, req, res) {
   // Ficha do equipamento somente quando houver MT/equipamento vinculado à OS
   const temEquipamento = Boolean(relatorio.equipamento_id && (relatorio.equipamento_nome || relatorio.equipamento_codigo_mt));
 
-  // Fotos em grid
+  // Fotos em grid (com legenda personalizada quando informada pela equipe)
+  const legendaPorArquivo = new Map();
+  for (const a of anexos) {
+    if (a.arquivo && a.legenda) legendaPorArquivo.set(a.arquivo, a.legenda);
+  }
   let fotosHtml = '';
   if (relatorio.fotos && relatorio.fotos.length > 0) {
     const itensFotos = relatorio.fotos
       .map((f, idx) => {
         const imgSrc = resolverImagem(f, base);
+        const legendaFoto = legendaPorArquivo.get(f) || `Registro fotográfico #${idx + 1}`;
+        const legendaJs = legendaFoto.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         return `
-          <div class="foto-card" style="cursor: pointer;" onclick="abrirModalFoto(this.querySelector('img').src, 'Registro fotográfico #${idx + 1}')" title="Clique para ampliar a foto">
+          <div class="foto-card" style="cursor: pointer;" onclick="abrirModalFoto(this.querySelector('img').src, '${e(legendaJs)}')" title="Clique para ampliar a foto">
             <div class="foto-wrap">
-              <img src="${e(imgSrc)}" alt="Registro fotográfico #${idx + 1}" />
+              <img src="${e(imgSrc)}" alt="${e(legendaFoto)}" />
             </div>
-            <div class="foto-legenda">Registro fotográfico #${idx + 1} <span class="no-print" style="color: #1e3a8a; font-weight: 600;">(Clique para abrir)</span></div>
+            <div class="foto-legenda">${e(legendaFoto)} <span class="no-print" style="color: #1e3a8a; font-weight: 600;">(Clique para abrir)</span></div>
           </div>
         `;
       })

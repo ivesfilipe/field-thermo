@@ -39,6 +39,7 @@ interface Anexo {
   categoria: string;
   arquivo: string;
   nome_original: string | null;
+  legenda?: string | null;
   criado_em: string;
 }
 
@@ -266,6 +267,8 @@ export default function ExecucaoOsPage() {
     dados_modelo: {}
   });
   const [categoriaAnexo, setCategoriaAnexo] = useState("durante");
+  const [legendaAnexo, setLegendaAnexo] = useState("");
+  const [legendasEdit, setLegendasEdit] = useState<Record<number, string>>({});
   const extratorAssinaturaRef = useRef<(() => Promise<Blob | null>) | null>(null);
 
   const extrairListaAssinaturas = useCallback((ex: Execucao | null): AssinaturaItem[] => {
@@ -327,10 +330,12 @@ export default function ExecucaoOsPage() {
   function montarPayload() {
     const primeira = form.assinaturas[0];
     const payload: Record<string, unknown> = {
-      assinaturas: form.assinaturas,
       assinatura_nome: primeira ? primeira.nome : form.assinatura_nome,
       assinatura_cargo: primeira ? primeira.cargo : form.assinatura_cargo
     };
+    if (form.assinaturas.length > 0) {
+      payload.assinaturas = form.assinaturas;
+    }
     const dm = form.dados_modelo || {};
     if (modelo) {
       payload.dados_modelo = dm;
@@ -350,24 +355,38 @@ export default function ExecucaoOsPage() {
     return payload;
   }
 
+  async function salvarAssinaturasPendentesNoPad() {
+    if (extratorAssinaturaRef.current) {
+      const blobPendente = await extratorAssinaturaRef.current();
+      if (blobPendente) {
+        const file = new File([blobPendente], "assinatura.png", { type: "image/png" });
+        const fd = new FormData();
+        fd.append("assinatura", file);
+        fd.append("nome", form.assinatura_nome.trim());
+        fd.append("cargo", form.assinatura_cargo.trim());
+        await api.uploadForm(`/api/tecnico/os/${id}/assinatura`, fd);
+        setForm((f) => ({ ...f, assinatura_nome: "", assinatura_cargo: "" }));
+      }
+    }
+    if (extratorAssinaturaTecnicaRef.current) {
+      const blobTec = await extratorAssinaturaTecnicaRef.current();
+      if (blobTec) {
+        const fileTec = new File([blobTec], "assinatura_tecnica.png", { type: "image/png" });
+        const fdTec = new FormData();
+        fdTec.append("assinatura", fileTec);
+        fdTec.append("nome", os?.equipe_nome || "Técnico Responsável");
+        await api.uploadForm(`/api/tecnico/os/${id}/assinatura-tecnica`, fdTec);
+      }
+    }
+  }
+
   async function salvarRascunho() {
     setErro("");
     setMsg("");
     setSalvando(true);
     try {
       await api.put(`/api/tecnico/os/${id}/execucao`, montarPayload());
-      if (extratorAssinaturaRef.current) {
-        const blobPendente = await extratorAssinaturaRef.current();
-        if (blobPendente) {
-          const file = new File([blobPendente], "assinatura.png", { type: "image/png" });
-          const fd = new FormData();
-          fd.append("assinatura", file);
-          fd.append("nome", form.assinatura_nome.trim());
-          fd.append("cargo", form.assinatura_cargo.trim());
-          await api.uploadForm(`/api/tecnico/os/${id}/assinatura`, fd);
-          setForm((f) => ({ ...f, assinatura_nome: "", assinatura_cargo: "" }));
-        }
-      }
+      await salvarAssinaturasPendentesNoPad();
       setMsg("Rascunho salvo.");
       carregar(true);
     } catch (err) {
@@ -384,13 +403,24 @@ export default function ExecucaoOsPage() {
     try {
       const fd = new FormData();
       fd.append("categoria", categoriaAnexo);
+      if (legendaAnexo.trim()) fd.append("legenda", legendaAnexo.trim());
       for (const f of files) fd.append("arquivos", f);
       await api.uploadForm(`/api/tecnico/os/${id}/anexos`, fd);
+      setLegendaAnexo("");
       carregar(true);
     } catch (err) {
       setErro((err as Error).message);
     }
     e.target.value = "";
+  }
+
+  async function salvarLegendaAnexo(anexoId: number, legenda: string) {
+    try {
+      await api.patch(`/api/tecnico/os/${id}/anexos/${anexoId}`, { legenda });
+      carregar(true);
+    } catch (err) {
+      setErro((err as Error).message);
+    }
   }
 
   async function removerAnexo(anexoId: number) {
@@ -514,18 +544,7 @@ export default function ExecucaoOsPage() {
     setEnviando(true);
     try {
       await api.put(`/api/tecnico/os/${id}/execucao`, montarPayload());
-      if (extratorAssinaturaRef.current) {
-        const blobPendente = await extratorAssinaturaRef.current();
-        if (blobPendente) {
-          const file = new File([blobPendente], "assinatura.png", { type: "image/png" });
-          const fd = new FormData();
-          fd.append("assinatura", file);
-          fd.append("nome", form.assinatura_nome.trim());
-          fd.append("cargo", form.assinatura_cargo.trim());
-          await api.uploadForm(`/api/tecnico/os/${id}/assinatura`, fd);
-          setForm((f) => ({ ...f, assinatura_nome: "", assinatura_cargo: "" }));
-        }
-      }
+      await salvarAssinaturasPendentesNoPad();
       await api.post(`/api/tecnico/os/${id}/concluir`);
       setDispensouGoogle(false);
       carregar(false);
@@ -881,16 +900,31 @@ export default function ExecucaoOsPage() {
               )}
 
               <Card title="2. Fotos">
-                <div className="flex flex-wrap gap-2">
-                  {fotos.map((f) => (
-                    <div key={f.id} className="group relative">
-                      <a href={mediaUrl(f.arquivo)} target="_blank" rel="noopener noreferrer" title="Clique para abrir a foto">
-                        <Image src={mediaUrl(f.arquivo)} alt={`Anexo ${CATEGORIA_LABEL[f.categoria] || f.categoria}`} width={96} height={96} className="h-24 w-24 rounded-md border border-zinc-200 object-cover transition hover:border-blue-600" />
-                      </a>
-                      <button type="button" onClick={() => removerAnexo(f.id)} className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs text-white shadow" title="Remover">×</button>
-                      <p className="mt-0.5 text-center text-[10px] text-zinc-400">{CATEGORIA_LABEL[f.categoria] || f.categoria}</p>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                  {fotos.map((f) => {
+                    const legendaAtual = legendasEdit[f.id] !== undefined ? legendasEdit[f.id] : (f.legenda || "");
+                    return (
+                      <div key={f.id} className="group relative rounded-lg border border-zinc-200 bg-zinc-50/70 p-2">
+                        <a href={mediaUrl(f.arquivo)} target="_blank" rel="noopener noreferrer" title="Clique para abrir a foto" className="block">
+                          <Image src={mediaUrl(f.arquivo)} alt={legendaAtual || `Anexo ${CATEGORIA_LABEL[f.categoria] || f.categoria}`} width={160} height={120} className="h-28 w-full rounded-md border border-zinc-200 object-cover transition hover:border-blue-600" />
+                        </a>
+                        <button type="button" onClick={() => removerAnexo(f.id)} className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs text-white shadow" title="Remover">×</button>
+                        <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">{CATEGORIA_LABEL[f.categoria] || f.categoria}</p>
+                        <input
+                          type="text"
+                          value={legendaAtual}
+                          onChange={(e) => setLegendasEdit((prev) => ({ ...prev, [f.id]: e.target.value }))}
+                          onBlur={(e) => {
+                            if (e.target.value.trim() !== (f.legenda || "").trim()) {
+                              salvarLegendaAnexo(f.id, e.target.value);
+                            }
+                          }}
+                          placeholder="Adicionar legenda..."
+                          className="mt-1 w-full rounded border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-800 placeholder:text-zinc-400 focus:border-blue-600 focus:outline-none"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
                 {docs.length > 0 && (
                   <ul className="mt-2 space-y-1">
@@ -904,16 +938,22 @@ export default function ExecucaoOsPage() {
                     ))}
                   </ul>
                 )}
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <Select label="" value={categoriaAnexo} onChange={(e) => setCategoriaAnexo(e.target.value)}>
+                <div className="mt-3 grid gap-2 sm:grid-cols-[auto_1fr_auto] sm:items-end">
+                  <Select label="Categoria" value={categoriaAnexo} onChange={(e) => setCategoriaAnexo(e.target.value)}>
                     {CATEGORIAS_ANEXO.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
                   </Select>
-                  <label className="cursor-pointer rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">
+                  <Campo
+                    label="Legenda da foto (opcional)"
+                    value={legendaAnexo}
+                    onChange={(e) => setLegendaAnexo(e.target.value)}
+                    placeholder="Ex.: Compressor antes da limpeza..."
+                  />
+                  <label className="cursor-pointer rounded-md border border-blue-600 bg-blue-50 px-3 py-2 text-center text-sm font-semibold text-blue-800 hover:bg-blue-100">
                     + Adicionar fotos
                     <input type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={enviarAnexos} />
                   </label>
                 </div>
-                <p className="mt-2 text-xs text-zinc-400">Adicione múltiplas fotos do atendimento. Elas ficam vinculadas à OS.</p>
+                <p className="mt-2 text-xs text-zinc-400">Adicione fotos com legenda. Você também pode editar a legenda abaixo de cada foto.</p>
               </Card>
 
               <Card title={`3. Assinaturas dos responsáveis (${form.assinaturas.length})`}>
@@ -1165,6 +1205,20 @@ export default function ExecucaoOsPage() {
                 )}
               </Card>
 
+              {form.assinaturas.length > 0 && (
+                <Card title={`Assinatura(s) do Responsável (${form.assinaturas.length})`}>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {form.assinaturas.map((ass, idx) => (
+                      <div key={ass.id || idx} className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+                        <Image src={mediaUrl(ass.arquivo)} alt={`Assinatura ${ass.nome || idx + 1}`} width={600} height={212} className="h-16 w-auto rounded border border-zinc-200 bg-white" />
+                        <p className="mt-1 text-xs font-bold text-zinc-900">{ass.nome || "Responsável"}</p>
+                        {ass.cargo && <p className="text-[11px] text-zinc-500">{ass.cargo}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
               {os.execucao?.assinatura_tecnico && (
                 <Card title="Assinatura Técnica Registrada">
                   <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3">
@@ -1182,7 +1236,7 @@ export default function ExecucaoOsPage() {
                   <GaleriaFotos
                     fotos={fotos.map((f, idx) => ({
                       src: mediaUrl(f.arquivo),
-                      legenda: `${CATEGORIA_LABEL[f.categoria] || "Foto"} #${idx + 1}`
+                      legenda: f.legenda || `${CATEGORIA_LABEL[f.categoria] || "Foto"} #${idx + 1}`
                     }))}
                   />
                 </Card>

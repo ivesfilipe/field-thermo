@@ -54,7 +54,7 @@ interface RelatorioPublico {
   assinatura_tecnico_nome?: string | null;
   assinaturas?: Array<{ id: number; nome: string; cargo: string; arquivo: string; criado_em?: string | null }> | null;
   fotos?: string[];
-  anexos: Array<{ id: number; categoria: string; arquivo: string; nome_original: string | null }>;
+  anexos: Array<{ id: number; categoria: string; arquivo: string; nome_original: string | null; legenda?: string | null }>;
   avaliacao_token?: string | null;
   avaliacao_status?: string | null;
 }
@@ -85,6 +85,10 @@ export default function RelatorioPublicoPage() {
     window.open(`${API_URL}/api/comercial/relatorios/publico/${token}/pdf`, "_blank");
   }
 
+  const legendaPorArquivo = new Map<string, string>();
+  for (const a of relatorio?.anexos || []) {
+    if (a.arquivo && a.legenda) legendaPorArquivo.set(a.arquivo, a.legenda);
+  }
   const fotosLista = Array.from(
     new Set([
       ...(relatorio?.fotos || []),
@@ -92,7 +96,7 @@ export default function RelatorioPublicoPage() {
     ])
   ).map((arq, idx) => ({
     src: mediaUrl(arq),
-    legenda: `Foto ${idx + 1}`
+    legenda: legendaPorArquivo.get(arq) || `Foto ${idx + 1}`
   }));
 
   return (

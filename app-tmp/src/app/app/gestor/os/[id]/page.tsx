@@ -47,6 +47,7 @@ interface Anexo {
   categoria: string;
   arquivo: string;
   nome_original: string | null;
+  legenda?: string | null;
   criado_em: string;
 }
 
@@ -1061,7 +1062,7 @@ export default function OsDetalhePage() {
                         <GaleriaFotos
                           fotos={fotos.map((f, idx) => ({
                             src: mediaUrl(f.arquivo),
-                            legenda: `${CATEGORIA_LABEL[f.categoria] || "Foto"} #${idx + 1}`
+                            legenda: f.legenda || `${CATEGORIA_LABEL[f.categoria] || "Foto"} #${idx + 1}`
                           }))}
                         />
                       ) : (

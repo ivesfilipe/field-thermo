@@ -14,11 +14,32 @@ interface OS {
   prioridade: string;
   status: string;
   data_agendada: string | null;
+  hora_inicio?: string | null;
+  hora_fim?: string | null;
   cliente_nome: string;
   local_nome: string | null;
   local_endereco: string | null;
   local_endereco_completo?: string | null;
   equipe_nome: string | null;
+}
+
+interface AgendaAtividade {
+  kind: "os" | "atividade";
+  id: number;
+  referencia: string;
+  titulo: string;
+  tipo_label?: string | null;
+  cliente_nome: string | null;
+  local_nome: string | null;
+  hora_inicio: string | null;
+  hora_fim: string | null;
+  status: string;
+}
+
+function fmtDataBr(d: string | null): string {
+  if (!d) return "-";
+  const p = d.split("-");
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d;
 }
 
 interface Relatorio {
@@ -84,6 +105,7 @@ export default function AppHome() {
   const [relatorios, setRelatorios] = useState<Relatorio[] | null>(null);
   const [oportunidades, setOportunidades] = useState<Oportunidade[] | null>(null);
   const [indicadores, setIndicadores] = useState<Indicadores | null>(null);
+  const [atividadesDia, setAtividadesDia] = useState<AgendaAtividade[]>([]);
   const [dataSelecionada, setDataSelecionada] = useState(() => {
     const h = new Date();
     return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, "0")}-${String(h.getDate()).padStart(2, "0")}`;
@@ -110,6 +132,14 @@ export default function AppHome() {
         .catch(() => setIndicadores(null));
     }
   }, [perfil]);
+
+  useEffect(() => {
+    if (perfil !== "tecnico") return;
+    api
+      .get<{ agenda: AgendaAtividade[] }>(`/api/tecnico/agenda?data=${dataSelecionada}`)
+      .then((r) => setAtividadesDia((r.agenda || []).filter((i) => i.kind === "atividade")))
+      .catch(() => setAtividadesDia([]));
+  }, [perfil, dataSelecionada]);
 
   const totalPorStatus = (s: string) => (ordens || []).filter((o) => o.status === s).length;
   const hoje = new Date().toISOString().slice(0, 10);
@@ -156,7 +186,7 @@ export default function AppHome() {
           <span className="text-xs font-bold uppercase tracking-wider text-blue-950">1. Menu Rápido — O que você deseja fazer?</span>
           <span className="text-[11px] font-medium text-slate-400">Clique em um cartão para abrir</span>
         </div>
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+        <div className={`grid grid-cols-1 gap-2.5 ${atalhos.length <= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6"}`}>
           {atalhos.map((a) => (
             <Link
               key={a.href}
@@ -228,17 +258,18 @@ export default function AppHome() {
               <span className="text-xs font-bold uppercase tracking-wider text-blue-950">2. Indicadores Operacionais</span>
               <span className="text-[11px] font-medium text-slate-400">Visão em tempo real</span>
             </div>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
               <KPI label="OS de hoje" valor={(ordens || []).filter((o) => o.data_agendada === hoje).length} cor="text-blue-700" />
-              <KPI label="Pendentes" valor={totalPorStatus("pendente")} cor="text-amber-700" />
               <KPI label="Em andamento" valor={totalPorStatus("em_andamento")} cor="text-cyan-700" />
+              <KPI label="Pendentes" valor={totalPorStatus("pendente")} cor="text-amber-700" />
               <KPI label="Concluídas" valor={totalPorStatus("concluida")} cor="text-emerald-700" />
+              <KPI label={`Atividades (${rotuloData()})`} valor={atividadesDia.length} cor="text-violet-700" />
             </div>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card
-              title={`3. OS agendadas (${rotuloData()})`}
+              title={`3. OS e Atividades (${rotuloData()})`}
               acao={
                 <div className="flex items-center gap-1">
                   <Botao variante="secundario" className="px-2 py-1 text-xs" onClick={() => mudarData(-1)}>‹</Botao>
@@ -255,32 +286,57 @@ export default function AppHome() {
             >
               {ordens === null ? (
                 <Loading />
-              ) : ordensHoje.length === 0 ? (
-                <EstadoVazio texto={`Nenhuma OS agendada para ${rotuloData()}.`} />
+              ) : ordensHoje.length === 0 && atividadesDia.length === 0 ? (
+                <EstadoVazio texto={`Nenhuma OS ou atividade agendada para ${rotuloData()}.`} />
               ) : (
-                <Tabela cabecalhos={["Nº", "Cliente", "Local", "Prioridade", "Status"]}>
-                  {ordensHoje.slice(0, 6).map((o) => (
-                    <tr key={o.id} className="cursor-pointer transition-colors hover:bg-blue-50/50" onClick={() => router.push(`/app/tecnico/os/${o.id}`)}>
-                      <td className="px-3 py-2 font-medium text-blue-700">{o.numero}</td>
-                      <td className="px-3 py-2">{o.cliente_nome}</td>
-                      <td className="px-3 py-2">
-                        {o.local_nome || "-"}
-                        {(o.local_endereco_completo || o.local_endereco) && (
-                          <span className="block text-xs text-zinc-500">
-                            <LinksMapa endereco={(o.local_endereco_completo || o.local_endereco)!} pararPropagacao />
+                <div className="space-y-3">
+                  {ordensHoje.length > 0 && (
+                    <Tabela cabecalhos={["Nº", "Cliente", "Horário", "Prioridade", "Status"]}>
+                      {ordensHoje.slice(0, 6).map((o) => (
+                        <tr key={o.id} className="cursor-pointer transition-colors hover:bg-blue-50/50" onClick={() => router.push(`/app/tecnico/os/${o.id}`)}>
+                          <td className="whitespace-nowrap px-3 py-2 font-medium text-blue-700">{o.numero}</td>
+                          <td className="px-3 py-2">
+                            <span className="block max-w-44 truncate font-medium text-slate-900" title={o.cliente_nome}>{o.cliente_nome}</span>
+                            {o.local_nome && <span className="block max-w-44 truncate text-xs text-zinc-500">{o.local_nome}</span>}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-700">
+                            {o.hora_inicio || o.hora_fim ? `${o.hora_inicio || "--:--"}–${o.hora_fim || "--:--"}` : "-"}
+                          </td>
+                          <td className="px-3 py-2"><Prioridade p={o.prioridade} /></td>
+                          <td className="px-3 py-2"><Badge status={o.status} /></td>
+                        </tr>
+                      ))}
+                    </Tabela>
+                  )}
+
+                  {atividadesDia.length > 0 && (
+                    <div className="space-y-1.5 border-t border-slate-100 pt-2">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-violet-700">Atividades ({atividadesDia.length})</p>
+                      {atividadesDia.map((a) => (
+                        <div
+                          key={a.id}
+                          onClick={() => router.push("/app/tecnico/agenda")}
+                          className="flex cursor-pointer items-center justify-between gap-2 rounded-lg border border-violet-200 bg-violet-50/60 px-3 py-2 text-xs transition-colors hover:bg-violet-100/70"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-violet-950">{a.titulo}</p>
+                            <p className="truncate text-violet-700">
+                              {a.cliente_nome || a.tipo_label || "Atividade"}{a.local_nome ? ` — ${a.local_nome}` : ""}
+                            </p>
+                          </div>
+                          <span className="shrink-0 rounded bg-white px-2 py-0.5 font-medium text-violet-800">
+                            {a.hora_inicio || a.hora_fim ? `${a.hora_inicio || "--:--"}–${a.hora_fim || "--:--"}` : "Sem horário"}
                           </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2"><Prioridade p={o.prioridade} /></td>
-                      <td className="px-3 py-2"><Badge status={o.status} /></td>
-                    </tr>
-                  ))}
-                </Tabela>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </Card>
 
-            <Card title="Minhas Ordens de Serviço" acao={<Botao variante="secundario" onClick={() => router.push("/app/tecnico/os")}>Ver todas</Botao>}>
-              <Tabela cabecalhos={["Nº", "Cliente", "Serviço", "Data", "Status"]}>
+            <Card title="Últimas Ordens de Serviço" acao={<Botao variante="secundario" onClick={() => router.push("/app/tecnico/os")}>Ver todas</Botao>}>
+              <Tabela cabecalhos={["Nº", "Cliente — Serviço", "Data / hora", "Status"]}>
                 {ordens === null ? (
                   <tr><td colSpan={99}><Loading /></td></tr>
                 ) : ordens.length === 0 ? (
@@ -288,10 +344,17 @@ export default function AppHome() {
                 ) : (
                   ordens.slice(0, 6).map((o) => (
                     <tr key={o.id} className="cursor-pointer transition-colors hover:bg-blue-50/50" onClick={() => router.push(`/app/tecnico/os/${o.id}`)}>
-                      <td className="px-3 py-2 font-medium text-blue-700">{o.numero}</td>
-                      <td className="px-3 py-2">{o.cliente_nome}</td>
-                      <td className="px-3 py-2">{o.servico}</td>
-                      <td className="whitespace-nowrap px-3 py-2">{o.data_agendada || "-"}</td>
+                      <td className="whitespace-nowrap px-3 py-2 font-medium text-blue-700">{o.numero}</td>
+                      <td className="px-3 py-2">
+                        <span className="block max-w-48 truncate font-medium text-slate-900" title={o.cliente_nome}>{o.cliente_nome}</span>
+                        <span className="block max-w-48 truncate text-xs text-zinc-500" title={o.servico}>{o.servico}</span>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-700">
+                        <span className="block font-medium">{fmtDataBr(o.data_agendada)}</span>
+                        {(o.hora_inicio || o.hora_fim) && (
+                          <span className="text-zinc-500">{o.hora_inicio || "--:--"}–{o.hora_fim || "--:--"}</span>
+                        )}
+                      </td>
                       <td className="px-3 py-2"><Badge status={o.status} /></td>
                     </tr>
                   ))

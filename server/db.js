@@ -96,6 +96,11 @@ if (!colunasExec.includes('concluida_por')) {
   db.prepare('ALTER TABLE execucoes ADD COLUMN concluida_por INTEGER REFERENCES usuarios(id) ON DELETE SET NULL').run();
 }
 
+const colunasAnexos = colunasDaTabela('anexos');
+if (!colunasAnexos.includes('legenda')) {
+  db.prepare('ALTER TABLE anexos ADD COLUMN legenda TEXT').run();
+}
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS usuarios_equipes (
     usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,

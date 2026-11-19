@@ -336,19 +336,32 @@ router.put('/os/:id/execucao', (req, res) => {
     if (!Array.isArray(b.assinaturas)) {
       return res.status(400).json({ error: 'Assinaturas inválidas' });
     }
-    const limpas = b.assinaturas
-      .filter((a) => a && a.arquivo)
-      .map((a, idx) => ({
-        id: a.id || idx + 1,
-        nome: String(a.nome || '').trim(),
-        cargo: String(a.cargo || '').trim(),
-        arquivo: String(a.arquivo),
-        criado_em: a.criado_em || null
-      }));
-    atualizar.assinaturas = JSON.stringify(limpas);
-    atualizar.assinatura = limpas[0]?.arquivo || null;
-    if (limpas[0]?.nome) atualizar.assinatura_nome = limpas[0].nome;
-    if (limpas[0]?.cargo !== undefined) atualizar.assinatura_cargo = limpas[0]?.cargo || null;
+    // Nunca apagar assinaturas já salvas no banco em um PUT de rascunho/conclusão.
+    // Exclusões acontecem somente via DELETE /os/:id/assinaturas/:assId.
+    const existentes = normalizarAssinaturas(execucao);
+    const porArquivo = new Map();
+    for (const ex of existentes) {
+      if (ex && ex.arquivo) porArquivo.set(String(ex.arquivo), { ...ex });
+    }
+    for (const a of b.assinaturas) {
+      if (!a || !a.arquivo) continue;
+      const arq = String(a.arquivo);
+      const anterior = porArquivo.get(arq);
+      porArquivo.set(arq, {
+        id: anterior?.id || a.id || Date.now(),
+        nome: String(a.nome ?? anterior?.nome ?? '').trim(),
+        cargo: String(a.cargo ?? anterior?.cargo ?? '').trim(),
+        arquivo: arq,
+        criado_em: anterior?.criado_em || a.criado_em || null
+      });
+    }
+    const limpas = Array.from(porArquivo.values());
+    if (limpas.length > 0) {
+      atualizar.assinaturas = JSON.stringify(limpas);
+      atualizar.assinatura = limpas[0].arquivo;
+      if (limpas[0].nome) atualizar.assinatura_nome = limpas[0].nome;
+      if (limpas[0].cargo !== undefined) atualizar.assinatura_cargo = limpas[0].cargo || null;
+    }
   } else if (b.assinatura_nome !== undefined || b.assinatura_cargo !== undefined) {
     const listaAtual = normalizarAssinaturas(execucao);
     if (listaAtual.length > 0) {
@@ -390,10 +403,11 @@ router.post('/os/:id/anexos', upload.array('arquivos', 10), (req, res) => {
       return res.status(400).json({ error: 'A categoria documento aceita somente PDF ou imagens' });
     }
   }
-  const insert = db.prepare('INSERT INTO anexos (os_id, categoria, arquivo, nome_original, usuario_id) VALUES (?, ?, ?, ?, ?)');
+  const legenda = req.body?.legenda ? String(req.body.legenda).trim() : null;
+  const insert = db.prepare('INSERT INTO anexos (os_id, categoria, arquivo, nome_original, legenda, usuario_id) VALUES (?, ?, ?, ?, ?, ?)');
   const criados = (req.files || []).map((f) => {
-    const info = insert.run(os.id, categoria, `/uploads/os${os.id}/${f.filename}`, f.originalname, req.user.id);
-    return { id: info.lastInsertRowid, arquivo: `/uploads/os${os.id}/${f.filename}`, categoria };
+    const info = insert.run(os.id, categoria, `/uploads/os${os.id}/${f.filename}`, f.originalname, legenda, req.user.id);
+    return { id: info.lastInsertRowid, arquivo: `/uploads/os${os.id}/${f.filename}`, categoria, legenda };
   });
   if (criados.length) {
     registrarHistorico({
@@ -402,6 +416,25 @@ router.post('/os/:id/anexos', upload.array('arquivos', 10), (req, res) => {
     });
   }
   res.status(201).json({ anexos: criados });
+});
+
+router.patch('/os/:id/anexos/:anexoId', (req, res) => {
+  const os = getMinhaOS(req, Number(req.params.id));
+  if (!os) {
+    return res.status(404).json({ error: 'Ordem de serviço não encontrada' });
+  }
+  const erro = podeEditarExecucao(os);
+  if (erro) {
+    return res.status(400).json({ error: erro });
+  }
+  const anexo = db.prepare('SELECT * FROM anexos WHERE id = ? AND os_id = ?').get(Number(req.params.anexoId), os.id);
+  if (!anexo) {
+    return res.status(404).json({ error: 'Anexo não encontrado' });
+  }
+  const legenda = req.body?.legenda !== undefined ? (String(req.body.legenda).trim() || null) : anexo.legenda;
+  const categoria = req.body?.categoria && CATEGORIAS_ANEXO.includes(req.body.categoria) ? req.body.categoria : anexo.categoria;
+  db.prepare('UPDATE anexos SET legenda = ?, categoria = ? WHERE id = ?').run(legenda, categoria, anexo.id);
+  res.json({ anexo: { ...anexo, legenda, categoria } });
 });
 
 router.delete('/os/:id/anexos/:anexoId', (req, res) => {

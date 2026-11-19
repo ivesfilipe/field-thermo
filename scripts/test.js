@@ -1230,8 +1230,14 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
       assinatura_nome: 'Carlos Responsável',
       assinatura_cargo: 'Supervisor'
     });
-    await upload(`/api/tecnico/os/${idSemMt}/anexos`, tecnico, 'arquivos', 'foto_sem_mt.png', PNG);
+    const upFoto1 = await upload(`/api/tecnico/os/${idSemMt}/anexos`, tecnico, 'arquivos', 'foto_sem_mt.png', PNG);
+    const foto1Id = upFoto1.data?.anexos?.[0]?.id;
+    if (foto1Id) {
+      await api(`/api/tecnico/os/${idSemMt}/anexos/${foto1Id}`, 'PATCH', tecnico, { legenda: 'Painel elétrico após inspeção' });
+    }
     await upload(`/api/tecnico/os/${idSemMt}/assinatura`, tecnico, 'assinatura', 'ass_sem_mt.png', PNG);
+    // Simular PUT de rascunho com assinaturas: [] — NUNCA pode apagar assinatura já salva
+    await api(`/api/tecnico/os/${idSemMt}/execucao`, 'PUT', tecnico, { assinaturas: [] });
     const concSemMt = await api(`/api/tecnico/os/${idSemMt}/concluir`, 'POST', tecnico);
     test('TESTE 1b: finaliza OS sem MT', concSemMt.status === 200 && concSemMt.data.os.status === 'concluida', concSemMt.status);
 
@@ -1243,6 +1249,7 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
       'TESTE 1c: relatório de OS sem MT NÃO exibe Ficha do Equipamento',
       pdfSemMtRes.status === 200 &&
         !pdfSemMtHtml.includes('Ficha do Equipamento') &&
+        pdfSemMtHtml.includes('Painel elétrico após inspeção') &&
         pdfSemMtHtml.includes('Ambiente sem anomalias') &&
         pdfSemMtHtml.includes('Nenhuma intervenção necessária'),
       `status=${pdfSemMtRes.status} temFicha=${pdfSemMtHtml.includes('Ficha do Equipamento')}`
