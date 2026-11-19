@@ -253,19 +253,13 @@ export default function ExecucaoOsPage() {
   const [dispensouGoogle, setDispensouGoogle] = useState(false);
 
   const [form, setForm] = useState<{
-    diagnostico: string;
     servico_executado: string;
-    solucao: string;
-    observacoes: string;
     assinatura_nome: string;
     assinatura_cargo: string;
     assinaturas: AssinaturaItem[];
     dados_modelo: Record<string, string>;
   }>({
-    diagnostico: "",
     servico_executado: "",
-    solucao: "",
-    observacoes: "",
     assinatura_nome: "",
     assinatura_cargo: "",
     assinaturas: [],
@@ -285,10 +279,7 @@ export default function ExecucaoOsPage() {
   const aplicarExecucao = useCallback((ex: Execucao | null, preservarCampos = false) => {
     const listaAss = extrairListaAssinaturas(ex);
     setForm((atual) => ({
-      diagnostico: preservarCampos ? atual.diagnostico : (ex?.diagnostico || ""),
       servico_executado: preservarCampos ? atual.servico_executado : (ex?.servico_executado || ""),
-      solucao: preservarCampos ? atual.solucao : (ex?.solucao || ""),
-      observacoes: preservarCampos ? atual.observacoes : (ex?.observacoes || ""),
       assinatura_nome: preservarCampos ? atual.assinatura_nome : "",
       assinatura_cargo: preservarCampos ? atual.assinatura_cargo : "",
       assinaturas: listaAss,
@@ -336,10 +327,6 @@ export default function ExecucaoOsPage() {
   function montarPayload() {
     const primeira = form.assinaturas[0];
     const payload: Record<string, unknown> = {
-      diagnostico: form.diagnostico,
-      servico_executado: form.servico_executado,
-      solucao: form.solucao,
-      observacoes: form.observacoes,
       assinaturas: form.assinaturas,
       assinatura_nome: primeira ? primeira.nome : form.assinatura_nome,
       assinatura_cargo: primeira ? primeira.cargo : form.assinatura_cargo
@@ -351,14 +338,14 @@ export default function ExecucaoOsPage() {
       const preventiva = dm.descricao_servico;
       const corretiva = dm.diagnostico || dm.condicao_encontrada || dm.problema_relatado;
       const pmoc = [dm.condicao_geral ? `Condição geral: ${dm.condicao_geral}` : "", dm.estado_conservacao].filter(Boolean).join(". ");
-      if (!form.servico_executado) {
-        payload.servico_executado = [instalacao, preventiva, corretiva, pmoc].find((v) => v && String(v).trim()) || "";
-      }
+      payload.servico_executado = [instalacao, preventiva, corretiva, pmoc].find((v) => v && String(v).trim()) || form.servico_executado;
       if (dm.recomendacoes) payload.recomendacoes = dm.recomendacoes;
       if (dm.condicao_equipamento) payload.condicao_equipamento = dm.condicao_equipamento;
-      if (!form.diagnostico && dm.diagnostico) payload.diagnostico = dm.diagnostico;
+      if (dm.diagnostico) payload.diagnostico = dm.diagnostico;
       if (dm.resultado) payload.resultado = dm.resultado;
       if (dm.necessidade_orcamento === "sim") payload.necessidade_adicional = "outro_servico";
+    } else {
+      payload.servico_executado = form.servico_executado;
     }
     return payload;
   }
@@ -381,7 +368,7 @@ export default function ExecucaoOsPage() {
           setForm((f) => ({ ...f, assinatura_nome: "", assinatura_cargo: "" }));
         }
       }
-      setMsg("Rascunho salvo com sucesso.");
+      setMsg("Rascunho salvo.");
       carregar(true);
     } catch (err) {
       setErro((err as Error).message);
@@ -521,7 +508,7 @@ export default function ExecucaoOsPage() {
       ? modelo.campos.filter((c) => c.obrigatorio && !String(form.dados_modelo[c.chave] || "").trim()).map((c) => c.rotulo)
       : [];
     if (faltando.length) {
-      setErro(`Preencha os campos obrigatórios do modelo: ${faltando.join(", ")}`);
+      setErro(`Preencha os campos obrigatórios: ${faltando.join(", ")}`);
       return;
     }
     setEnviando(true);
@@ -721,67 +708,57 @@ export default function ExecucaoOsPage() {
             </Card>
           )}
 
-          <Card title="O que foi solicitado pelo Gestor (Somente Leitura)">
-            <dl className="grid grid-cols-1 gap-2.5 text-sm sm:grid-cols-2">
+          <Card title="Dados da OS (preenchidos pelo gestor)">
+            <dl className="grid grid-cols-2 gap-y-2.5 text-sm md:grid-cols-3">
               <Item rotulo="Cliente" valor={os.cliente_nome} />
-              {os.cliente_telefone && <Item rotulo="Telefone Cliente" valor={os.cliente_telefone} />}
-              <Item rotulo="Local" valor={os.local_nome || "Principal / Não especificado"} />
-              <Item rotulo="Responsável no Local" valor={os.local_responsavel || os.responsavel_local || "-"} />
-              {os.local_responsavel_telefone && <Item rotulo="Telefone Responsável" valor={os.local_responsavel_telefone} />}
-              <Item rotulo="Equipe Designada" valor={os.equipe_nome || "-"} />
-              <Item rotulo="Data Agendada" valor={os.data_agendada || "-"} />
+              <Item rotulo="Local" valor={os.local_nome || "-"} />
               <Item
-                rotulo="Horário Previsto"
-                valor={os.hora_inicio ? `${os.hora_inicio}${os.hora_fim ? ` às ${os.hora_fim}` : ""}` : "Não especificado"}
+                rotulo="Endereço"
+                valor={
+                  <span>
+                    {os.local_endereco || "-"}
+                    {os.local_endereco && (
+                      <LinksMapa endereco={os.local_endereco_completo || os.local_endereco} />
+                    )}
+                  </span>
+                }
               />
-              <div className="sm:col-span-2">
-                <Item
-                  rotulo="Endereço do Atendimento"
-                  valor={
-                    <span>
-                      {os.local_endereco || "-"}
-                      {os.local_endereco && (
-                        <LinksMapa endereco={os.local_endereco_completo || os.local_endereco} />
-                      )}
-                    </span>
-                  }
-                />
-              </div>
+              <Item rotulo="Responsável" valor={os.local_responsavel || os.responsavel_local || "-"} />
+              <Item rotulo="Serviço a realizar" valor={os.servico} />
+              <Item rotulo="Equipe" valor={os.equipe_nome || "-"} />
+              <Item
+                rotulo="Data / horário"
+                valor={`${os.data_agendada || "-"}${os.hora_inicio ? ` ${os.hora_inicio}${os.hora_fim ? `–${os.hora_fim}` : ""}` : ""}`}
+              />
             </dl>
-
-            <div className="mt-4 border-t border-slate-200/80 pt-3">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Serviço Solicitado</dt>
-              <dd className="mt-1 text-base font-semibold text-slate-900">{os.servico}</dd>
-            </div>
-
             {os.descricao && (
-              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3.5">
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-600">Descrição da OS / Observações do Gestor</dt>
-                <dd className="mt-1 whitespace-pre-wrap text-sm text-slate-800">{os.descricao}</dd>
+              <div className="mt-3 border-t border-zinc-100 pt-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Descrição / Observações do Gestor</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-700">{os.descricao}</p>
               </div>
             )}
           </Card>
 
           {os.equipamento_id && (
-            <Card title="MT / Equipamento a ser Atendido">
+            <Card title="Equipamento a ser atendido">
               <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
-                <span className="rounded-md bg-blue-700 px-2.5 py-1 font-mono text-sm font-bold text-white">
-                  {os.equipamento_codigo_mt || "SEM CÓDIGO MT"}
+                <span className="rounded-md bg-blue-700 px-2 py-0.5 font-mono text-sm font-bold text-white">
+                  {os.equipamento_codigo_mt}
                 </span>
-                <span className="font-semibold text-blue-950">{os.equipamento_nome}</span>
+                <span className="font-medium text-blue-900">{os.equipamento_nome}</span>
               </div>
-              <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+              <dl className="grid grid-cols-2 gap-y-2.5 text-sm md:grid-cols-3">
                 {os.equipamento_patrimonio && <Item rotulo="Patrimônio" valor={os.equipamento_patrimonio} />}
                 {os.equipamento_tipo && <Item rotulo="Tipo" valor={os.equipamento_tipo} />}
                 {os.equipamento_fabricante && <Item rotulo="Fabricante" valor={os.equipamento_fabricante} />}
                 {os.equipamento_modelo && <Item rotulo="Modelo" valor={os.equipamento_modelo} />}
                 {os.equipamento_capacidade && <Item rotulo="Capacidade" valor={os.equipamento_capacidade} />}
-                {os.equipamento_gas && <Item rotulo="Gás / Fluido" valor={os.equipamento_gas} />}
+                {os.equipamento_gas && <Item rotulo="Gás / fluido" valor={os.equipamento_gas} />}
                 {os.equipamento_tensao && <Item rotulo="Tensão" valor={os.equipamento_tensao} />}
-                {os.equipamento_local && <Item rotulo="Localização" valor={os.equipamento_local} />}
+                {os.equipamento_local && <Item rotulo="Local" valor={os.equipamento_local} />}
                 {os.equipamento_ambiente && <Item rotulo="Ambiente" valor={os.equipamento_ambiente} />}
-                {os.equipamento_serie && <Item rotulo="Nº de Série" valor={os.equipamento_serie} />}
-                {os.equipamento_status && <Item rotulo="Status MT" valor={os.equipamento_status} />}
+                {os.equipamento_serie && <Item rotulo="Nº de série" valor={os.equipamento_serie} />}
+                {os.equipamento_status && <Item rotulo="Status" valor={os.equipamento_status} />}
               </dl>
             </Card>
           )}
@@ -806,14 +783,14 @@ export default function ExecucaoOsPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* ABA 2 — EXECUÇÃO / RELATÓRIO (PREENCHIMENTO DE CAMPO PELA EQUIPE)         */}
+      {/* ABA 2 — EXECUÇÃO / RELATÓRIO (FORMATO ORIGINAL DE FORMULÁRIO PRESERVADO) */}
       {/* ========================================================================= */}
       {abaAtiva === "execucao" && (
         <div className="space-y-4">
           {os.status === "pendente" && (
             <div className="rounded-xl border border-blue-200 bg-blue-50 p-6 text-center">
               <p className="font-semibold text-blue-900">Atendimento ainda não iniciado</p>
-              <p className="mt-1 text-sm text-blue-700">Para começar a preencher o diagnóstico, serviços, fotos e assinaturas, inicie o atendimento.</p>
+              <p className="mt-1 text-sm text-blue-700">Para começar a preencher o formulário, fotos e assinaturas, inicie o atendimento.</p>
               <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
                 <Botao variante="sucesso" className="py-3 px-6 text-base font-semibold" onClick={iniciar}>
                   ▶ INICIAR ATENDIMENTO AGORA
@@ -828,7 +805,7 @@ export default function ExecucaoOsPage() {
           {os.status === "em_deslocamento" && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
               <p className="font-semibold text-amber-900">Equipe em deslocamento</p>
-              <p className="mt-1 text-sm text-amber-700">Ao chegar no local, inicie o atendimento para liberar o preenchimento da execução.</p>
+              <p className="mt-1 text-sm text-amber-700">Ao chegar no local, inicie o atendimento para preencher a execução.</p>
               <Botao variante="sucesso" className="mt-4 w-full py-3 text-base font-semibold" onClick={iniciar}>
                 ▶ INICIAR ATENDIMENTO AGORA
               </Botao>
@@ -844,73 +821,24 @@ export default function ExecucaoOsPage() {
             </Card>
           )}
 
-          {/* FORMULÁRIO DE EXECUÇÃO ATIVO */}
+          {/* FORMULÁRIO DE EXECUÇÃO EXATAMENTE NO FORMATO ORIGINAL */}
           {podeExecutar && os.status === "em_andamento" && (
             <>
-              {/* Informações de Horário de Execução */}
-              <Card title="Data e Horário da Execução">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                  <Item rotulo="Início do Atendimento" valor={os.execucao?.iniciada_em ? os.execucao.iniciada_em.slice(0, 16) : "Em andamento agora"} />
-                  <Item rotulo="Equipe Executante" valor={os.equipe_nome || "Equipe designada"} />
-                </div>
-              </Card>
-
-              {/* Campos Organizados de Execução */}
-              <Card title="1. Diagnóstico e Serviço Realizado">
-                <div className="space-y-3">
-                  <Textarea
-                    label="Diagnóstico técnico / O que foi encontrado"
-                    value={form.diagnostico}
-                    onChange={(e) => setForm({ ...form, diagnostico: e.target.value })}
-                    rows={3}
-                    placeholder="Informe o que foi constatado pela equipe no local ou equipamento..."
-                  />
-
-                  <Textarea
-                    label="Serviço executado"
-                    value={form.servico_executado}
-                    onChange={(e) => setForm({ ...form, servico_executado: e.target.value })}
-                    rows={4}
-                    placeholder="Descreva detalhadamente os procedimentos, testes e serviços realizados..."
-                  />
-
-                  <Textarea
-                    label="Solução aplicada"
-                    value={form.solucao}
-                    onChange={(e) => setForm({ ...form, solucao: e.target.value })}
-                    rows={3}
-                    placeholder="Descreva a solução definitiva ou corretiva adotada..."
-                  />
-
-                  <Textarea
-                    label="Observações da equipe"
-                    value={form.observacoes}
-                    onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
-                    rows={3}
-                    placeholder="Observações complementares ou orientações passadas ao cliente..."
-                  />
-                </div>
-              </Card>
-
-              {/* Modelo Específico de Checklist se houver */}
-              {modelo && (
-                <Card title={`Campos Específicos: ${modelo.rotulo}`}>
+              {modelo ? (
+                <Card title={`1. ${modelo.rotulo}`}>
+                  <p className="mb-3 text-sm text-zinc-500">Preencha somente as informações do atendimento — os dados do cliente e do equipamento já estão carregados.</p>
                   <div className="space-y-3">
                     {modelo.campos.map((campo) => (
                       <div key={campo.chave}>
                         {campo.tipo === "textarea" ? (
                           <Textarea
                             label={campo.rotulo}
-                            rows={3}
+                            rows={campo.chave === "descricao_instalacao" || campo.chave === "descricao_servico" || campo.chave === "atividades_realizadas" || campo.chave === "problema_relatado" || campo.chave === "diagnostico" ? 5 : 3}
                             value={form.dados_modelo[campo.chave] || ""}
                             onChange={(e) => setForm({ ...form, dados_modelo: { ...form.dados_modelo, [campo.chave]: e.target.value } })}
                           />
                         ) : campo.tipo === "select" ? (
-                          <Select
-                            label={campo.rotulo}
-                            value={form.dados_modelo[campo.chave] || ""}
-                            onChange={(e) => setForm({ ...form, dados_modelo: { ...form.dados_modelo, [campo.chave]: e.target.value } })}
-                          >
+                          <Select label={campo.rotulo} value={form.dados_modelo[campo.chave] || ""} onChange={(e) => setForm({ ...form, dados_modelo: { ...form.dados_modelo, [campo.chave]: e.target.value } })}>
                             <option value="">Selecione...</option>
                             {(campo.opcoes || []).map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
                           </Select>
@@ -925,10 +853,19 @@ export default function ExecucaoOsPage() {
                     ))}
                   </div>
                 </Card>
+              ) : (
+                <Card title="1. Descrição do serviço realizado">
+                  <Textarea
+                    label="Descreva o que foi feito no atendimento"
+                    value={form.servico_executado}
+                    onChange={(e) => setForm({ ...form, servico_executado: e.target.value })}
+                    rows={6}
+                    placeholder="Ex.: Realizada a limpeza dos filtros e a verificação geral do equipamento..."
+                  />
+                </Card>
               )}
 
-              {/* Fotos */}
-              <Card title={`2. Fotos (${fotos.length})`}>
+              <Card title="2. Fotos">
                 <div className="flex flex-wrap gap-2">
                   {fotos.map((f) => (
                     <div key={f.id} className="group relative">
@@ -956,16 +893,15 @@ export default function ExecucaoOsPage() {
                   <Select label="" value={categoriaAnexo} onChange={(e) => setCategoriaAnexo(e.target.value)}>
                     {CATEGORIAS_ANEXO.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
                   </Select>
-                  <label className="cursor-pointer rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 shadow-xs">
+                  <label className="cursor-pointer rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">
                     + Adicionar fotos
                     <input type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={enviarAnexos} />
                   </label>
                 </div>
-                <p className="mt-2 text-xs text-zinc-400">Adicione múltiplas fotos do atendimento. Elas ficam vinculadas ao relatório da OS.</p>
+                <p className="mt-2 text-xs text-zinc-400">Adicione múltiplas fotos do atendimento. Elas ficam vinculadas à OS.</p>
               </Card>
 
-              {/* Assinaturas dos Responsáveis */}
-              <Card title={`3. Assinatura do Cliente / Responsável (${form.assinaturas.length})`}>
+              <Card title={`3. Assinaturas dos responsáveis (${form.assinaturas.length})`}>
                 {form.assinaturas.length > 0 && (
                   <div className="mb-4 space-y-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Assinaturas registradas</p>
@@ -1030,12 +966,12 @@ export default function ExecucaoOsPage() {
                         <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={enviarAssinatura} />
                       </label>
                     </div>
+                    <p className="mt-2 text-xs text-zinc-400">Você pode adicionar quantas assinaturas forem necessárias.</p>
                   </div>
                 </div>
               </Card>
 
-              {/* Assinatura Técnica do Executor */}
-              <Card title="4. Assinatura Técnica (Equipe Executante)">
+              <Card title="4. Assinatura Técnica (Executante)">
                 {os.execucao?.assinatura_tecnico ? (
                   <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4">
                     <div className="flex items-center justify-between">
@@ -1075,17 +1011,15 @@ export default function ExecucaoOsPage() {
                 )}
               </Card>
 
-              {/* Botões de Ação */}
-              <div className="flex flex-wrap gap-2 pt-2">
+              <div className="flex flex-wrap gap-2">
                 <Botao variante="secundario" onClick={salvarRascunho} disabled={salvando}>
                   {salvando ? "Salvando..." : "Salvar rascunho"}
                 </Botao>
-                <Botao variante="sucesso" className="flex-1 py-3 text-base font-semibold shadow-sm" onClick={concluir} disabled={enviando}>
-                  {enviando ? "Finalizando..." : precisaComplemento ? "Reenviar e concluir" : "✓ Finalizar Atendimento"}
+                <Botao variante="sucesso" className="flex-1 py-3 text-base" onClick={concluir} disabled={enviando}>
+                  {enviando ? "Enviando..." : precisaComplemento ? "Reenviar e concluir" : "Finalizar OS"}
                 </Botao>
               </div>
 
-              {/* Avaliação Google */}
               <Card title="Avaliação no Google (Opcional)">
                 <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                   <div className="text-slate-600">
@@ -1125,81 +1059,6 @@ export default function ExecucaoOsPage() {
           {/* VISUALIZAÇÃO APÓS CONCLUSÃO DA OS */}
           {(os.status === "aguardando_validacao" || os.status === "concluida") && (
             <div className="space-y-4">
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
-                <div className="flex items-center gap-2 font-semibold">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-xs text-white">✓</span>
-                  <span>Atendimento Concluído com Sucesso</span>
-                </div>
-                <p className="mt-1 text-xs text-emerald-700">
-                  Todas as informações foram salvas e disponibilizadas ao Gestor no relatório técnico.
-                </p>
-              </div>
-
-              <Card title="Informações Registradas pela Equipe">
-                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                  <Item rotulo="Iniciada em" valor={os.execucao?.iniciada_em?.slice(0, 16) || "-"} />
-                  <Item rotulo="Concluída em" valor={os.execucao?.concluida_em?.slice(0, 16) || "-"} />
-                  {os.execucao?.diagnostico && (
-                    <div className="sm:col-span-2">
-                      <Item rotulo="Diagnóstico Técnico" valor={os.execucao.diagnostico} />
-                    </div>
-                  )}
-                  {os.execucao?.servico_executado && (
-                    <div className="sm:col-span-2">
-                      <Item rotulo="Serviço Executado" valor={os.execucao.servico_executado} />
-                    </div>
-                  )}
-                  {os.execucao?.solucao && (
-                    <div className="sm:col-span-2">
-                      <Item rotulo="Solução Aplicada" valor={os.execucao.solucao} />
-                    </div>
-                  )}
-                  {os.execucao?.observacoes && (
-                    <div className="sm:col-span-2">
-                      <Item rotulo="Observações da Equipe" valor={os.execucao.observacoes} />
-                    </div>
-                  )}
-                </dl>
-              </Card>
-
-              {fotos.length > 0 && (
-                <Card title={`Fotos anexadas (${fotos.length})`}>
-                  <GaleriaFotos
-                    fotos={fotos.map((f, idx) => ({
-                      src: mediaUrl(f.arquivo),
-                      legenda: `${CATEGORIA_LABEL[f.categoria] || "Foto"} #${idx + 1}`
-                    }))}
-                  />
-                </Card>
-              )}
-
-              {os.execucao?.assinatura_tecnico && (
-                <Card title="Assinatura Técnica Registrada">
-                  <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">Técnico Responsável</span>
-                    <div className="mt-2">
-                      <Image src={mediaUrl(os.execucao.assinatura_tecnico)} alt="Assinatura Técnica" width={600} height={212} className="h-16 w-auto rounded border border-blue-200 bg-white" />
-                    </div>
-                    <p className="mt-1 text-xs font-bold text-zinc-900">{os.execucao.assinatura_tecnico_nome || "Técnico Executor"}</p>
-                  </div>
-                </Card>
-              )}
-
-              {form.assinaturas.length > 0 && (
-                <Card title={`Assinatura(s) do Responsável (${form.assinaturas.length})`}>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {form.assinaturas.map((ass, idx) => (
-                      <div key={ass.id || idx} className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
-                        <Image src={mediaUrl(ass.arquivo)} alt={`Assinatura ${ass.nome || idx + 1}`} width={600} height={212} className="h-16 w-auto rounded border border-zinc-200 bg-white" />
-                        <p className="mt-1 text-xs font-bold text-zinc-900">{ass.nome || "Responsável"}</p>
-                        {ass.cargo && <p className="text-[11px] text-zinc-500">{ass.cargo}</p>}
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              )}
-
-              {/* Avaliação do Cliente no Google (Opcional pós-conclusão) */}
               <Card title="Avaliação do Cliente no Google (Opcional)">
                 {os.execucao?.avaliacao_google_enviada_em ? (
                   <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
@@ -1257,6 +1116,35 @@ export default function ExecucaoOsPage() {
                   </div>
                 )}
               </Card>
+
+              {os.execucao?.assinatura_tecnico && (
+                <Card title="Assinatura Técnica Registrada">
+                  <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">Técnico Responsável</span>
+                    <div className="mt-2">
+                      <Image src={mediaUrl(os.execucao.assinatura_tecnico)} alt="Assinatura Técnica" width={600} height={212} className="h-16 w-auto rounded border border-blue-200 bg-white" />
+                    </div>
+                    <p className="mt-1 text-xs font-bold text-zinc-900">{os.execucao.assinatura_tecnico_nome || "Técnico Executor"}</p>
+                  </div>
+                </Card>
+              )}
+
+              {fotos.length > 0 && (
+                <Card title={`Fotos enviadas (${fotos.length}) — Clique na foto para abrir`}>
+                  <GaleriaFotos
+                    fotos={fotos.map((f, idx) => ({
+                      src: mediaUrl(f.arquivo),
+                      legenda: `${CATEGORIA_LABEL[f.categoria] || "Foto"} #${idx + 1}`
+                    }))}
+                  />
+                </Card>
+              )}
+
+              {os.status === "concluida" && (
+                <Card title="Status">
+                  <p className="text-sm text-zinc-600">Atendimento concluído em {os.execucao?.concluida_em?.slice(0, 16) || "-"}. Relatório liberado automaticamente. A edição técnica está bloqueada.</p>
+                </Card>
+              )}
             </div>
           )}
         </div>
