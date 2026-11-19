@@ -84,6 +84,18 @@ const STATUS_COR: Record<string, string> = {
   atrasada: "bg-red-100 text-red-800"
 };
 
+const STATUS_EVENTO: Record<string, { cor: string; label: string }> = {
+  agendada: { cor: "bg-sky-500", label: "Agendado" },
+  confirmada: { cor: "bg-amber-400", label: "Aguardando início" },
+  em_andamento: { cor: "bg-orange-500", label: "Em atendimento" },
+  concluida: { cor: "bg-emerald-500", label: "Concluído" },
+  atrasada: { cor: "bg-red-500", label: "Atrasado" },
+  cancelada: { cor: "bg-zinc-900", label: "Cancelado" },
+  aguardando_validacao: { cor: "bg-emerald-500", label: "Aguardando validação" },
+  reaberta: { cor: "bg-orange-500", label: "Reaberta" },
+  pendente: { cor: "bg-sky-500", label: "Pendente" }
+};
+
 const TIPOS_ATIVIDADE = [
   { v: "visita_tecnica", l: "Visita técnica" },
   { v: "levantamento", l: "Levantamento" },
@@ -347,6 +359,46 @@ export default function CalendarioPage() {
     setModal("editar");
   }
 
+  function conteudoEvento(e: Evento, horario?: string) {
+    if (e.kind !== "os") {
+      return (
+        <span className="min-w-0 flex-1 truncate">
+          {horario && <><span className="font-semibold">{horario}</span> — </>}
+          <span className="font-semibold">{e.referencia}</span> {e.titulo}
+        </span>
+      );
+    }
+    const status = STATUS_EVENTO[e.status] || { cor: "bg-zinc-400", label: e.status };
+    return (
+      <>
+        {horario && <span className="shrink-0 font-semibold">{horario}</span>}
+        <span className="min-w-0 flex-1 truncate">
+          {e.cliente_nome || "Sem cliente"} — {e.equipe_nome || "Sem equipe"}
+        </span>
+        <span
+          className={`h-2 w-2 shrink-0 rounded-full ${status.cor}`}
+          title={status.label}
+          aria-label={status.label}
+        />
+        <button
+          type="button"
+          draggable={false}
+          onClick={(ev) => {
+            ev.stopPropagation();
+            router.push(`/app/gestor/os/${e.id}`);
+          }}
+          title={`Abrir OS ${e.referencia}`}
+          aria-label={`Abrir OS ${e.referencia}`}
+          className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded p-0.5 text-blue-600 transition-colors hover:bg-blue-100 hover:text-blue-800"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </button>
+      </>
+    );
+  }
+
   async function salvarEdicao() {
     const e = selecionado;
     if (!e) return;
@@ -558,9 +610,9 @@ export default function CalendarioPage() {
                           draggable
                           onDragStart={(ev) => onDragStart(ev, e)}
                           onClick={(ev) => { ev.stopPropagation(); abrirEdicao(e); }}
-                          className={`cursor-grab rounded border-l-2 px-1.5 py-0.5 text-xs ${e.kind === "os" ? "border-blue-500 bg-blue-50" : "border-emerald-500 bg-emerald-50"} ${e.status === "atrasada" ? "border-red-500 bg-red-50" : ""} ${e.status === "cancelada" ? "opacity-50" : ""}`}
+                          className={`flex cursor-grab items-center gap-1 overflow-hidden rounded border-l-2 px-1.5 py-0.5 text-xs leading-tight ${e.kind === "os" ? "border-blue-500 bg-blue-50" : "border-emerald-500 bg-emerald-50"} ${e.status === "atrasada" ? "border-red-500 bg-red-50" : ""} ${e.status === "cancelada" ? "opacity-50" : ""}`}
                         >
-                          <span className="font-semibold">{e.referencia}</span> {e.titulo}
+                          {conteudoEvento(e)}
                         </div>
                       ))}
                       {eventosDia.length > 3 && <p className="text-xs text-zinc-400">+{eventosDia.length - 3} mais</p>}
@@ -593,9 +645,9 @@ export default function CalendarioPage() {
                         draggable
                         onDragStart={(ev) => onDragStart(ev, e)}
                         onClick={(ev) => { ev.stopPropagation(); abrirEdicao(e); }}
-                        className={`cursor-grab rounded border-l-2 px-1.5 py-0.5 text-xs ${e.kind === "os" ? "border-blue-500 bg-blue-50" : "border-emerald-500 bg-emerald-50"} ${e.status === "atrasada" ? "border-red-500 bg-red-50" : ""}`}
+                        className={`flex cursor-grab items-center gap-1 overflow-hidden rounded border-l-2 px-1.5 py-0.5 text-xs leading-tight ${e.kind === "os" ? "border-blue-500 bg-blue-50" : "border-emerald-500 bg-emerald-50"} ${e.status === "atrasada" ? "border-red-500 bg-red-50" : ""}`}
                       >
-                        <span className="font-semibold">{horarioLabel(e)}</span> — {e.referencia} {e.titulo}
+                        {conteudoEvento(e, horarioLabel(e))}
                       </div>
                     ))}
                     {eventosDoDia(d).length === 0 && <p className="pt-6 text-center text-xs text-zinc-300">clique para agendar</p>}
@@ -625,9 +677,9 @@ export default function CalendarioPage() {
                           draggable
                           onDragStart={(ev) => onDragStart(ev, e)}
                           onClick={(ev) => { ev.stopPropagation(); abrirEdicao(e); }}
-                          className={`mb-1 cursor-grab rounded border-l-2 px-1.5 py-0.5 text-xs ${e.kind === "os" ? "border-blue-500 bg-blue-50" : "border-emerald-500 bg-emerald-50"}`}
+                          className={`mb-1 flex cursor-grab items-center gap-1 overflow-hidden rounded border-l-2 px-1.5 py-0.5 text-xs leading-tight ${e.kind === "os" ? "border-blue-500 bg-blue-50" : "border-emerald-500 bg-emerald-50"}`}
                         >
-                          <span className="font-semibold">{horarioLabel(e)}</span> — {e.referencia} {e.titulo}
+                          {conteudoEvento(e, horarioLabel(e))}
                         </div>
                       ))}
                     </div>
