@@ -580,13 +580,13 @@ export default function ExecucaoOsPage() {
   const docs = anexos.filter((a) => a.categoria === "documento");
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-4 pb-8">
+    <div className="space-y-4 pb-8">
       <Alerta tipo="erro" msg={erro} onClose={() => setErro("")} />
       <Alerta tipo="sucesso" msg={msg} onClose={() => setMsg("")} />
 
       <PageHeader
         titulo={os.numero}
-        descricao={os.servico}
+        descricao={`${os.cliente_nome || "Sem cliente"} — ${os.equipe_nome || "Sem equipe"}`}
         acoes={<Botao variante="secundario" onClick={() => router.back()}>Voltar</Botao>}
       />
 
@@ -600,12 +600,12 @@ export default function ExecucaoOsPage() {
         )}
       </div>
 
-      {/* Indicador de Etapas */}
+      {/* Indicador de Etapas (mesmo padrão do Gestor) */}
       <div className="grid grid-cols-1 gap-2 rounded-xl border border-slate-200/90 bg-white p-3 text-xs sm:grid-cols-3">
         {[
-          { k: "pendente", l: "1. Agendada" },
-          { k: "em_andamento", l: "2. Execução Técnica" },
-          { k: "concluida", l: "3. Finalizada" }
+          { k: "pendente", l: "1. Agendada / Pendente" },
+          { k: "em_andamento", l: "2. Em Atendimento" },
+          { k: "concluida", l: "3. Concluída e Relatório" }
         ].map((etapa, idx) => {
           const ordem = ["pendente", "em_andamento", "concluida"];
           const statusBase = os.status === "em_deslocamento" ? "em_andamento" : os.status === "aguardando_validacao" ? "concluida" : os.status;
@@ -708,60 +708,75 @@ export default function ExecucaoOsPage() {
             </Card>
           )}
 
-          <Card title="Dados da OS (preenchidos pelo gestor)">
-            <dl className="grid grid-cols-2 gap-y-2.5 text-sm md:grid-cols-3">
-              <Item rotulo="Cliente" valor={os.cliente_nome} />
-              <Item rotulo="Local" valor={os.local_nome || "-"} />
-              <Item
-                rotulo="Endereço"
-                valor={
-                  <span>
-                    {os.local_endereco || "-"}
-                    {os.local_endereco && (
-                      <LinksMapa endereco={os.local_endereco_completo || os.local_endereco} />
-                    )}
-                  </span>
-                }
-              />
-              <Item rotulo="Responsável" valor={os.local_responsavel || os.responsavel_local || "-"} />
-              <Item rotulo="Serviço a realizar" valor={os.servico} />
-              <Item rotulo="Equipe" valor={os.equipe_nome || "-"} />
-              <Item
-                rotulo="Data / horário"
-                valor={`${os.data_agendada || "-"}${os.hora_inicio ? ` ${os.hora_inicio}${os.hora_fim ? `–${os.hora_fim}` : ""}` : ""}`}
-              />
-            </dl>
-            {os.descricao && (
-              <div className="mt-3 border-t border-zinc-100 pt-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Descrição / Observações do Gestor</p>
-                <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-700">{os.descricao}</p>
-              </div>
-            )}
-          </Card>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card title="O que foi solicitado pelo Gestor (Demanda)">
+              <dl className="grid grid-cols-2 gap-2.5 text-sm">
+                <Item rotulo="Cliente" valor={os.cliente_nome} />
+                <Item rotulo="Serviço" valor={os.servico} />
+                <Item rotulo="Local" valor={os.local_nome || "-"} />
+                <Item
+                  rotulo="Endereço"
+                  valor={
+                    <span>
+                      {os.local_endereco || "-"}
+                      {os.local_endereco && (
+                        <LinksMapa endereco={os.local_endereco_completo || os.local_endereco} />
+                      )}
+                    </span>
+                  }
+                />
+                <Item rotulo="Responsável local" valor={os.local_responsavel || os.responsavel_local || "-"} />
+                <Item rotulo="Equipe" valor={os.equipe_nome || "-"} />
+              </dl>
+              {os.descricao && (
+                <div className="mt-3 border-t border-zinc-100 pt-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Descrição / Observações do Gestor</p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-700">{os.descricao}</p>
+                </div>
+              )}
+            </Card>
 
-          {os.equipamento_id && (
-            <Card title="Equipamento a ser atendido">
-              <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
-                <span className="rounded-md bg-blue-700 px-2 py-0.5 font-mono text-sm font-bold text-white">
-                  {os.equipamento_codigo_mt}
-                </span>
-                <span className="font-medium text-blue-900">{os.equipamento_nome}</span>
-              </div>
-              <dl className="grid grid-cols-2 gap-y-2.5 text-sm md:grid-cols-3">
-                {os.equipamento_patrimonio && <Item rotulo="Patrimônio" valor={os.equipamento_patrimonio} />}
-                {os.equipamento_tipo && <Item rotulo="Tipo" valor={os.equipamento_tipo} />}
-                {os.equipamento_fabricante && <Item rotulo="Fabricante" valor={os.equipamento_fabricante} />}
-                {os.equipamento_modelo && <Item rotulo="Modelo" valor={os.equipamento_modelo} />}
-                {os.equipamento_capacidade && <Item rotulo="Capacidade" valor={os.equipamento_capacidade} />}
-                {os.equipamento_gas && <Item rotulo="Gás / fluido" valor={os.equipamento_gas} />}
-                {os.equipamento_tensao && <Item rotulo="Tensão" valor={os.equipamento_tensao} />}
-                {os.equipamento_local && <Item rotulo="Local" valor={os.equipamento_local} />}
-                {os.equipamento_ambiente && <Item rotulo="Ambiente" valor={os.equipamento_ambiente} />}
-                {os.equipamento_serie && <Item rotulo="Nº de série" valor={os.equipamento_serie} />}
-                {os.equipamento_status && <Item rotulo="Status" valor={os.equipamento_status} />}
+            <Card title="Agenda">
+              <dl className="grid grid-cols-2 gap-2.5 text-sm">
+                <Item
+                  rotulo="Data agendada"
+                  valor={os.data_agendada ? os.data_agendada.split("-").reverse().join("/") : "-"}
+                />
+                <Item
+                  rotulo="Horário (Início / Fim)"
+                  valor={os.hora_inicio || os.hora_fim ? `${os.hora_inicio || "--:--"} às ${os.hora_fim || "--:--"}` : "-"}
+                />
+                <Item rotulo="Equipe" valor={os.equipe_nome || "-"} />
+                <Item rotulo="Prioridade" valor={<Prioridade p={os.prioridade} />} />
               </dl>
             </Card>
-          )}
+
+            {os.equipamento_id && (
+              <div className="lg:col-span-2">
+                <Card title="Equipamento">
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <span className="rounded-md bg-blue-700 px-2 py-0.5 font-mono text-sm font-bold text-white">
+                      {os.equipamento_codigo_mt}
+                    </span>
+                    <span className="font-medium text-zinc-800">{os.equipamento_nome}</span>
+                  </div>
+                  <dl className="grid grid-cols-2 gap-2.5 text-sm md:grid-cols-3">
+                    {os.equipamento_patrimonio && <Item rotulo="Patrimônio" valor={os.equipamento_patrimonio} />}
+                    {os.equipamento_tipo && <Item rotulo="Tipo" valor={os.equipamento_tipo} />}
+                    {os.equipamento_fabricante && <Item rotulo="Fabricante" valor={os.equipamento_fabricante} />}
+                    {os.equipamento_modelo && <Item rotulo="Modelo" valor={os.equipamento_modelo} />}
+                    {os.equipamento_capacidade && <Item rotulo="Capacidade" valor={os.equipamento_capacidade} />}
+                    {os.equipamento_gas && <Item rotulo="Gás / fluido" valor={os.equipamento_gas} />}
+                    {os.equipamento_tensao && <Item rotulo="Tensão" valor={os.equipamento_tensao} />}
+                    {os.equipamento_local && <Item rotulo="Local" valor={os.equipamento_local} />}
+                    {os.equipamento_ambiente && <Item rotulo="Ambiente" valor={os.equipamento_ambiente} />}
+                    {os.equipamento_serie && <Item rotulo="Nº de série" valor={os.equipamento_serie} />}
+                    {os.equipamento_status && <Item rotulo="Status" valor={os.equipamento_status} />}
+                  </dl>
+                </Card>
+              </div>
+            )}
+          </div>
 
           <div className="pt-2">
             <Botao
@@ -1056,9 +1071,42 @@ export default function ExecucaoOsPage() {
             </>
           )}
 
-          {/* VISUALIZAÇÃO APÓS CONCLUSÃO DA OS */}
+          {/* VISUALIZAÇÃO APÓS CONCLUSÃO DA OS (mesmo padrão do Gestor) */}
           {(os.status === "aguardando_validacao" || os.status === "concluida") && (
             <div className="space-y-4">
+              {os.execucao && (
+                <Card title="Execução realizada pela equipe (Relatório)">
+                  {os.execucao.diagnostico && (
+                    <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-800">Diagnóstico da equipe</p>
+                      <p className="whitespace-pre-wrap text-sm text-amber-950">{os.execucao.diagnostico}</p>
+                    </div>
+                  )}
+                  {os.execucao.servico_executado && (
+                    <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50 p-3">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-blue-700">Serviço executado</p>
+                      <p className="whitespace-pre-wrap text-sm text-blue-900">{os.execucao.servico_executado}</p>
+                    </div>
+                  )}
+                  {os.execucao.solucao && (
+                    <div className="mb-3 rounded-lg border border-emerald-100 bg-emerald-50 p-3">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">Solução aplicada</p>
+                      <p className="whitespace-pre-wrap text-sm text-emerald-950">{os.execucao.solucao}</p>
+                    </div>
+                  )}
+                  {os.execucao.observacoes && (
+                    <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-700">Observações da equipe</p>
+                      <p className="whitespace-pre-wrap text-sm text-slate-800">{os.execucao.observacoes}</p>
+                    </div>
+                  )}
+                  <dl className="grid grid-cols-2 gap-2.5 text-sm">
+                    <Item rotulo="Início da execução" valor={os.execucao.iniciada_em?.slice(0, 16) || "-"} />
+                    <Item rotulo="Conclusão da execução" valor={os.execucao.concluida_em?.slice(0, 16) || "-"} />
+                  </dl>
+                </Card>
+              )}
+
               <Card title="Avaliação do Cliente no Google (Opcional)">
                 {os.execucao?.avaliacao_google_enviada_em ? (
                   <div className="flex flex-wrap items-center justify-between gap-3 text-sm">

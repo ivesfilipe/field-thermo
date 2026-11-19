@@ -142,7 +142,7 @@ const upload = multer({
 });
 
 router.get('/os', (req, res) => {
-  const { status, data } = req.query;
+  const { status, data, busca, prioridade, data_inicio, data_fim } = req.query;
   const filtro = filtroAcessoOS(req);
   let sql = `${OS_BASE} WHERE ${filtro.sql} AND o.status NOT IN ('cancelada', 'excluida')`;
   const params = [...filtro.params];
@@ -154,7 +154,30 @@ router.get('/os', (req, res) => {
     sql += ' AND o.data_agendada = ?';
     params.push(data);
   }
-  sql += ' ORDER BY CASE o.prioridade WHEN \'urgente\' THEN 1 WHEN \'alta\' THEN 2 WHEN \'media\' THEN 3 ELSE 4 END, o.data_agendada';
+  if (data_inicio) {
+    sql += ' AND o.data_agendada >= ?';
+    params.push(data_inicio);
+  }
+  if (data_fim) {
+    sql += ' AND o.data_agendada <= ?';
+    params.push(data_fim);
+  }
+  if (prioridade) {
+    sql += ' AND o.prioridade = ?';
+    params.push(prioridade);
+  }
+  if (busca) {
+    sql += ' AND (o.numero LIKE ? OR o.servico LIKE ? OR c.nome LIKE ?)';
+    const like = `%${busca}%`;
+    params.push(like, like, like);
+  }
+  sql += ` ORDER BY
+    CASE WHEN o.data_agendada IS NULL THEN 1 ELSE 0 END,
+    o.data_agendada ASC,
+    CASE WHEN o.hora_inicio IS NULL THEN 1 ELSE 0 END,
+    o.hora_inicio ASC,
+    CASE o.prioridade WHEN 'urgente' THEN 1 WHEN 'alta' THEN 2 WHEN 'media' THEN 3 ELSE 4 END,
+    o.id ASC`;
   const ordens = db.prepare(sql).all(...params);
   for (const os of ordens) {
     os.execucao = getExecucao(os.id);
