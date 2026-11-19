@@ -1315,16 +1315,16 @@ function enviarPdfHtml(relatorio, req, res) {
         <span class="campo-valor" style="text-align: left; font-weight: 600;">${e(relatorio.equipe_nome || '-')}</span>
       </div>
       <div class="linha-campo" style="flex-direction: column; align-items: flex-start;">
-        <span class="campo-rotulo">Técnico Executor</span>
-        <span class="campo-valor" style="text-align: left; font-weight: 600;">${e(relatorio.tecnico_nome || '-')}</span>
+        <span class="campo-rotulo">Data da Atividade</span>
+        <span class="campo-valor" style="text-align: left; font-weight: 600;">${e(formatarData(relatorio.data_agendada))}</span>
       </div>
       <div class="linha-campo" style="flex-direction: column; align-items: flex-start;">
-        <span class="campo-rotulo">Data e Horário (Início / Fim)</span>
-        <span class="campo-valor" style="text-align: left; font-weight: 600;">${e(formatarData(relatorio.data_agendada))}${relatorio.hora_inicio || relatorio.hora_fim ? ` — ${e(relatorio.hora_inicio || '--:--')} às ${e(relatorio.hora_fim || '--:--')}` : ''}</span>
+        <span class="campo-rotulo">Horário Inicial</span>
+        <span class="campo-valor" style="text-align: left; font-weight: 600;">${e(relatorio.hora_inicio || '-')}</span>
       </div>
       <div class="linha-campo" style="flex-direction: column; align-items: flex-start;">
-        <span class="campo-rotulo">Execução (Início / Término)</span>
-        <span class="campo-valor" style="text-align: left; font-weight: 700; color: var(--primary);">${relatorio.atendimento_iniciado_em ? `${e(formatarDataHora(relatorio.atendimento_iniciado_em))} → ` : ''}${e(formatarDataHora(relatorio.atendimento_concluido_em))}</span>
+        <span class="campo-rotulo">Horário Final</span>
+        <span class="campo-valor" style="text-align: left; font-weight: 600;">${e(relatorio.hora_fim || '-')}</span>
       </div>
     </div>
   </div>

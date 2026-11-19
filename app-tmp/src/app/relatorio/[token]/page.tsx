@@ -165,19 +165,16 @@ export default function RelatorioPublicoPage() {
               </div>
 
               <div className="p-4">
-                <h2 className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">02. Ordem de Serviço e Equipe</h2>
+                <h2 className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">02. Dados Operacionais do Atendimento</h2>
                 <dl className="grid grid-cols-3 gap-y-1.5 text-xs">
-                  <dt className="text-slate-500">Serviço</dt>
-                  <dd className="col-span-2 font-semibold text-slate-900">{relatorio.os_servico || "-"}</dd>
-                  <dt className="text-slate-500">Data / Horário</dt>
-                  <dd className="col-span-2 text-slate-800">
-                    {relatorio.data_agendada ? relatorio.data_agendada.split("-").reverse().join("/") : "-"}
-                    {(relatorio.hora_inicio || relatorio.hora_fim) ? ` — ${relatorio.hora_inicio || "--:--"} às ${relatorio.hora_fim || "--:--"}` : ""}
-                  </dd>
-                  <dt className="text-slate-500">Técnico</dt>
-                  <dd className="col-span-2 font-medium text-slate-900">{relatorio.tecnico_nome || "-"}</dd>
                   <dt className="text-slate-500">Equipe</dt>
-                  <dd className="col-span-2 text-slate-800">{relatorio.equipe_nome || "-"}</dd>
+                  <dd className="col-span-2 font-semibold text-slate-900">{relatorio.equipe_nome || "-"}</dd>
+                  <dt className="text-slate-500">Data da Atividade</dt>
+                  <dd className="col-span-2 text-slate-800">{relatorio.data_agendada ? relatorio.data_agendada.split("-").reverse().join("/") : "-"}</dd>
+                  <dt className="text-slate-500">Horário Inicial</dt>
+                  <dd className="col-span-2 text-slate-800">{relatorio.hora_inicio || "-"}</dd>
+                  <dt className="text-slate-500">Horário Final</dt>
+                  <dd className="col-span-2 text-slate-800">{relatorio.hora_fim || "-"}</dd>
                 </dl>
               </div>
             </div>
