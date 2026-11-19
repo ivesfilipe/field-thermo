@@ -21,6 +21,7 @@ const OS_BASE = `
     o.equipamento_id, o.servico, o.descricao, o.prioridade, o.data_agendada,
     o.hora_inicio, o.hora_fim, o.confirmada, o.tipo_atendimento,
     o.equipe_id, o.status, o.criada_por, o.criado_em,
+    o.atualizado_em, o.atualizado_por, ua.nome AS atualizado_por_nome,
     c.nome AS cliente_nome,
     c.email AS cliente_email, c.telefone AS cliente_telefone,
     l.nome AS local_nome, l.endereco AS local_endereco, l.responsavel_nome AS local_responsavel,
@@ -39,6 +40,7 @@ const OS_BASE = `
   LEFT JOIN locais l ON l.id = o.local_id
   LEFT JOIN equipamentos e ON e.id = o.equipamento_id
   LEFT JOIN equipes eq ON eq.id = o.equipe_id
+  LEFT JOIN usuarios ua ON ua.id = o.atualizado_por
 `;
 
 function getOS(id) {
@@ -228,9 +230,12 @@ router.put('/os/:id', (req, res) => {
   if (!os) {
     return res.status(404).json({ error: 'Ordem de serviço não encontrada' });
   }
-  if (os.status !== 'pendente') {
-    return res.status(400).json({ error: 'Somente OS pendente pode ser editada' });
+  // O Gestor pode corrigir os dados administrativos da OS em qualquer status
+  // (inclusive concluída). A execução/relatório da equipe é preservada.
+  if (os.status === 'excluida') {
+    return res.status(400).json({ error: 'OS excluída não pode ser editada' });
   }
+  const osFinalizada = ['concluida', 'aguardando_validacao', 'cancelada'].includes(os.status);
   const {
     cliente_id, local_id, responsavel_local, equipamento_id, servico, descricao,
     prioridade, data_agendada, hora_inicio, hora_fim, equipe_id, confirmada, tipo_atendimento
@@ -267,7 +272,7 @@ router.put('/os/:id', (req, res) => {
   const novaDataAgendada = data_agendada !== undefined ? data_agendada : os.data_agendada;
   const novaHoraInicio = hora_inicio !== undefined ? hora_inicio : os.hora_inicio;
   const novaHoraFim = hora_fim !== undefined ? hora_fim : os.hora_fim;
-  if (novaDataAgendada && novaHoraInicio) {
+  if (novaDataAgendada && novaHoraInicio && !osFinalizada) {
     const conflitos = detectarConflitos({
       data: novaDataAgendada, hora_inicio: novaHoraInicio, hora_fim: novaHoraFim,
       equipe_id: novoEquipeId, excluir_os_id: id
@@ -297,16 +302,53 @@ router.put('/os/:id', (req, res) => {
   db.prepare(
     `UPDATE ordens_servico SET cliente_id = ?, local_id = ?, responsavel_local = ?, equipamento_id = ?,
        servico = ?, descricao = ?, prioridade = ?, data_agendada = ?, hora_inicio = ?, hora_fim = ?,
-       equipe_id = ?, confirmada = ?, tipo_atendimento = ?
+       equipe_id = ?, confirmada = ?, tipo_atendimento = ?,
+       atualizado_em = datetime('now', 'localtime'), atualizado_por = ?
      WHERE id = ?`
   ).run(
     novos.cliente_id, novos.local_id, novos.responsavel_local, novos.equipamento_id,
     novos.servico, novos.descricao, novos.prioridade, novos.data_agendada,
     novos.hora_inicio, novos.hora_fim, novos.equipe_id, novos.confirmada,
-    novos.tipo_atendimento, id
+    novos.tipo_atendimento, req.user.id, id
   );
+  atualizarIdentificacaoRelatorio(id);
   res.json({ os: getOS(id) });
 });
+
+// Atualiza somente os blocos administrativos (identificação/solicitação) do
+// conteúdo salvo do relatório. Diagnóstico, serviço executado, solução,
+// observações, fotos e assinaturas da equipe NÃO são alterados.
+function atualizarIdentificacaoRelatorio(osId) {
+  const rel = db.prepare('SELECT id, conteudo FROM relatorios WHERE os_id = ?').get(osId);
+  if (!rel || !rel.conteudo) return;
+  let conteudo;
+  try { conteudo = JSON.parse(rel.conteudo); } catch { return; }
+  if (!conteudo || typeof conteudo !== 'object') return;
+  const os = db.prepare(`${OS_BASE} WHERE o.id = ?`).get(osId);
+  if (!os) return;
+  conteudo.identificacao = {
+    ...(conteudo.identificacao || {}),
+    os: os.numero,
+    cliente: os.cliente_nome,
+    local: os.local_nome,
+    responsavel_local: os.responsavel_local || os.local_responsavel,
+    equipamento: os.equipamento_id ? os.equipamento_nome : null,
+    modelo: os.equipamento_id ? os.equipamento_modelo : null,
+    capacidade: os.equipamento_id ? os.equipamento_capacidade : null,
+    patrimonio: os.equipamento_id ? os.equipamento_patrimonio : null
+  };
+  conteudo.solicitacao = {
+    ...(conteudo.solicitacao || {}),
+    servico: os.servico,
+    descricao: os.descricao,
+    prioridade: os.prioridade,
+    data_agendada: os.data_agendada,
+    hora_inicio: os.hora_inicio,
+    hora_fim: os.hora_fim,
+    equipe: os.equipe_nome
+  };
+  db.prepare('UPDATE relatorios SET conteudo = ? WHERE id = ?').run(JSON.stringify(conteudo), rel.id);
+}
 
 router.patch('/os/:id/cancelar', (req, res) => {
   const id = Number(req.params.id);

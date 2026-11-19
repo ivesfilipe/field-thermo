@@ -27,6 +27,14 @@ interface RelatorioPublico {
   equipamento_codigo_mt: string | null;
   equipamento_serie: string | null;
   equipamento_patrimonio: string | null;
+  equipamento_id?: number | null;
+  equipamento_fabricante?: string | null;
+  equipamento_capacidade?: string | null;
+  equipamento_local?: string | null;
+  equipamento_ambiente?: string | null;
+  hora_inicio?: string | null;
+  hora_fim?: string | null;
+  solucao?: string | null;
   diagnostico: string | null;
   causa: string | null;
   servico_executado: string | null;
@@ -153,15 +161,14 @@ export default function RelatorioPublicoPage() {
               </div>
 
               <div className="p-4">
-                <h2 className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">02. Equipamento e Equipe</h2>
+                <h2 className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">02. Ordem de Serviço e Equipe</h2>
                 <dl className="grid grid-cols-3 gap-y-1.5 text-xs">
-                  <dt className="text-slate-500">Equipamento</dt>
-                  <dd className="col-span-2 font-semibold text-slate-900">
-                    {relatorio.equipamento_nome ? `${relatorio.equipamento_codigo_mt ? `${relatorio.equipamento_codigo_mt} — ` : ""}${relatorio.equipamento_nome}` : "-"}
-                  </dd>
-                  <dt className="text-slate-500">Modelo / Série</dt>
+                  <dt className="text-slate-500">Serviço</dt>
+                  <dd className="col-span-2 font-semibold text-slate-900">{relatorio.os_servico || "-"}</dd>
+                  <dt className="text-slate-500">Data / Horário</dt>
                   <dd className="col-span-2 text-slate-800">
-                    {relatorio.equipamento_modelo || "-"}{relatorio.equipamento_serie ? ` (Série: ${relatorio.equipamento_serie})` : ""}
+                    {relatorio.data_agendada ? relatorio.data_agendada.split("-").reverse().join("/") : "-"}
+                    {relatorio.hora_inicio ? ` às ${relatorio.hora_inicio}${relatorio.hora_fim ? ` – ${relatorio.hora_fim}` : ""}` : ""}
                   </dd>
                   <dt className="text-slate-500">Técnico</dt>
                   <dd className="col-span-2 font-medium text-slate-900">{relatorio.tecnico_nome || "-"}</dd>
@@ -171,18 +178,50 @@ export default function RelatorioPublicoPage() {
               </div>
             </div>
 
+            {/* Ficha do Equipamento: somente quando há MT/equipamento vinculado à OS */}
+            {relatorio.equipamento_id && (relatorio.equipamento_nome || relatorio.equipamento_codigo_mt) && (
+              <div className="border-b border-slate-200 p-4">
+                <h2 className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">Ficha do Equipamento</h2>
+                <dl className="grid grid-cols-3 gap-y-1.5 text-xs sm:grid-cols-6">
+                  <dt className="text-slate-500">MT</dt>
+                  <dd className="col-span-2 font-semibold text-slate-900">{relatorio.equipamento_codigo_mt || "-"}</dd>
+                  <dt className="text-slate-500">Equipamento</dt>
+                  <dd className="col-span-2 font-semibold text-slate-900">{relatorio.equipamento_nome || "-"}</dd>
+                  <dt className="text-slate-500">Fabricante / Modelo</dt>
+                  <dd className="col-span-2 text-slate-800">{[relatorio.equipamento_fabricante, relatorio.equipamento_modelo].filter(Boolean).join(" / ") || "-"}</dd>
+                  <dt className="text-slate-500">Nº de Série</dt>
+                  <dd className="col-span-2 text-slate-800">{relatorio.equipamento_serie || "-"}</dd>
+                  <dt className="text-slate-500">Patrimônio / Cap.</dt>
+                  <dd className="col-span-2 text-slate-800">{[relatorio.equipamento_patrimonio, relatorio.equipamento_capacidade].filter(Boolean).join(" | ") || "-"}</dd>
+                  <dt className="text-slate-500">Local / Ambiente</dt>
+                  <dd className="col-span-2 text-slate-800">{[relatorio.equipamento_local, relatorio.equipamento_ambiente].filter(Boolean).join(" — ") || "-"}</dd>
+                </dl>
+              </div>
+            )}
             {/* Descrição Técnica */}
             <div className="border-b border-slate-200 p-4">
               <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">03. Serviço Executado e Parecer Técnico</h2>
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
                 {relatorio.servico_executado || relatorio.os_descricao || "Atendimento técnico executado conforme especificações."}
               </p>
-              {(relatorio.diagnostico || relatorio.causa || relatorio.recomendacoes || relatorio.recomendacoes_tecnico || relatorio.pendencias) && (
+              {(relatorio.diagnostico || relatorio.solucao || relatorio.observacoes || relatorio.causa || relatorio.recomendacoes || relatorio.recomendacoes_tecnico || relatorio.pendencias) && (
                 <div className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs sm:grid-cols-2">
                   {relatorio.diagnostico && (
                     <div>
                       <span className="font-semibold text-slate-600">Diagnóstico: </span>
                       <span className="text-slate-800">{relatorio.diagnostico}</span>
+                    </div>
+                  )}
+                  {relatorio.solucao && (
+                    <div>
+                      <span className="font-semibold text-slate-600">Solução: </span>
+                      <span className="text-slate-800">{relatorio.solucao}</span>
+                    </div>
+                  )}
+                  {relatorio.observacoes && (
+                    <div className="sm:col-span-2">
+                      <span className="font-semibold text-slate-600">Observações: </span>
+                      <span className="text-slate-800">{relatorio.observacoes}</span>
                     </div>
                   )}
                   {relatorio.causa && (

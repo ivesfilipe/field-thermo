@@ -417,7 +417,7 @@ export default function CalendarioPage() {
       });
       return;
     }
-    if (e.status_base === "pendente") {
+    {
       await enviarComReconflito(async () => {
         await api.put(`/api/gestor/os/${e.id}`, {
           data_agendada: edit.data || undefined,
@@ -427,18 +427,6 @@ export default function CalendarioPage() {
           ignorar_conflitos: forcarRef.current || undefined
         });
         setMsg("OS atualizada.");
-        setModal(null);
-        carregar();
-      });
-    } else {
-      await enviarComReconflito(async () => {
-        await api.patch(`/api/gestor/os/${e.id}/horario`, {
-          data: edit.data || undefined,
-          hora_inicio: edit.hora_inicio || undefined,
-          hora_fim: edit.hora_fim || undefined,
-          ignorar_conflitos: forcarRef.current || undefined
-        });
-        setMsg("Data/horário da OS atualizados.");
         setModal(null);
         carregar();
       });
@@ -845,8 +833,8 @@ export default function CalendarioPage() {
                   {equipes.map((eq) => <option key={eq.id} value={eq.id}>{eq.nome}</option>)}
                 </Select>
               </div>
-              {selecionado.kind === "os" && selecionado.status_base !== "pendente" && (
-                <p className="mt-2 text-xs text-amber-600">OS em andamento: somente data e horário podem ser alterados.</p>
+              {selecionado.kind === "os" && selecionado.status_base === "concluida" && (
+                <p className="mt-2 text-xs text-amber-600">OS concluída: a correção altera somente os dados da OS. A execução e o relatório da equipe são preservados.</p>
               )}
             </div>
 

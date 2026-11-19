@@ -6,6 +6,7 @@ import Image from "next/image";
 import { api, mediaUrl, API_URL, getToken } from "@/lib/api";
 import { Alerta, Badge, Botao, Campo, Card, GaleriaFotos, LinksMapa, Modal, PageHeader, Prioridade, Select, Textarea } from "@/components/ui";
 import { getModelo, camposPreenchidos, valorRotulo } from "@/lib/modelos";
+import EditarOsModal from "@/components/editar-os-modal";
 
 interface Execucao {
   id: number;
@@ -143,6 +144,10 @@ interface OS {
   equipamento_serie: string | null;
   equipamento_status: string | null;
   equipamento_id: number | null;
+  local_id?: number | null;
+  equipe_id?: number | null;
+  atualizado_em?: string | null;
+  atualizado_por_nome?: string | null;
   servico: string;
   descricao: string | null;
   prioridade: string;
@@ -216,6 +221,7 @@ export default function OsDetalhePage() {
   const [gerandoLink, setGerandoLink] = useState(false);
   const [linkRelatorio, setLinkRelatorio] = useState<string | null>(null);
   const [gerandoLinkRelatorio, setGerandoLinkRelatorio] = useState(false);
+  const [editandoOs, setEditandoOs] = useState(false);
 
   const RESOLVEU_LABEL: Record<string, string> = { sim: "Sim", parcialmente: "Parcialmente", nao: "Não" };
 
@@ -460,6 +466,9 @@ export default function OsDetalhePage() {
         descricao={`${os.cliente_nome || "Sem cliente"} — ${os.equipe_nome || "Sem equipe"}`}
         acoes={
           <>
+            {os.status !== "excluida" && (
+              <Botao onClick={() => setEditandoOs(true)}>Editar OS</Botao>
+            )}
             {os.status === "pendente" && (
               <Botao variante="sucesso" onClick={confirmarOS}>{os.confirmada ? "Desconfirmar" : "Confirmar"}</Botao>
             )}
@@ -494,7 +503,25 @@ export default function OsDetalhePage() {
             {os.confirmada ? "Confirmada" : "Agendada"}
           </span>
         )}
+        {os.atualizado_em && (
+          <span className="text-xs text-zinc-500">
+            Última alteração: {os.atualizado_em.slice(0, 16).split(" ")[0].split("-").reverse().join("/")} {os.atualizado_em.slice(11, 16)}
+            {os.atualizado_por_nome ? ` por ${os.atualizado_por_nome}` : ""}
+          </span>
+        )}
       </div>
+
+      {editandoOs && (
+        <EditarOsModal
+          os={os}
+          onFechar={() => setEditandoOs(false)}
+          onSalvo={(m) => {
+            setEditandoOs(false);
+            setMsg(m);
+            carregar();
+          }}
+        />
+      )}
 
       <div className="grid grid-cols-1 gap-2 rounded-xl border border-slate-200/90 bg-white p-3 text-xs sm:grid-cols-3">{[{ k: "pendente", l: "1. Agendada / Pendente" }, { k: "em_andamento", l: "2. Em Atendimento" }, { k: "concluida", l: "3. Concluída e Relatório" }].map((etapa, idx) => { const ordem = ["pendente", "em_andamento", "concluida"]; const statusBase = os.status === "em_deslocamento" || os.status === "aguardando_validacao" ? (os.status === "em_deslocamento" ? "em_andamento" : "concluida") : os.status; const atualIdx = ordem.indexOf(statusBase); const concluidaEtapa = atualIdx > idx || statusBase === "concluida"; const ativa = atualIdx === idx && statusBase !== "concluida"; return (<div key={etapa.k} className={`flex items-center gap-2 rounded-lg border px-3 py-2 font-semibold ${ativa ? "border-blue-600 bg-blue-50 text-blue-900" : concluidaEtapa ? "border-emerald-200 bg-emerald-50/70 text-emerald-800" : "border-slate-100 bg-slate-50 text-slate-400"}`}><span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${ativa ? "bg-blue-700 text-white" : concluidaEtapa ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-500"}`}>{concluidaEtapa ? "✓" : idx + 1}</span><span className="truncate">{etapa.l}</span></div>); })}</div>
       <div className="grid gap-4 lg:grid-cols-2">
@@ -983,10 +1010,14 @@ export default function OsDetalhePage() {
                     <span className="text-zinc-500">Cliente</span><span className="font-medium">{c.identificacao.cliente}</span>
                     <span className="text-zinc-500">Local</span><span className="font-medium">{c.identificacao.local || "-"}</span>
                     <span className="text-zinc-500">Responsável</span><span className="font-medium">{c.identificacao.responsavel_local || "-"}</span>
-                    <span className="text-zinc-500">Equipamento</span><span className="font-medium">{c.identificacao.equipamento || "-"}</span>
-                    <span className="text-zinc-500">Modelo</span><span className="font-medium">{c.identificacao.modelo || "-"}</span>
-                    <span className="text-zinc-500">Capacidade</span><span className="font-medium">{c.identificacao.capacidade || "-"}</span>
-                    <span className="text-zinc-500">Patrimônio</span><span className="font-medium">{c.identificacao.patrimonio || "-"}</span>
+                    {os.equipamento_id && (
+                      <>
+                        <span className="text-zinc-500">Equipamento</span><span className="font-medium">{os.equipamento_codigo_mt ? `${os.equipamento_codigo_mt} - ` : ""}{os.equipamento_nome || "-"}</span>
+                        <span className="text-zinc-500">Modelo</span><span className="font-medium">{os.equipamento_modelo || "-"}</span>
+                        <span className="text-zinc-500">Capacidade</span><span className="font-medium">{os.equipamento_capacidade || "-"}</span>
+                        <span className="text-zinc-500">Patrimônio</span><span className="font-medium">{os.equipamento_patrimonio || "-"}</span>
+                      </>
+                    )}
                   </div>
                   <div className="rounded-lg bg-blue-50 p-3">
                     <h5 className="mb-1 font-semibold text-blue-900">Solicitação original (gestor)</h5>

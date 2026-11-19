@@ -1185,6 +1185,172 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     );
   }
 
+  console.log('Fase 17 - Edicao de OS Concluida e Ficha de Equipamento Condicional');
+  {
+    const c1 = await api('/api/gestor/clientes', 'POST', gestor, {
+      nome: 'VALE - Unidade Teste',
+      endereco: 'Rodovia MG-123, Km 10'
+    });
+    const c2 = await api('/api/gestor/clientes', 'POST', gestor, {
+      nome: 'VALE - Unidade Alternativa',
+      endereco: 'Rodovia MG-456, Km 20'
+    });
+    const eqMt = await api('/api/gestor/equipamentos', 'POST', gestor, {
+      cliente_id: c1.data.cliente.id,
+      nome: 'Chiller Industrial MT',
+      fabricante: 'Carrier',
+      modelo: '30XA-250',
+      numero_serie: 'SN-MT-025',
+      patrimonio: 'PAT-025',
+      capacidade: '250 TR'
+    });
+    const eqList = await api('/api/gestor/equipes', 'GET', gestor);
+    const equipe1 = eqList.data.equipes.find((e) => e.nome === 'Equipe Norte') || eqList.data.equipes[0];
+    const equipe2 = eqList.data.equipes.find((e) => e.id !== equipe1.id) || equipe1;
+
+    // TESTE 1: OS SEM MT -> Finalizar -> Gerar relatório -> NÃO deve aparecer ficha de equipamento
+    const osSemMt = await api('/api/gestor/os', 'POST', gestor, {
+      cliente_id: c1.data.cliente.id,
+      equipe_id: equipe1.id,
+      servico: 'Inspeção Geral Sem Equipamento',
+      descricao: 'Verificação visual do ambiente',
+      data_agendada: '2026-11-19',
+      hora_inicio: '08:00',
+      hora_fim: '09:00',
+      ignorar_conflitos: true
+    });
+    test('TESTE 1a: cria OS sem MT', osSemMt.status === 201 && osSemMt.data.os.equipamento_id === null, osSemMt.status);
+    const idSemMt = osSemMt.data.os.id;
+    await api(`/api/tecnico/os/${idSemMt}/iniciar`, 'POST', tecnico);
+    await api(`/api/tecnico/os/${idSemMt}/execucao`, 'PUT', tecnico, {
+      diagnostico: 'Ambiente sem anomalias',
+      servico_executado: 'Inspeção concluída no local',
+      solucao: 'Nenhuma intervenção necessária',
+      observacoes: 'Tudo ok no setor',
+      assinatura_nome: 'Carlos Responsável',
+      assinatura_cargo: 'Supervisor'
+    });
+    await upload(`/api/tecnico/os/${idSemMt}/anexos`, tecnico, 'arquivos', 'foto_sem_mt.png', PNG);
+    await upload(`/api/tecnico/os/${idSemMt}/assinatura`, tecnico, 'assinatura', 'ass_sem_mt.png', PNG);
+    const concSemMt = await api(`/api/tecnico/os/${idSemMt}/concluir`, 'POST', tecnico);
+    test('TESTE 1b: finaliza OS sem MT', concSemMt.status === 200 && concSemMt.data.os.status === 'concluida', concSemMt.status);
+
+    const detSemMt = await api(`/api/gestor/os/${idSemMt}`, 'GET', gestor);
+    const tokenSemMt = detSemMt.data.os.relatorio.token;
+    const pdfSemMtRes = await fetch(base + `/api/comercial/relatorios/publico/${tokenSemMt}/pdf`);
+    const pdfSemMtHtml = await pdfSemMtRes.text();
+    test(
+      'TESTE 1c: relatório de OS sem MT NÃO exibe Ficha do Equipamento',
+      pdfSemMtRes.status === 200 &&
+        !pdfSemMtHtml.includes('Ficha do Equipamento') &&
+        pdfSemMtHtml.includes('Ambiente sem anomalias') &&
+        pdfSemMtHtml.includes('Nenhuma intervenção necessária'),
+      `status=${pdfSemMtRes.status} temFicha=${pdfSemMtHtml.includes('Ficha do Equipamento')}`
+    );
+
+    // TESTE 2: OS COM MT -> Finalizar -> Gerar relatório -> Ficha do MT selecionado DEVE aparecer
+    const osComMt = await api('/api/gestor/os', 'POST', gestor, {
+      cliente_id: c1.data.cliente.id,
+      equipamento_id: eqMt.data.equipamento.id,
+      equipe_id: equipe1.id,
+      servico: 'Manutenção Preventiva Chiller',
+      descricao: 'Preventiva completa no equipamento',
+      data_agendada: '2026-11-19',
+      hora_inicio: '08:00',
+      hora_fim: '10:00',
+      ignorar_conflitos: true
+    });
+    test('TESTE 2a: cria OS com MT', osComMt.status === 201 && osComMt.data.os.equipamento_id === eqMt.data.equipamento.id, osComMt.status);
+    const idComMt = osComMt.data.os.id;
+    await api(`/api/tecnico/os/${idComMt}/iniciar`, 'POST', tecnico);
+    await api(`/api/tecnico/os/${idComMt}/execucao`, 'PUT', tecnico, {
+      diagnostico: 'Filtro obstruído e pressão baixa',
+      servico_executado: 'Limpeza de filtros e carga de fluido',
+      solucao: 'Pressão normalizada e equipamento em operação',
+      observacoes: 'Monitorar pressão na próxima visita',
+      assinatura_nome: 'Maria Responsável',
+      assinatura_cargo: 'Coordenadora'
+    });
+    await upload(`/api/tecnico/os/${idComMt}/assinatura`, tecnico, 'assinatura', 'ass_com_mt.png', PNG);
+    await api(`/api/tecnico/os/${idComMt}/concluir`, 'POST', tecnico);
+    const detComMt = await api(`/api/gestor/os/${idComMt}`, 'GET', gestor);
+    const tokenComMt = detComMt.data.os.relatorio.token;
+    const pdfComMtRes = await fetch(base + `/api/comercial/relatorios/publico/${tokenComMt}/pdf`);
+    const pdfComMtHtml = await pdfComMtRes.text();
+    test(
+      'TESTE 2b: relatório de OS com MT exibe Ficha do Equipamento com dados do MT',
+      pdfComMtRes.status === 200 &&
+        pdfComMtHtml.includes('Ficha do Equipamento') &&
+        pdfComMtHtml.includes(eqMt.data.equipamento.codigo_mt) &&
+        pdfComMtHtml.includes('Chiller Industrial MT') &&
+        pdfComMtHtml.includes('30XA-250'),
+      `status=${pdfComMtRes.status} temFicha=${pdfComMtHtml.includes('Ficha do Equipamento')}`
+    );
+
+    // TESTE 3: OS concluída em 19/11 às 08:00 -> Gestor altera para 10:00
+    const editHora = await api(`/api/gestor/os/${idSemMt}`, 'PUT', gestor, {
+      hora_inicio: '10:00',
+      hora_fim: '11:30'
+    });
+    test(
+      'TESTE 3: gestor altera horário de OS concluída (08:00 -> 10:00) mantendo concluída e auditando',
+      editHora.status === 200 &&
+        editHora.data.os.status === 'concluida' &&
+        editHora.data.os.hora_inicio === '10:00' &&
+        editHora.data.os.hora_fim === '11:30' &&
+        !!editHora.data.os.atualizado_em &&
+        !!editHora.data.os.atualizado_por,
+      `${editHora.status} ${JSON.stringify({ hora: editHora.data?.os?.hora_inicio, status: editHora.data?.os?.status, erro: editHora.data?.error })}`
+    );
+
+    // TESTE 4: Alterar a data de uma OS concluída sem apagar execução da equipe
+    const editData = await api(`/api/gestor/os/${idSemMt}`, 'PUT', gestor, {
+      data_agendada: '2026-11-22'
+    });
+    test(
+      'TESTE 4: gestor altera data de OS concluída sem apagar execução',
+      editData.status === 200 &&
+        editData.data.os.data_agendada === '2026-11-22' &&
+        editData.data.os.status === 'concluida' &&
+        editData.data.os.execucao?.diagnostico === 'Ambiente sem anomalias',
+      `${editData.status} ${JSON.stringify({ data: editData.data?.os?.data_agendada })}`
+    );
+
+    // TESTE 5: Alterar cliente, equipe e serviço de uma OS concluída
+    const editAdmin = await api(`/api/gestor/os/${idSemMt}`, 'PUT', gestor, {
+      cliente_id: c2.data.cliente.id,
+      equipe_id: equipe2.id,
+      servico: 'Inspeção Geral Corrigida pelo Gestor',
+      descricao: 'Descrição administrativa corrigida'
+    });
+    test(
+      'TESTE 5: gestor altera cliente, equipe e serviço de OS concluída',
+      editAdmin.status === 200 &&
+        editAdmin.data.os.cliente_id === c2.data.cliente.id &&
+        editAdmin.data.os.equipe_id === equipe2.id &&
+        editAdmin.data.os.servico === 'Inspeção Geral Corrigida pelo Gestor' &&
+        editAdmin.data.os.descricao === 'Descrição administrativa corrigida' &&
+        editAdmin.data.os.status === 'concluida',
+      `${editAdmin.status} ${JSON.stringify({ cli: editAdmin.data?.os?.cliente_id, srv: editAdmin.data?.os?.servico })}`
+    );
+
+    // TESTE 6: Confirmar que fotos, diagnóstico, serviço executado, solução, observações e assinatura permanecem intactos
+    const osFinal = await api(`/api/gestor/os/${idSemMt}`, 'GET', gestor);
+    const o6 = osFinal.data.os;
+    test(
+      'TESTE 6: após edições do gestor, execução da equipe (fotos, diagnóstico, solução, assinatura) permanece 100% intacta',
+      o6.status === 'concluida' &&
+        o6.execucao.diagnostico === 'Ambiente sem anomalias' &&
+        o6.execucao.servico_executado === 'Inspeção concluída no local' &&
+        o6.execucao.solucao === 'Nenhuma intervenção necessária' &&
+        o6.execucao.observacoes === 'Tudo ok no setor' &&
+        o6.anexos.length >= 1 &&
+        o6.execucao.assinaturas.length >= 1 &&
+        o6.execucao.assinaturas[0].nome === 'Carlos Responsável',
+      JSON.stringify({ exec: o6.execucao, anexos: o6.anexos?.length })
+    );
+  }
+
   server.close();
   db.close();
   fs.rmSync(TEST_DIR, { recursive: true, force: true });

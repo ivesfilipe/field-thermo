@@ -24,7 +24,7 @@ const RELATORIO_DETALHE = `
     r.aberto_por, r.aberto_em,
     o.id AS os_id, o.numero AS os_numero, o.servico AS os_servico, o.descricao AS os_descricao,
     o.prioridade AS os_prioridade, o.data_agendada, o.hora_inicio, o.hora_fim, o.responsavel_local,
-    o.tipo_atendimento,
+    o.tipo_atendimento, o.equipamento_id,
     c.nome AS cliente_nome, c.email AS cliente_email, c.telefone AS cliente_telefone, c.documento AS cliente_documento,
     l.nome AS local_nome, l.endereco AS local_endereco, l.cidade AS local_cidade, l.estado AS local_estado,
     l.responsavel_nome AS local_responsavel, l.responsavel_telefone AS local_responsavel_telefone, l.responsavel_email AS local_responsavel_email,
@@ -34,7 +34,7 @@ const RELATORIO_DETALHE = `
     e.patrimonio AS equipamento_patrimonio, e.gas_refrigerante AS equipamento_gas,
     e.tensao AS equipamento_tensao, e.local AS equipamento_local, e.ambiente AS equipamento_ambiente,
     eq.nome AS equipe_nome,
-    ex.diagnostico, ex.servico_executado, ex.observacoes, ex.fotos, ex.assinatura,
+    ex.diagnostico, ex.servico_executado, ex.solucao, ex.observacoes, ex.fotos, ex.assinatura,
     ex.assinatura_nome, ex.assinatura_cargo, ex.assinaturas,
     ex.assinatura_tecnico, ex.assinatura_tecnico_nome,
     ex.condicao_sintomas, ex.condicao_equipamento, ex.condicao_observacoes,
@@ -465,6 +465,9 @@ function enviarPdfHtml(relatorio, req, res) {
   ]
     .filter(Boolean)
     .join(' — ') || relatorio.local_endereco || '-';
+
+  // Ficha do equipamento somente quando houver MT/equipamento vinculado à OS
+  const temEquipamento = Boolean(relatorio.equipamento_id && (relatorio.equipamento_nome || relatorio.equipamento_codigo_mt));
 
   // Fotos em grid
   let fotosHtml = '';
@@ -1235,8 +1238,8 @@ function enviarPdfHtml(relatorio, req, res) {
     </div>
   </div>
 
-  <!-- Identificação do Cliente e do Equipamento -->
-  <div class="grid-2">
+  <!-- Identificação do Cliente e do Equipamento (ficha somente quando houver MT/equipamento vinculado à OS) -->
+  <div class="${temEquipamento ? 'grid-2' : ''}" style="${temEquipamento ? '' : 'margin-bottom: 16px;'}">
     <div class="card-bloco">
       <h3>Identificação do Cliente e Local</h3>
       <div class="linha-campo">
@@ -1269,7 +1272,7 @@ function enviarPdfHtml(relatorio, req, res) {
       </div>
     </div>
 
-    <div class="card-bloco">
+    ${temEquipamento ? `<div class="card-bloco">
       <h3>Ficha do Equipamento</h3>
       <div class="linha-campo">
         <span class="campo-rotulo">Identificação MT:</span>
@@ -1277,7 +1280,7 @@ function enviarPdfHtml(relatorio, req, res) {
       </div>
       <div class="linha-campo">
         <span class="campo-rotulo">Equipamento:</span>
-        <span class="campo-valor">${e(relatorio.equipamento_nome || relatorio.os_servico || '-')}</span>
+        <span class="campo-valor">${e(relatorio.equipamento_nome || '-')}</span>
       </div>
       <div class="linha-campo">
         <span class="campo-rotulo">Fabricante / Modelo:</span>
@@ -1299,7 +1302,7 @@ function enviarPdfHtml(relatorio, req, res) {
         <span class="campo-rotulo">Local / Ambiente:</span>
         <span class="campo-valor">${e([relatorio.equipamento_local, relatorio.equipamento_ambiente].filter(Boolean).join(' — ') || '-')}</span>
       </div>
-    </div>
+    </div>` : ''}
   </div>
 
   <!-- Informações Operacionais da Execução -->
@@ -1364,6 +1367,17 @@ function enviarPdfHtml(relatorio, req, res) {
     </div>
     <div class="texto-caixa">${e(relatorio.servico_executado || relatorio.os_descricao || 'Atendimento técnico executado conforme especificações.')}</div>
   </section>
+
+  ${
+    relatorio.solucao
+      ? `<section class="secao">
+          <div class="secao-titulo">
+            <h2>Solução Aplicada</h2>
+          </div>
+          <div class="texto-caixa">${e(relatorio.solucao)}</div>
+        </section>`
+      : ''
+  }
 
   <!-- Modelo Técnico Específico (se houver) -->
   ${modeloHtml}

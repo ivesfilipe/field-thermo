@@ -396,8 +396,8 @@ router.patch('/os/:id/horario', (req, res) => {
       });
     }
   }
-  db.prepare('UPDATE ordens_servico SET data_agendada = ?, hora_inicio = ?, hora_fim = ? WHERE id = ?')
-    .run(novaData, novaHoraInicio, novaHoraFim, id);
+  db.prepare("UPDATE ordens_servico SET data_agendada = ?, hora_inicio = ?, hora_fim = ?, atualizado_em = datetime('now', 'localtime'), atualizado_por = ? WHERE id = ?")
+    .run(novaData, novaHoraInicio, novaHoraFim, req.user.id, id);
   res.json({ os: db.prepare(`${EVENTO_OS} WHERE o.id = ?`).get(id) });
 });
 

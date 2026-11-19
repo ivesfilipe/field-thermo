@@ -75,6 +75,17 @@ if (sqlOs && !sqlOs.includes('excluida')) {
   db.pragma('foreign_keys = ON');
 }
 
+// Auditoria da última alteração administrativa da OS (gestor)
+{
+  const colsOsAudit = colunasDaTabela('ordens_servico');
+  if (!colsOsAudit.includes('atualizado_em')) {
+    db.prepare('ALTER TABLE ordens_servico ADD COLUMN atualizado_em TEXT').run();
+  }
+  if (!colsOsAudit.includes('atualizado_por')) {
+    db.prepare('ALTER TABLE ordens_servico ADD COLUMN atualizado_por INTEGER REFERENCES usuarios(id) ON DELETE SET NULL').run();
+  }
+}
+
 const colunasExec = colunasDaTabela('execucoes');
 for (const col of ['necessidade_adicional', 'complemento_solicitado', 'dados_modelo', 'solucao']) {
   if (!colunasExec.includes(col)) {
