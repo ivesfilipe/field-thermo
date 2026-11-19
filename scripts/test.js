@@ -1287,10 +1287,11 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
       `status=${pdfComMtRes.status} temFicha=${pdfComMtHtml.includes('Ficha do Equipamento')}`
     );
 
-    // TESTE 3: OS concluída em 19/11 às 08:00 -> Gestor altera para 10:00
+    // TESTE 3: OS concluída em 19/11 às 08:00 -> Gestor altera para 10:00 (inclusive com tipo_atendimento vazio '')
     const editHora = await api(`/api/gestor/os/${idSemMt}`, 'PUT', gestor, {
       hora_inicio: '10:00',
-      hora_fim: '11:30'
+      hora_fim: '11:30',
+      tipo_atendimento: ''
     });
     test(
       'TESTE 3: gestor altera horário de OS concluída (08:00 -> 10:00) mantendo concluída e auditando',

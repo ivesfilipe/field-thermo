@@ -241,7 +241,7 @@ router.put('/os/:id', (req, res) => {
     prioridade, data_agendada, hora_inicio, hora_fim, equipe_id, confirmada, tipo_atendimento,
     diagnostico, servico_executado, solucao, observacoes_equipe
   } = req.body || {};
-  if (tipo_atendimento !== undefined && tipo_atendimento !== null && !MODELOS[tipo_atendimento]) {
+  if (tipo_atendimento !== undefined && tipo_atendimento !== null && tipo_atendimento !== '' && !MODELOS[tipo_atendimento]) {
     return res.status(400).json({ error: 'Tipo de atendimento inválido' });
   }
   const novoClienteId = cliente_id ?? os.cliente_id;

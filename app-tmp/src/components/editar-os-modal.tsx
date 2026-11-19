@@ -101,7 +101,7 @@ export default function EditarOsModal({ os, onFechar, onSalvo }: { os: OsEditave
         data_agendada: form.data_agendada || null,
         hora_inicio: form.hora_inicio || null,
         hora_fim: form.hora_fim || null,
-        tipo_atendimento: form.tipo_atendimento,
+        tipo_atendimento: form.tipo_atendimento || null,
         ignorar_conflitos: ignorarConflitos || undefined
       };
       if (os.execucao) {

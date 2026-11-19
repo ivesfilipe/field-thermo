@@ -94,8 +94,7 @@ export default function AppHome() {
   useEffect(() => {
     if (!perfil) return;
     if (perfil === "tecnico") {
-      const hoje = new Date().toISOString().slice(0, 10);
-      api.get<{ ordens: OS[] }>(`/api/tecnico/os?data=${hoje}`).then((r) => setOrdens(r.ordens)).catch(() => setOrdens([]));
+      api.get<{ ordens: OS[] }>("/api/tecnico/os").then((r) => setOrdens(r.ordens)).catch(() => setOrdens([]));
     } else if (perfil === "comercial") {
       api.get<{ relatorios: Relatorio[] }>("/api/comercial/relatorios").then((r) => setRelatorios(r.relatorios)).catch(() => setRelatorios([]));
       api.get<{ oportunidades: Oportunidade[] }>("/api/comercial/oportunidades").then((r) => setOportunidades(r.oportunidades)).catch(() => setOportunidades([]));
@@ -224,41 +223,82 @@ export default function AppHome() {
         </>
       ) : perfil === "tecnico" ? (
         <>
-          <div className="grid grid-cols-3 gap-3">
-            <KPI label="Pendentes" valor={totalPorStatus("pendente")} cor="text-amber-700" />
-            <KPI label="Em andamento" valor={totalPorStatus("em_andamento")} cor="text-blue-700" />
-            <KPI label="Concluídas" valor={totalPorStatus("concluida")} cor="text-emerald-700" />
+          <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-xs">
+            <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-950">2. Indicadores Operacionais</span>
+              <span className="text-[11px] font-medium text-slate-400">Visão em tempo real</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <KPI label="OS de hoje" valor={(ordens || []).filter((o) => o.data_agendada === hoje).length} cor="text-blue-700" />
+              <KPI label="Pendentes" valor={totalPorStatus("pendente")} cor="text-amber-700" />
+              <KPI label="Em andamento" valor={totalPorStatus("em_andamento")} cor="text-cyan-700" />
+              <KPI label="Concluídas" valor={totalPorStatus("concluida")} cor="text-emerald-700" />
+            </div>
           </div>
 
-          <Card title="Minhas ordens de serviço de hoje" acao={<Botao variante="secundario" onClick={() => router.push("/app/tecnico/os")}>Ver todas</Botao>}>
-            <Tabela cabecalhos={["Nº", "Cliente", "Local", "Serviço", "Data", "Prioridade", "Status"]}>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card
+              title={`3. OS agendadas (${rotuloData()})`}
+              acao={
+                <div className="flex items-center gap-1">
+                  <Botao variante="secundario" className="px-2 py-1 text-xs" onClick={() => mudarData(-1)}>‹</Botao>
+                  <input
+                    type="date"
+                    value={dataSelecionada}
+                    onChange={(e) => e.target.value && setDataSelecionada(e.target.value)}
+                    className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 focus:border-blue-500 focus:outline-none"
+                  />
+                  <Botao variante="secundario" className="px-2 py-1 text-xs" onClick={() => mudarData(1)}>›</Botao>
+                  <Botao variante="secundario" className="px-2 py-1 text-xs" onClick={() => setDataSelecionada(hoje)}>Hoje</Botao>
+                </div>
+              }
+            >
               {ordens === null ? (
-                <tr><td colSpan={99}><Loading /></td></tr>
-              ) : ordens.length === 0 ? (
-                <LinhaVazia texto="Nenhuma ordem de serviço atribuída a você." />
+                <Loading />
+              ) : ordensHoje.length === 0 ? (
+                <EstadoVazio texto={`Nenhuma OS agendada para ${rotuloData()}.`} />
               ) : (
-                ordens.slice(0, 10).map((o) => (
-                  <tr key={o.id} className="cursor-pointer transition-colors hover:bg-blue-50/50" onClick={() => router.push(`/app/tecnico/os/${o.id}`)}>
-                    <td className="px-3 py-2 font-medium text-blue-700">{o.numero}</td>
-                    <td className="px-3 py-2">{o.cliente_nome}</td>
-                    <td className="hidden px-3 py-2 md:table-cell">
-                      {o.local_nome || "-"}
-                      {(o.local_endereco_completo || o.local_endereco) && (
-                        <span className="block text-xs text-zinc-500">
-                          {o.local_endereco_completo || o.local_endereco}
-                          <LinksMapa endereco={(o.local_endereco_completo || o.local_endereco)!} />
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2">{o.servico}</td>
-                    <td className="whitespace-nowrap px-3 py-2">{o.data_agendada || "-"}</td>
-                    <td className="px-3 py-2"><Prioridade p={o.prioridade} /></td>
-                    <td className="px-3 py-2"><Badge status={o.status} /></td>
-                  </tr>
-                ))
+                <Tabela cabecalhos={["Nº", "Cliente", "Local", "Prioridade", "Status"]}>
+                  {ordensHoje.slice(0, 6).map((o) => (
+                    <tr key={o.id} className="cursor-pointer transition-colors hover:bg-blue-50/50" onClick={() => router.push(`/app/tecnico/os/${o.id}`)}>
+                      <td className="px-3 py-2 font-medium text-blue-700">{o.numero}</td>
+                      <td className="px-3 py-2">{o.cliente_nome}</td>
+                      <td className="px-3 py-2">
+                        {o.local_nome || "-"}
+                        {(o.local_endereco_completo || o.local_endereco) && (
+                          <span className="block text-xs text-zinc-500">
+                            <LinksMapa endereco={(o.local_endereco_completo || o.local_endereco)!} pararPropagacao />
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2"><Prioridade p={o.prioridade} /></td>
+                      <td className="px-3 py-2"><Badge status={o.status} /></td>
+                    </tr>
+                  ))}
+                </Tabela>
               )}
-            </Tabela>
-          </Card>
+            </Card>
+
+            <Card title="Minhas Ordens de Serviço" acao={<Botao variante="secundario" onClick={() => router.push("/app/tecnico/os")}>Ver todas</Botao>}>
+              <Tabela cabecalhos={["Nº", "Cliente", "Serviço", "Data", "Status"]}>
+                {ordens === null ? (
+                  <tr><td colSpan={99}><Loading /></td></tr>
+                ) : ordens.length === 0 ? (
+                  <LinhaVazia texto="Nenhuma ordem de serviço atribuída a você." />
+                ) : (
+                  ordens.slice(0, 6).map((o) => (
+                    <tr key={o.id} className="cursor-pointer transition-colors hover:bg-blue-50/50" onClick={() => router.push(`/app/tecnico/os/${o.id}`)}>
+                      <td className="px-3 py-2 font-medium text-blue-700">{o.numero}</td>
+                      <td className="px-3 py-2">{o.cliente_nome}</td>
+                      <td className="px-3 py-2">{o.servico}</td>
+                      <td className="whitespace-nowrap px-3 py-2">{o.data_agendada || "-"}</td>
+                      <td className="px-3 py-2"><Badge status={o.status} /></td>
+                    </tr>
+                  ))
+                )}
+              </Tabela>
+            </Card>
+          </div>
         </>
       ) : (
         <>
