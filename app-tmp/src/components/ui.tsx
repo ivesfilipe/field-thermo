@@ -313,7 +313,8 @@ export function KPI({ label, valor, cor = "text-blue-950" }: { label: string; va
   );
 }
 
-export function LinksMapa({ endereco, espaco = true, pararPropagacao = false }: { endereco: string; espaco?: boolean; pararPropagacao?: boolean }) {
+export function LinksMapa({ endereco, espaco = true, pararPropagacao = false }: { endereco?: string | null; espaco?: boolean; pararPropagacao?: boolean }) {
+  if (!endereco) return null;
   const onClick = pararPropagacao ? (e: React.MouseEvent) => e.stopPropagation() : undefined;
   return (
     <span className={`inline-flex items-center gap-2 text-xs ${espaco ? "ml-2" : ""}`}>
