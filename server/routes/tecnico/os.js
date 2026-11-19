@@ -11,6 +11,7 @@ const { gerarRelatorioIA } = require('../../ia');
 const { sqlEnderecoCompleto, sqlEnderecoLocalOuCliente } = require('../../endereco');
 const { enviarEmailServidor, montarHtmlAvaliacaoGoogle } = require('../../services/email');
 const { concluirOS } = require('../../services/conclusaoOS');
+const { agoraBrasilia } = require('../../tempo');
 
 const router = express.Router();
 
@@ -262,11 +263,11 @@ router.post('/os/:id/iniciar', (req, res) => {
   const execExistente = getExecucao(os.id);
   if (execExistente) {
     db.prepare(
-      "UPDATE execucoes SET tecnico_id = ?, iniciada_em = COALESCE(iniciada_em, datetime('now')) WHERE id = ?"
+      "UPDATE execucoes SET tecnico_id = ?, iniciada_em = COALESCE(iniciada_em, datetime('now', '-3 hours')) WHERE id = ?"
     ).run(req.user.id, execExistente.id);
   } else {
     db.prepare(
-      "INSERT INTO execucoes (os_id, tecnico_id, iniciada_em) VALUES (?, ?, datetime('now'))"
+      "INSERT INTO execucoes (os_id, tecnico_id, iniciada_em) VALUES (?, ?, datetime('now', '-3 hours'))"
     ).run(os.id, req.user.id);
   }
   registrarHistorico({ usuario: req.user, tipo: 'os', registroId: os.id, campo: 'inicio_atendimento', valorNovo: 'atendimento iniciado pelo técnico' });
@@ -489,7 +490,7 @@ router.post('/os/:id/assinatura', upload.single('assinatura'), (req, res) => {
     nome,
     cargo,
     arquivo: assinatura,
-    criado_em: new Date().toISOString()
+    criado_em: agoraBrasilia()
   };
   lista.push(item);
   const primeira = lista[0];
@@ -630,7 +631,7 @@ router.post('/os/:id/concluir', (req, res) => {
   }
 
   db.prepare(
-    `UPDATE execucoes SET concluida_em = datetime('now'), concluida_por = ?, complemento_solicitado = NULL, relatorio_ia = ? WHERE id = ?`
+    `UPDATE execucoes SET concluida_em = datetime('now', '-3 hours'), concluida_por = ?, complemento_solicitado = NULL, relatorio_ia = ? WHERE id = ?`
   ).run(req.user.id, JSON.stringify(relatorioIa), execucao.id);
 
   try {
@@ -684,7 +685,7 @@ router.post('/os/:id/avaliacao-google', async (req, res) => {
     '',
     `⭐ Avalie nosso atendimento aqui: ${linkGoogle}`
   ].join('\n');
-  const agora = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  const agora = agoraBrasilia();
 
   if (canal === 'email') {
     const emailDestino = String(req.body?.email || os.local_responsavel_email || os.cliente_email || '').trim();

@@ -8,6 +8,7 @@ const { TIPOS_NECESSIDADE } = require('../../constantes');
 const config = require('../../config');
 const { registrarHistorico } = require('../../calendario');
 const { enviarEmailServidor, montarHtmlRelatorioCliente } = require('../../services/email');
+const { agoraBrasilia } = require('../../tempo');
 
 const router = express.Router();
 
@@ -246,9 +247,9 @@ router.get('/relatorios/:id', (req, res) => {
     return res.status(404).json({ error: 'Relatório não encontrado' });
   }
   relatorio.token = garantirTokenRelatorio(relatorio.id, relatorio.token);
-  db.prepare("UPDATE relatorios SET aberto_por = COALESCE(aberto_por, ?), aberto_em = COALESCE(aberto_em, datetime('now')) WHERE id = ?").run(req.user.id, relatorio.id);
+  db.prepare("UPDATE relatorios SET aberto_por = COALESCE(aberto_por, ?), aberto_em = COALESCE(aberto_em, datetime('now', '-3 hours')) WHERE id = ?").run(req.user.id, relatorio.id);
   relatorio.aberto_por = relatorio.aberto_por || req.user.id;
-  relatorio.aberto_em = relatorio.aberto_em || new Date().toISOString().slice(0, 19).replace('T', ' ');
+  relatorio.aberto_em = relatorio.aberto_em || agoraBrasilia();
   try {
     relatorio.fotos = JSON.parse(relatorio.fotos || '[]');
   } catch {
@@ -1222,7 +1223,7 @@ function enviarPdfHtml(relatorio, req, res) {
     <div class="titulo-documento">
       <h1>RELATÓRIO TÉCNICO DE ATENDIMENTO</h1>
       <div class="subtitulo">Gestão Operacional de Serviços Técnicos</div>
-      <div class="emissao">Emissão: ${e(formatarDataHora(new Date().toISOString()))}</div>
+      <div class="emissao">Emissão: ${e(formatarDataHora(agoraBrasilia()))} (Horário de Brasília)</div>
     </div>
   </div>
 

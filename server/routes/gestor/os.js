@@ -11,6 +11,7 @@ const { MODELOS } = require('../../modelos');
 const { sqlEnderecoCompleto } = require('../../endereco');
 const config = require('../../config');
 const { enviarEmailServidor, montarHtmlAvaliacaoGoogle, montarHtmlRelatorioCliente } = require('../../services/email');
+const { agoraBrasilia } = require('../../tempo');
 
 const router = express.Router();
 
@@ -304,7 +305,7 @@ router.put('/os/:id', (req, res) => {
     `UPDATE ordens_servico SET cliente_id = ?, local_id = ?, responsavel_local = ?, equipamento_id = ?,
        servico = ?, descricao = ?, prioridade = ?, data_agendada = ?, hora_inicio = ?, hora_fim = ?,
        equipe_id = ?, confirmada = ?, tipo_atendimento = ?,
-       atualizado_em = datetime('now', 'localtime'), atualizado_por = ?
+       atualizado_em = datetime('now', '-3 hours'), atualizado_por = ?
      WHERE id = ?`
   ).run(
     novos.cliente_id, novos.local_id, novos.responsavel_local, novos.equipamento_id,
@@ -493,7 +494,7 @@ router.post('/os/:id/avaliacao/enviar-email', async (req, res) => {
       assunto: `Avalie o atendimento da OS ${os.numero} - MedicalThermo Herzog`,
       html
     });
-    const agora = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const agora = agoraBrasilia();
     db.prepare('UPDATE execucoes SET avaliacao_google_enviada_em = ?, avaliacao_google_enviada_por = ? WHERE os_id = ?').run(agora, req.user.id, id);
     registrarHistorico({
       usuario: req.user,

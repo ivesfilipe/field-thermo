@@ -63,7 +63,7 @@ router.post('/:token', (req, res) => {
   const comentarioTexto = comentario != null ? String(comentario).trim().slice(0, 2000) : null;
   db.prepare(
     `UPDATE avaliacoes SET status = 'respondida', nota = ?, resolveu_necessidade = ?,
-       comentario = ?, respondida_em = datetime('now')
+       comentario = ?, respondida_em = datetime('now', '-3 hours')
      WHERE id = ?`
   ).run(notaNum, resolveu_necessidade, comentarioTexto || null, avaliacao.id);
   res.json({ avaliacao: formatar(db.prepare(`${AVALIACAO_BASE} WHERE a.id = ?`).get(avaliacao.id)) });

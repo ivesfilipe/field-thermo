@@ -142,7 +142,7 @@ export default function AppHome() {
   }, [perfil, dataSelecionada]);
 
   const totalPorStatus = (s: string) => (ordens || []).filter((o) => o.status === s).length;
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
   const ordensHoje = (ordens || []).filter((o) => o.data_agendada === dataSelecionada);
 
   function mudarData(dias: number) {

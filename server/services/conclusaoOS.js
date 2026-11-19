@@ -25,13 +25,13 @@ function concluirOS({ osId, usuario = null, relatorioIa = null, recomendacoes = 
   if (relatorioExistente) {
     if (conteudo != null) {
       db.prepare(
-        `UPDATE relatorios SET status = 'aprovado', validado_por = NULL, data_validacao = datetime('now'),
+        `UPDATE relatorios SET status = 'aprovado', validado_por = NULL, data_validacao = datetime('now', '-3 hours'),
            recomendacoes = ?, complemento_motivo = NULL, conteudo = ?, token = COALESCE(token, ?)
          WHERE os_id = ?`
       ).run(recomendacoes ?? null, conteudo, novoToken(), osId);
     } else {
       db.prepare(
-        `UPDATE relatorios SET status = 'aprovado', validado_por = NULL, data_validacao = datetime('now'),
+        `UPDATE relatorios SET status = 'aprovado', validado_por = NULL, data_validacao = datetime('now', '-3 hours'),
            recomendacoes = ?, complemento_motivo = NULL, token = COALESCE(token, ?)
          WHERE os_id = ?`
       ).run(recomendacoes ?? null, novoToken(), osId);
@@ -39,7 +39,7 @@ function concluirOS({ osId, usuario = null, relatorioIa = null, recomendacoes = 
   } else {
     db.prepare(
       `INSERT INTO relatorios (os_id, status, data_validacao, recomendacoes, conteudo, token)
-       VALUES (?, 'aprovado', datetime('now'), ?, ?, ?)`
+       VALUES (?, 'aprovado', datetime('now', '-3 hours'), ?, ?, ?)`
     ).run(osId, recomendacoes ?? null, conteudo, novoToken());
   }
 
@@ -52,7 +52,7 @@ function concluirOS({ osId, usuario = null, relatorioIa = null, recomendacoes = 
 
   if (temOportunidade) {
     db.prepare(
-      "UPDATE relatorios SET enviado_comercial = 1, enviado_comercial_em = datetime('now') WHERE id = ?"
+      "UPDATE relatorios SET enviado_comercial = 1, enviado_comercial_em = datetime('now', '-3 hours') WHERE id = ?"
     ).run(relatorio.id);
     const jaExiste = db.prepare('SELECT id FROM oportunidades WHERE relatorio_id = ?').get(relatorio.id);
     if (!jaExiste) {

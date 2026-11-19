@@ -74,7 +74,7 @@ router.get('/km', (req, res) => {
   const base = tecnico ? `WHERE equipe_id IN (${equipeIds.map(() => '?').join(',')})` : 'WHERE 1 = 1';
   const baseParams = tecnico ? equipeIds : [];
   const totalDia = db
-    .prepare(`SELECT COALESCE(SUM(km_percorrido), 0) AS total FROM registros_km ${base} AND data = date('now') AND status = 'finalizado'`)
+    .prepare(`SELECT COALESCE(SUM(km_percorrido), 0) AS total FROM registros_km ${base} AND data = date('now', '-3 hours') AND status = 'finalizado'`)
     .get(...baseParams).total;
 
   const veiculos = db.prepare("SELECT id, placa, descricao FROM veiculos WHERE ativo = 1 ORDER BY placa").all();
@@ -143,7 +143,7 @@ router.post('/km', (req, res) => {
   const info = db
     .prepare(
       `INSERT INTO registros_km (equipe_id, veiculo_id, motorista_id, motorista_nome, os_id, data, data_hora_inicio, km_inicial, local_inicial, status, iniciado_por)
-       VALUES (?, ?, ?, ?, ?, date('now'), datetime('now'), ?, ?, 'em_utilizacao', ?)`
+       VALUES (?, ?, ?, ?, ?, date('now', '-3 hours'), datetime('now', '-3 hours'), ?, ?, 'em_utilizacao', ?)`
     )
     .run(equipe.id, veiculo.id, motorista ? motorista.id : null, motorista ? null : motoristaNome, os_id != null && os_id !== '' ? Number(os_id) : null, kmInicial, localInicial, req.user.id);
 
@@ -175,7 +175,7 @@ router.post('/km/:id/finalizar', (req, res) => {
 
   db.prepare(
     `UPDATE registros_km SET km_final = ?, local_final = ?, km_percorrido = ?,
-       data_hora_fim = datetime('now'), status = 'finalizado', finalizado_por = ?
+       data_hora_fim = datetime('now', '-3 hours'), status = 'finalizado', finalizado_por = ?
      WHERE id = ?`
   ).run(kmFinal, localFinal, kmPercorrido, req.user.id, id);
 

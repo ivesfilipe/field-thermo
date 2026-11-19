@@ -114,12 +114,12 @@ function getIndicadores() {
   return db
     .prepare(
       `SELECT
-        (SELECT COUNT(*) FROM ordens_servico WHERE data_agendada = date('now') AND status NOT IN ('concluida', 'cancelada', 'excluida')) AS os_hoje,
+        (SELECT COUNT(*) FROM ordens_servico WHERE data_agendada = date('now', '-3 hours') AND status NOT IN ('concluida', 'cancelada', 'excluida')) AS os_hoje,
         (SELECT COUNT(*) FROM ordens_servico WHERE status = 'em_andamento') AS os_em_andamento,
         (SELECT COUNT(*) FROM ordens_servico WHERE status = 'pendente' AND data_agendada IS NOT NULL) AS os_aguardando_atendimento,
-        (SELECT COUNT(*) FROM ordens_servico WHERE status = 'pendente' AND data_agendada < date('now')) AS os_atrasadas,
+        (SELECT COUNT(*) FROM ordens_servico WHERE status = 'pendente' AND data_agendada < date('now', '-3 hours')) AS os_atrasadas,
         (SELECT COUNT(*) FROM ordens_servico WHERE status = 'aguardando_validacao') AS os_aguardando_validacao,
-        (SELECT COUNT(*) FROM atividades WHERE status NOT IN ('concluida', 'cancelada') AND data >= date('now')) AS atividades_programadas`
+        (SELECT COUNT(*) FROM atividades WHERE status NOT IN ('concluida', 'cancelada') AND data >= date('now', '-3 hours')) AS atividades_programadas`
     )
     .get();
 }
@@ -396,7 +396,7 @@ router.patch('/os/:id/horario', (req, res) => {
       });
     }
   }
-  db.prepare("UPDATE ordens_servico SET data_agendada = ?, hora_inicio = ?, hora_fim = ?, atualizado_em = datetime('now', 'localtime'), atualizado_por = ? WHERE id = ?")
+  db.prepare("UPDATE ordens_servico SET data_agendada = ?, hora_inicio = ?, hora_fim = ?, atualizado_em = datetime('now', '-3 hours'), atualizado_por = ? WHERE id = ?")
     .run(novaData, novaHoraInicio, novaHoraFim, req.user.id, id);
   res.json({ os: db.prepare(`${EVENTO_OS} WHERE o.id = ?`).get(id) });
 });

@@ -21,7 +21,7 @@ interface AgendaItem {
 
 export default function AgendaPage() {
   const router = useRouter();
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
   const [inicio, setInicio] = useState(hoje);
   const [fim, setFim] = useState("");
   const [agenda, setAgenda] = useState<AgendaItem[] | null>(null);
