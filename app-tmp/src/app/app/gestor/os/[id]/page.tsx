@@ -1012,7 +1012,7 @@ export default function OsDetalhePage() {
                     <span className="text-zinc-500">Data / Horário</span>
                     <span className="font-medium">
                       {os.data_agendada ? os.data_agendada.split("-").reverse().join("/") : "-"}
-                      {os.hora_inicio ? ` às ${os.hora_inicio}${os.hora_fim ? ` – ${os.hora_fim}` : ""}` : ""}
+                      {(os.hora_inicio || os.hora_fim) ? ` — ${os.hora_inicio || "--:--"} às ${os.hora_fim || "--:--"}` : ""}
                     </span>
                     <span className="text-zinc-500">Local</span><span className="font-medium">{os.local_nome || c.identificacao.local || "-"}</span>
                     <span className="text-zinc-500">Responsável</span><span className="font-medium">{os.responsavel_local || os.local_responsavel || c.identificacao.responsavel_local || "-"}</span>

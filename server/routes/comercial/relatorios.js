@@ -1319,12 +1319,12 @@ function enviarPdfHtml(relatorio, req, res) {
         <span class="campo-valor" style="text-align: left; font-weight: 600;">${e(relatorio.tecnico_nome || '-')}</span>
       </div>
       <div class="linha-campo" style="flex-direction: column; align-items: flex-start;">
-        <span class="campo-rotulo">Data e Horário</span>
-        <span class="campo-valor" style="text-align: left; font-weight: 600;">${e(formatarData(relatorio.data_agendada))}${relatorio.hora_inicio ? ` às ${e(relatorio.hora_inicio)}${relatorio.hora_fim ? ` – ${e(relatorio.hora_fim)}` : ''}` : ''}</span>
+        <span class="campo-rotulo">Data e Horário (Início / Fim)</span>
+        <span class="campo-valor" style="text-align: left; font-weight: 600;">${e(formatarData(relatorio.data_agendada))}${relatorio.hora_inicio || relatorio.hora_fim ? ` — ${e(relatorio.hora_inicio || '--:--')} às ${e(relatorio.hora_fim || '--:--')}` : ''}</span>
       </div>
       <div class="linha-campo" style="flex-direction: column; align-items: flex-start;">
-        <span class="campo-rotulo">Conclusão do Atendimento</span>
-        <span class="campo-valor" style="text-align: left; font-weight: 700; color: var(--primary);">${e(formatarDataHora(relatorio.atendimento_concluido_em))}</span>
+        <span class="campo-rotulo">Execução (Início / Término)</span>
+        <span class="campo-valor" style="text-align: left; font-weight: 700; color: var(--primary);">${relatorio.atendimento_iniciado_em ? `${e(formatarDataHora(relatorio.atendimento_iniciado_em))} → ` : ''}${e(formatarDataHora(relatorio.atendimento_concluido_em))}</span>
       </div>
     </div>
   </div>

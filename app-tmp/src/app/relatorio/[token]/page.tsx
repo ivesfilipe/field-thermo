@@ -45,6 +45,7 @@ interface RelatorioPublico {
   tecnico_nome: string | null;
   gestor_nome: string | null;
   equipe_nome: string | null;
+  atendimento_iniciado_em?: string | null;
   atendimento_concluido_em: string | null;
   assinatura: string | null;
   assinatura_nome: string | null;
@@ -137,7 +138,10 @@ export default function RelatorioPublicoPage() {
                 <p className="mt-0.5 text-xs text-slate-500">{relatorio.os_servico}</p>
               </div>
               <div className="text-right text-xs text-slate-500">
-                <p>Data de conclusão: <strong className="text-slate-700">{relatorio.atendimento_concluido_em?.slice(0, 16).replace("T", " ") || relatorio.data_agendada || "-"}</strong></p>
+                {relatorio.atendimento_iniciado_em && (
+                  <p>Início da execução: <strong className="text-slate-700">{relatorio.atendimento_iniciado_em.slice(0, 16).replace("T", " ")}</strong></p>
+                )}
+                <p>Término / conclusão: <strong className="text-slate-700">{relatorio.atendimento_concluido_em?.slice(0, 16).replace("T", " ") || relatorio.data_agendada || "-"}</strong></p>
                 {relatorio.resultado && (
                   <p className="mt-0.5">Status final: <strong className="text-slate-800">{RESULTADO_LABEL[relatorio.resultado] || relatorio.resultado}</strong></p>
                 )}
@@ -168,7 +172,7 @@ export default function RelatorioPublicoPage() {
                   <dt className="text-slate-500">Data / Horário</dt>
                   <dd className="col-span-2 text-slate-800">
                     {relatorio.data_agendada ? relatorio.data_agendada.split("-").reverse().join("/") : "-"}
-                    {relatorio.hora_inicio ? ` às ${relatorio.hora_inicio}${relatorio.hora_fim ? ` – ${relatorio.hora_fim}` : ""}` : ""}
+                    {(relatorio.hora_inicio || relatorio.hora_fim) ? ` — ${relatorio.hora_inicio || "--:--"} às ${relatorio.hora_fim || "--:--"}` : ""}
                   </dd>
                   <dt className="text-slate-500">Técnico</dt>
                   <dd className="col-span-2 font-medium text-slate-900">{relatorio.tecnico_nome || "-"}</dd>

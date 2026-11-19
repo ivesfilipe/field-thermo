@@ -381,7 +381,7 @@ export default function RelatorioDetalhePage({ params }: { params: Promise<{ id:
             <dt className="text-zinc-500">Data / Horário</dt>
             <dd>
               {relatorio.data_agendada ? relatorio.data_agendada.split("-").reverse().join("/") : "-"}
-              {relatorio.hora_inicio ? ` às ${relatorio.hora_inicio}${relatorio.hora_fim ? ` – ${relatorio.hora_fim}` : ""}` : ""}
+              {(relatorio.hora_inicio || relatorio.hora_fim) ? ` — ${relatorio.hora_inicio || "--:--"} às ${relatorio.hora_fim || "--:--"}` : ""}
             </dd>
             <dt className="text-zinc-500">Técnico responsável</dt><dd>{relatorio.tecnico_nome || "-"}</dd>
             <dt className="text-zinc-500">Concluído em</dt><dd>{formatarData(relatorio.atendimento_concluido_em)}</dd>
