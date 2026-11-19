@@ -170,7 +170,12 @@ router.get('/relatorios', (req, res) => {
     const like = `%${busca}%`;
     params.push(like, like, like, like);
   }
-  sql += ' ORDER BY r.data_validacao DESC';
+  sql += ` ORDER BY
+    CASE WHEN o.data_agendada IS NULL THEN 1 ELSE 0 END,
+    o.data_agendada DESC,
+    CASE WHEN o.hora_inicio IS NULL THEN 1 ELSE 0 END,
+    o.hora_inicio DESC,
+    o.id DESC`;
   const relatorios = db.prepare(sql).all(...params);
   for (const r of relatorios) {
     r.token = garantirTokenRelatorio(r.id, r.token);
