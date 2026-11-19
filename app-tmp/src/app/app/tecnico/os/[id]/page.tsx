@@ -909,7 +909,6 @@ export default function ExecucaoOsPage() {
                           <Image src={mediaUrl(f.arquivo)} alt={legendaAtual || `Anexo ${CATEGORIA_LABEL[f.categoria] || f.categoria}`} width={160} height={120} className="h-28 w-full rounded-md border border-zinc-200 object-cover transition hover:border-blue-600" />
                         </a>
                         <button type="button" onClick={() => removerAnexo(f.id)} className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs text-white shadow" title="Remover">×</button>
-                        <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">{CATEGORIA_LABEL[f.categoria] || f.categoria}</p>
                         <input
                           type="text"
                           value={legendaAtual}
@@ -919,8 +918,8 @@ export default function ExecucaoOsPage() {
                               salvarLegendaAnexo(f.id, e.target.value);
                             }
                           }}
-                          placeholder="Adicionar legenda..."
-                          className="mt-1 w-full rounded border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-800 placeholder:text-zinc-400 focus:border-blue-600 focus:outline-none"
+                          placeholder="Legenda da foto..."
+                          className="mt-1.5 w-full rounded border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-800 placeholder:text-zinc-400 focus:border-blue-600 focus:outline-none"
                         />
                       </div>
                     );
@@ -938,28 +937,18 @@ export default function ExecucaoOsPage() {
                     ))}
                   </ul>
                 )}
-                <div className="mt-3 grid gap-2 sm:grid-cols-[auto_1fr_auto] sm:items-end">
-                  <Select label="Categoria" value={categoriaAnexo} onChange={(e) => setCategoriaAnexo(e.target.value)}>
-                    {CATEGORIAS_ANEXO.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
-                  </Select>
-                  <Campo
-                    label="Legenda da foto (opcional)"
-                    value={legendaAnexo}
-                    onChange={(e) => setLegendaAnexo(e.target.value)}
-                    placeholder="Ex.: Compressor antes da limpeza..."
-                  />
-                  <label className="cursor-pointer rounded-md border border-blue-600 bg-blue-50 px-3 py-2 text-center text-sm font-semibold text-blue-800 hover:bg-blue-100">
-                    {categoriaAnexo === "documento" ? "+ Adicionar documento" : "+ Adicionar da galeria"}
+                <div className="mt-3">
+                  <label className="inline-block cursor-pointer rounded-md border border-blue-600 bg-blue-50 px-4 py-2 text-center text-sm font-semibold text-blue-800 hover:bg-blue-100">
+                    + Adicionar fotos da galeria
                     <input
                       type="file"
-                      accept={categoriaAnexo === "documento" ? "application/pdf,image/*" : "image/*"}
+                      accept="image/*"
                       multiple
                       className="hidden"
                       onChange={enviarAnexos}
                     />
                   </label>
                 </div>
-                <p className="mt-2 text-xs text-zinc-400">Adicione fotos com legenda. Você também pode editar a legenda abaixo de cada foto.</p>
               </Card>
 
               <Card title={`3. Assinaturas dos responsáveis (${form.assinaturas.length})`}>
