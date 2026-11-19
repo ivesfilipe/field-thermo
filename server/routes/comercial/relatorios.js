@@ -24,7 +24,7 @@ const RELATORIO_DETALHE = `
     r.aberto_por, r.aberto_em,
     o.id AS os_id, o.numero AS os_numero, o.servico AS os_servico, o.descricao AS os_descricao,
     o.prioridade AS os_prioridade, o.data_agendada, o.hora_inicio, o.hora_fim, o.responsavel_local,
-    o.tipo_atendimento, o.equipamento_id,
+    o.tipo_atendimento, o.equipamento_id, o.atualizado_em, ua.nome AS atualizado_por_nome,
     c.nome AS cliente_nome, c.email AS cliente_email, c.telefone AS cliente_telefone, c.documento AS cliente_documento,
     l.nome AS local_nome, l.endereco AS local_endereco, l.cidade AS local_cidade, l.estado AS local_estado,
     l.responsavel_nome AS local_responsavel, l.responsavel_telefone AS local_responsavel_telefone, l.responsavel_email AS local_responsavel_email,
@@ -61,6 +61,7 @@ const RELATORIO_DETALHE = `
   LEFT JOIN usuarios g ON g.id = r.validado_por
   LEFT JOIN oportunidades op ON op.relatorio_id = r.id
   LEFT JOIN usuarios oc ON oc.id = op.responsavel_id
+  LEFT JOIN usuarios ua ON ua.id = o.atualizado_por
 `;
 
 router.get('/relatorios/publico/:token', (req, res) => {
@@ -1318,8 +1319,8 @@ function enviarPdfHtml(relatorio, req, res) {
         <span class="campo-valor" style="text-align: left; font-weight: 600;">${e(relatorio.tecnico_nome || '-')}</span>
       </div>
       <div class="linha-campo" style="flex-direction: column; align-items: flex-start;">
-        <span class="campo-rotulo">Data Agendada</span>
-        <span class="campo-valor" style="text-align: left;">${e(formatarData(relatorio.data_agendada))} ${relatorio.hora_inicio ? `(${e(relatorio.hora_inicio)})` : ''}</span>
+        <span class="campo-rotulo">Data e Horário</span>
+        <span class="campo-valor" style="text-align: left; font-weight: 600;">${e(formatarData(relatorio.data_agendada))}${relatorio.hora_inicio ? ` às ${e(relatorio.hora_inicio)}${relatorio.hora_fim ? ` – ${e(relatorio.hora_fim)}` : ''}` : ''}</span>
       </div>
       <div class="linha-campo" style="flex-direction: column; align-items: flex-start;">
         <span class="campo-rotulo">Conclusão do Atendimento</span>

@@ -1007,12 +1007,18 @@ export default function OsDetalhePage() {
                     <p className="mt-1 font-medium">OS: {c.identificacao.os}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-y-1 text-sm">
-                    <span className="text-zinc-500">Cliente</span><span className="font-medium">{c.identificacao.cliente}</span>
-                    <span className="text-zinc-500">Local</span><span className="font-medium">{c.identificacao.local || "-"}</span>
-                    <span className="text-zinc-500">Responsável</span><span className="font-medium">{c.identificacao.responsavel_local || "-"}</span>
+                    <span className="text-zinc-500">Cliente</span><span className="font-medium">{os.cliente_nome || c.identificacao.cliente}</span>
+                    <span className="text-zinc-500">Equipe</span><span className="font-medium">{os.equipe_nome || "-"}</span>
+                    <span className="text-zinc-500">Data / Horário</span>
+                    <span className="font-medium">
+                      {os.data_agendada ? os.data_agendada.split("-").reverse().join("/") : "-"}
+                      {os.hora_inicio ? ` às ${os.hora_inicio}${os.hora_fim ? ` – ${os.hora_fim}` : ""}` : ""}
+                    </span>
+                    <span className="text-zinc-500">Local</span><span className="font-medium">{os.local_nome || c.identificacao.local || "-"}</span>
+                    <span className="text-zinc-500">Responsável</span><span className="font-medium">{os.responsavel_local || os.local_responsavel || c.identificacao.responsavel_local || "-"}</span>
                     {os.equipamento_id && (
                       <>
-                        <span className="text-zinc-500">Equipamento</span><span className="font-medium">{os.equipamento_codigo_mt ? `${os.equipamento_codigo_mt} - ` : ""}{os.equipamento_nome || "-"}</span>
+                        <span className="text-zinc-500">Ficha do Equipamento (MT)</span><span className="font-medium">{os.equipamento_codigo_mt ? `${os.equipamento_codigo_mt} - ` : ""}{os.equipamento_nome || "-"}</span>
                         <span className="text-zinc-500">Modelo</span><span className="font-medium">{os.equipamento_modelo || "-"}</span>
                         <span className="text-zinc-500">Capacidade</span><span className="font-medium">{os.equipamento_capacidade || "-"}</span>
                         <span className="text-zinc-500">Patrimônio</span><span className="font-medium">{os.equipamento_patrimonio || "-"}</span>
@@ -1020,10 +1026,19 @@ export default function OsDetalhePage() {
                     )}
                   </div>
                   <div className="rounded-lg bg-blue-50 p-3">
-                    <h5 className="mb-1 font-semibold text-blue-900">Solicitação original (gestor)</h5>
-                    <p className="text-blue-800">{c.solicitacao.servico}</p>
-                    {c.solicitacao.descricao && <p className="mt-0.5 text-blue-700">{c.solicitacao.descricao}</p>}
+                    <h5 className="mb-1 font-semibold text-blue-900">Solicitação (OS)</h5>
+                    <p className="text-blue-800">{os.servico || c.solicitacao.servico}</p>
+                    {(os.descricao || c.solicitacao.descricao) && <p className="mt-0.5 text-blue-700">{os.descricao || c.solicitacao.descricao}</p>}
                   </div>
+                  {exec?.servico_executado && (
+                    <div><h5 className="mb-1 font-semibold text-zinc-900">Serviço executado</h5><p className="whitespace-pre-wrap">{exec.servico_executado}</p></div>
+                  )}
+                  {exec?.solucao && (
+                    <div><h5 className="mb-1 font-semibold text-zinc-900">Solução</h5><p className="whitespace-pre-wrap">{exec.solucao}</p></div>
+                  )}
+                  {exec?.observacoes && (
+                    <div><h5 className="mb-1 font-semibold text-zinc-900">Observações da equipe</h5><p className="whitespace-pre-wrap">{exec.observacoes}</p></div>
+                  )}
                   {c.condicao_encontrada.length > 0 && (
                     <div><h5 className="mb-1 font-semibold text-zinc-900">Condição encontrada</h5><ul className="list-inside list-disc space-y-0.5">{c.condicao_encontrada.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
                   )}

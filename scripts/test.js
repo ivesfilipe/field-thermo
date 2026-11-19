@@ -1349,6 +1349,30 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
         o6.execucao.assinaturas[0].nome === 'Carlos Responsável',
       JSON.stringify({ exec: o6.execucao, anexos: o6.anexos?.length })
     );
+
+    // TESTE 6b: Confirmar que todas as alterações feitas pelo Gestor aparecem no relatório (JSON e PDF/HTML)
+    const relPubAtualizado = await api(`/api/comercial/relatorios/publico/${tokenSemMt}`);
+    const pdfAtualizadoRes = await fetch(base + `/api/comercial/relatorios/publico/${tokenSemMt}/pdf`);
+    const pdfAtualizadoHtml = await pdfAtualizadoRes.text();
+    test(
+      'TESTE 6b: alterações feitas pelo gestor na OS concluída (data, horário, cliente, equipe, serviço) aparecem no relatório',
+      relPubAtualizado.status === 200 &&
+        relPubAtualizado.data.relatorio.data_agendada === '2026-11-22' &&
+        relPubAtualizado.data.relatorio.hora_inicio === '10:00' &&
+        relPubAtualizado.data.relatorio.hora_fim === '11:30' &&
+        relPubAtualizado.data.relatorio.cliente_nome === 'VALE - Unidade Alternativa' &&
+        relPubAtualizado.data.relatorio.os_servico === 'Inspeção Geral Corrigida pelo Gestor' &&
+        pdfAtualizadoRes.status === 200 &&
+        pdfAtualizadoHtml.includes('22/11/2026') &&
+        pdfAtualizadoHtml.includes('10:00') &&
+        pdfAtualizadoHtml.includes('11:30') &&
+        pdfAtualizadoHtml.includes('VALE - Unidade Alternativa') &&
+        pdfAtualizadoHtml.includes('Inspeção Geral Corrigida pelo Gestor') &&
+        !pdfAtualizadoHtml.includes('Ficha do Equipamento') &&
+        pdfAtualizadoHtml.includes('Ambiente sem anomalias') &&
+        pdfAtualizadoHtml.includes('Nenhuma intervenção necessária'),
+      `status=${pdfAtualizadoRes.status}`
+    );
   }
 
   server.close();

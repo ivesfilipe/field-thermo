@@ -36,6 +36,9 @@ interface Relatorio {
   os_descricao: string | null;
   os_prioridade: string;
   data_agendada: string | null;
+  hora_inicio?: string | null;
+  hora_fim?: string | null;
+  equipe_nome?: string | null;
   responsavel_local: string | null;
   cliente_nome: string;
   cliente_email: string | null;
@@ -45,6 +48,13 @@ interface Relatorio {
   local_responsavel: string | null;
   local_responsavel_telefone: string | null;
   local_responsavel_email?: string | null;
+  equipamento_id?: number | null;
+  equipamento_codigo_mt?: string | null;
+  equipamento_fabricante?: string | null;
+  equipamento_gas?: string | null;
+  equipamento_tensao?: string | null;
+  equipamento_local?: string | null;
+  equipamento_ambiente?: string | null;
   equipamento_nome: string | null;
   equipamento_modelo: string | null;
   equipamento_serie: string | null;
@@ -53,6 +63,7 @@ interface Relatorio {
   diagnostico: string | null;
   causa: string | null;
   servico_executado: string | null;
+  solucao?: string | null;
   observacoes: string | null;
   condicao_sintomas: string | null;
   condicao_equipamento: string | null;
@@ -365,8 +376,13 @@ export default function RelatorioDetalhePage({ params }: { params: Promise<{ id:
         <Card title="Atendimento técnico">
           <dl className="grid grid-cols-2 gap-y-2 text-sm">
             <dt className="text-zinc-500">Serviço solicitado</dt><dd>{relatorio.os_servico}</dd>
+            <dt className="text-zinc-500">Equipe</dt><dd>{relatorio.equipe_nome || "-"}</dd>
             <dt className="text-zinc-500">Prioridade</dt><dd className="capitalize">{relatorio.os_prioridade}</dd>
-            <dt className="text-zinc-500">Data do atendimento</dt><dd>{relatorio.data_agendada || "-"}</dd>
+            <dt className="text-zinc-500">Data / Horário</dt>
+            <dd>
+              {relatorio.data_agendada ? relatorio.data_agendada.split("-").reverse().join("/") : "-"}
+              {relatorio.hora_inicio ? ` às ${relatorio.hora_inicio}${relatorio.hora_fim ? ` – ${relatorio.hora_fim}` : ""}` : ""}
+            </dd>
             <dt className="text-zinc-500">Técnico responsável</dt><dd>{relatorio.tecnico_nome || "-"}</dd>
             <dt className="text-zinc-500">Concluído em</dt><dd>{formatarData(relatorio.atendimento_concluido_em)}</dd>
             <dt className="text-zinc-500">Gestor responsável</dt><dd>{relatorio.gestor_nome || "-"}</dd>
@@ -383,9 +399,29 @@ export default function RelatorioDetalhePage({ params }: { params: Promise<{ id:
         </Card>
       </div>
 
+      {relatorio.equipamento_id && (relatorio.equipamento_nome || relatorio.equipamento_codigo_mt) && (
+        <Card title="Ficha do Equipamento">
+          <dl className="grid grid-cols-2 gap-y-2 text-sm sm:grid-cols-4">
+            <dt className="text-zinc-500">Identificação MT</dt><dd className="font-semibold">{relatorio.equipamento_codigo_mt || "-"}</dd>
+            <dt className="text-zinc-500">Equipamento</dt><dd className="font-semibold">{relatorio.equipamento_nome || "-"}</dd>
+            <dt className="text-zinc-500">Fabricante / Modelo</dt><dd>{[relatorio.equipamento_fabricante, relatorio.equipamento_modelo].filter(Boolean).join(" / ") || "-"}</dd>
+            <dt className="text-zinc-500">Nº de Série</dt><dd>{relatorio.equipamento_serie || "-"}</dd>
+            <dt className="text-zinc-500">Patrimônio / Cap.</dt><dd>{[relatorio.equipamento_patrimonio, relatorio.equipamento_capacidade].filter(Boolean).join(" | ") || "-"}</dd>
+            <dt className="text-zinc-500">Fluido / Tensão</dt><dd>{[relatorio.equipamento_gas, relatorio.equipamento_tensao].filter(Boolean).join(" | ") || "-"}</dd>
+            <dt className="text-zinc-500">Local / Ambiente</dt><dd>{[relatorio.equipamento_local, relatorio.equipamento_ambiente].filter(Boolean).join(" — ") || "-"}</dd>
+          </dl>
+        </Card>
+      )}
+
       {relatorio.servico_executado && (
         <Card title="Descrição do serviço realizado">
           <p className="whitespace-pre-wrap text-sm">{relatorio.servico_executado}</p>
+        </Card>
+      )}
+
+      {relatorio.solucao && (
+        <Card title="Solução aplicada">
+          <p className="whitespace-pre-wrap text-sm">{relatorio.solucao}</p>
         </Card>
       )}
 
