@@ -484,7 +484,7 @@ export default function OsDetalhePage() {
 
       <PageHeader
         titulo={os.numero}
-        descricao={os.servico}
+        descricao={`${os.cliente_nome || "Sem cliente"} — ${os.equipe_nome || "Sem equipe"}`}
         acoes={
           <>
             {os.status === "pendente" && (
@@ -528,6 +528,7 @@ export default function OsDetalhePage() {
         <Card title="Identificação">
           <dl className="grid grid-cols-2 gap-y-2.5 text-sm">
             <Item rotulo="Cliente" valor={os.cliente_nome} />
+            <Item rotulo="Serviço" valor={os.servico} />
             <Item rotulo="Local" valor={os.local_nome || "-"} />
             <Item rotulo="Endereço" valor={
               <span>
