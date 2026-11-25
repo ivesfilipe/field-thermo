@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
+import { MANUTENCAO_ATIVA, MANUTENCAO_MENSAGEM } from "@/lib/manutencao";
 import { Botao, Campo, Alerta } from "@/components/ui";
 
 export default function LoginPage() {
@@ -41,6 +42,11 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-blue-200">Gestão de serviços técnicos</p>
         </div>
         <div className="rounded-2xl border border-blue-900/60 bg-white p-6 text-zinc-900 shadow-2xl">
+          {MANUTENCAO_ATIVA && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
+              <strong>Sistema em manutenção.</strong> {MANUTENCAO_MENSAGEM}
+            </div>
+          )}
           <Alerta tipo="erro" msg={erro} onClose={() => setErro("")} />
           <form onSubmit={onSubmit} className="flex flex-col gap-4">
             <Campo label="Email" labelClasse="text-zinc-700" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" />

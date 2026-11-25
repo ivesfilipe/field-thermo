@@ -7,6 +7,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { PERFIS, type Perfil } from "@/lib/api";
+import { MANUTENCAO_ATIVA, MANUTENCAO_MENSAGEM } from "@/lib/manutencao";
 
 const ICONES: Record<string, React.ReactNode> = {
   inicio: (
@@ -215,6 +216,36 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (carregando || !usuario) {
     return <p className="py-16 text-center text-sm text-white">Carregando...</p>;
+  }
+
+  if (MANUTENCAO_ATIVA && usuario.perfil !== "tecnico") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-blue-950 px-4">
+        <div className="w-full max-w-lg rounded-2xl border border-blue-900/60 bg-white p-8 text-center text-zinc-900 shadow-2xl">
+          <Image
+            src="/logo.png"
+            alt="Logo MedicalThermo Herzog"
+            width={224}
+            height={59}
+            priority
+            className="mx-auto mb-5 h-auto w-48 object-contain"
+          />
+          <span className="inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-800">
+            Manutenção
+          </span>
+          <h1 className="mt-3 text-xl font-bold text-slate-900">Sistema em manutenção</h1>
+          <p className="mt-2 text-sm text-zinc-600">{MANUTENCAO_MENSAGEM}</p>
+          <p className="mt-2 text-xs text-zinc-400">Acesso atual: {PERFIS[usuario.perfil]}</p>
+          <button
+            type="button"
+            onClick={logout}
+            className="mt-6 inline-flex items-center justify-center rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800"
+          >
+            Sair
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const perfil = usuario.perfil as Perfil;

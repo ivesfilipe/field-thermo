@@ -7,6 +7,7 @@ process.env.DB_PATH = path.join(TEST_DIR, 'test.db');
 process.env.UPLOADS_DIR = path.join(TEST_DIR, 'uploads');
 process.env.JWT_SECRET = 'test_secret';
 process.env.PORT = '0';
+process.env.MANUTENCAO = '0';
 
 const app = require('../server/index');
 require('../server/seed');
@@ -1381,6 +1382,24 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
         pdfAtualizadoHtml.includes('Nenhuma intervenção necessária'),
       `status=${pdfAtualizadoRes.status}`
     );
+  }
+
+  console.log('Fase 18 - Modo manutenção');
+  {
+    process.env.MANUTENCAO = '1';
+    const m1 = await api('/api/gestor/clientes', 'GET', gestor);
+    test('manutenção bloqueia gestor (503)', m1.status === 503, m1.status);
+    const m2 = await api('/api/admin/usuarios', 'GET', admin);
+    test('manutenção bloqueia admin (503)', m2.status === 503, m2.status);
+    const m3 = await api('/api/comercial/relatorios', 'GET', comercial);
+    test('manutenção bloqueia comercial (503)', m3.status === 503, m3.status);
+    const m4 = await api('/api/tecnico/os', 'GET', tecnico);
+    test('manutenção mantém técnico (200)', m4.status === 200, m4.status);
+    const m5 = await api('/api/auth/me', 'GET', gestor);
+    test('manutenção mantém autenticação (200)', m5.status === 200, m5.status);
+    const m6 = await api('/api/comercial/relatorios/publico/token-inexistente');
+    test('manutenção não bloqueia link público de relatório', m6.status === 404, m6.status);
+    process.env.MANUTENCAO = '0';
   }
 
   server.close();

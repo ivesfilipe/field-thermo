@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const config = require('./config');
 const db = require('./db');
+const { bloqueioManutencao } = require('./manutencao');
 
 fs.mkdirSync(config.UPLOADS_DIR, { recursive: true });
 
@@ -28,7 +29,7 @@ app.use('/api/avaliacao', publicaAvaliacaoRoutes);
 const adminUsuariosRoutes = require('./routes/admin/usuarios');
 const adminEquipesRoutes = require('./routes/admin/equipes');
 const adminVeiculosRoutes = require('./routes/admin/veiculos');
-app.use('/api/admin', adminUsuariosRoutes, adminEquipesRoutes, adminVeiculosRoutes);
+app.use('/api/admin', bloqueioManutencao, adminUsuariosRoutes, adminEquipesRoutes, adminVeiculosRoutes);
 
 const gestorClientesRoutes = require('./routes/gestor/clientes');
 const gestorLocaisRoutes = require('./routes/gestor/locais');
@@ -40,7 +41,7 @@ const gestorMapaRoutes = require('./routes/gestor/mapa');
 const gestorPlanejamentoRoutes = require('./routes/gestor/planejamento');
 const gestorAvaliacoesRoutes = require('./routes/gestor/avaliacoes');
 const gestorKmRoutes = require('./routes/gestor/km');
-app.use('/api/gestor', gestorClientesRoutes, gestorLocaisRoutes, gestorEquipamentosRoutes, gestorApoioRoutes, gestorOsRoutes, gestorCalendarioRoutes, gestorMapaRoutes, gestorPlanejamentoRoutes, gestorAvaliacoesRoutes, gestorKmRoutes);
+app.use('/api/gestor', bloqueioManutencao, gestorClientesRoutes, gestorLocaisRoutes, gestorEquipamentosRoutes, gestorApoioRoutes, gestorOsRoutes, gestorCalendarioRoutes, gestorMapaRoutes, gestorPlanejamentoRoutes, gestorAvaliacoesRoutes, gestorKmRoutes);
 
 const tecnicoOsRoutes = require('./routes/tecnico/os');
 const tecnicoAgendaRoutes = require('./routes/tecnico/agenda');
@@ -50,7 +51,7 @@ app.use('/api/tecnico', tecnicoOsRoutes, tecnicoAgendaRoutes, tecnicoKmRoutes);
 const comercialRelatoriosRoutes = require('./routes/comercial/relatorios');
 const comercialOportunidadesRoutes = require('./routes/comercial/oportunidades');
 const comercialAvaliacoesRoutes = require('./routes/comercial/avaliacoes');
-app.use('/api/comercial', comercialRelatoriosRoutes, comercialOportunidadesRoutes, comercialAvaliacoesRoutes);
+app.use('/api/comercial', bloqueioManutencao, comercialRelatoriosRoutes, comercialOportunidadesRoutes, comercialAvaliacoesRoutes);
 
 app.get('/api/health', (req, res) => {
   const tables = db
