@@ -58,7 +58,18 @@ app.get('/api/health', (req, res) => {
     .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
     .all()
     .map((t) => t.name);
-  res.json({ status: 'ok', db: config.DB_PATH, tables });
+  const payload = { status: 'ok', db: config.DB_PATH, tables };
+  if (req.query.deep === '1') {
+    try {
+      payload.usuarios = db.prepare('SELECT COUNT(*) AS total FROM usuarios').get().total;
+      payload.integridade = db.prepare('PRAGMA integrity_check').get();
+    } catch (err) {
+      payload.status = 'erro';
+      payload.dbError = err.message;
+      payload.dbCode = err.code;
+    }
+  }
+  res.json(payload);
 });
 
 app.use((req, res) => {
