@@ -80,6 +80,7 @@ export default function RelatoriosPage() {
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [msg, setMsg] = useState("");
   const [erro, setErro] = useState("");
+  const [copiadoId, setCopiadoId] = useState<number | null>(null);
   const [filtro, setFiltro] = useState({
     busca: "",
     status: "",
@@ -119,12 +120,36 @@ export default function RelatoriosPage() {
 
   async function copiarLink(e: React.MouseEvent, r: Relatorio) {
     e.stopPropagation();
+    const url = urlRelatorio(r);
     try {
-      await navigator.clipboard.writeText(urlRelatorio(r));
-      setMsg(`Link do relatório da OS ${r.os_numero} copiado!`);
+      await navigator.clipboard.writeText(url);
     } catch {
-      setErro("Não foi possível copiar o link automaticamente.");
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      } catch {
+        setErro("Não foi possível copiar o link automaticamente.");
+        return;
+      }
     }
+    setCopiadoId(r.id);
+    setTimeout(() => setCopiadoId((atual) => (atual === r.id ? null : atual)), 2500);
+    setMsg(`Link do relatório da OS ${r.os_numero} copiado: ${url}`);
+  }
+
+  function linkWhatsApp(r: Relatorio): string {
+    const telRaw = (r.local_responsavel_telefone || r.cliente_telefone || "").replace(/\D/g, "");
+    const tel = telRaw ? (telRaw.length <= 11 ? `55${telRaw}` : telRaw) : "";
+    const resp = r.local_responsavel || r.responsavel_local || r.cliente_nome || "";
+    const saudacao = resp ? `Olá, ${resp}!` : "Olá!";
+    const texto = encodeURIComponent(`${saudacao} Segue o relatório técnico do atendimento da OS ${r.os_numero} (${r.local_nome || r.cliente_nome}): ${urlRelatorio(r)}`);
+    return tel ? `https://wa.me/${tel}?text=${texto}` : `https://wa.me/?text=${texto}`;
   }
 
   async function enviarEmail(e: React.MouseEvent, r: Relatorio) {
@@ -287,14 +312,27 @@ export default function RelatoriosPage() {
                     <button
                       type="button"
                       onClick={(e) => copiarLink(e, r)}
-                      className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs font-semibold text-zinc-700 hover:bg-zinc-50"
+                      className={`rounded-md border px-2 py-1 text-xs font-semibold transition-colors ${
+                        copiadoId === r.id
+                          ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                          : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                      }`}
                     >
-                      Link
+                      {copiadoId === r.id ? "Copiado!" : "Link"}
                     </button>
+                    <a
+                      href={typeof window !== "undefined" ? linkWhatsApp(r) : "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
+                    >
+                      WhatsApp
+                    </a>
                     <button
                       type="button"
                       onClick={(e) => enviarEmail(e, r)}
-                      className="rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
+                      className="rounded-md bg-sky-600 px-2 py-1 text-xs font-semibold text-white hover:bg-sky-700"
                     >
                       E-mail
                     </button>

@@ -287,11 +287,24 @@ export default function OsDetalhePage() {
   }
 
   async function copiarLinkRelatorio() {
+    const url = urlRelatorio();
     try {
-      await navigator.clipboard.writeText(urlRelatorio());
+      await navigator.clipboard.writeText(url);
       setMsg("Link do relatório copiado para a área de transferência.");
     } catch {
-      setErro("Não foi possível copiar o link automaticamente.");
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        setMsg("Link do relatório copiado para a área de transferência.");
+      } catch {
+        setErro("Não foi possível copiar automaticamente. Selecione o link no campo e copie.");
+      }
     }
   }
 
@@ -988,26 +1001,34 @@ export default function OsDetalhePage() {
             </div>
             {os.relatorio.recomendacoes && <p className="text-sm text-slate-600">{os.relatorio.recomendacoes}</p>}
 
-            <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2.5">
+            <div className="border-t border-slate-100 pt-2.5">
               {caminhoRelatorio ? (
-                <>
-                  <input className="hidden"
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <input
                     type="text"
                     readOnly
                     value={urlRelatorio()}
-                    data-input-oculto="1"
+                    onFocus={(e) => e.currentTarget.select()}
+                    className="w-full flex-1 rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 font-mono text-xs text-slate-700 focus:border-blue-600 focus:outline-none"
                   />
-                  <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={copiarLinkRelatorio}>Copiar link</Botao>
-                  {/* WhatsApp oculto */}
-                    <Botao variante="sucesso" className="px-3 py-1.5 text-xs" onClick={enviarEmailRelatorio}>{/*
-                  </Botao>
-                  */}
-                    E-mail
-                  </Botao>
-                  <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={() => window.open(urlRelatorio(), "_blank")}>
-                    Abrir
-                  </Botao>
-                </>
+                  <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                    <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={copiarLinkRelatorio}>Copiar link</Botao>
+                    <a
+                      href={linkWhatsAppRelatorio()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700"
+                    >
+                      WhatsApp
+                    </a>
+                    <Botao variante="sucesso" className="px-3 py-1.5 text-xs" onClick={enviarEmailRelatorio}>
+                      E-mail
+                    </Botao>
+                    <Botao variante="secundario" className="px-3 py-1.5 text-xs" onClick={() => window.open(urlRelatorio(), "_blank")}>
+                      Abrir
+                    </Botao>
+                  </div>
+                </div>
               ) : (
                 <Botao onClick={gerarLinkRelatorio} disabled={gerandoLinkRelatorio}>
                   {gerandoLinkRelatorio ? "Gerando..." : "Gerar link do relatório"}

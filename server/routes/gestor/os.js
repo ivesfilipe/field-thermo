@@ -35,7 +35,8 @@ const OS_BASE = `
     e.local AS equipamento_local, e.ambiente AS equipamento_ambiente,
     e.numero_serie AS equipamento_serie, e.status AS equipamento_status,
     eq.nome AS equipe_nome,
-    (SELECT id FROM relatorios r WHERE r.os_id = o.id) AS relatorio_id
+    (SELECT id FROM relatorios r WHERE r.os_id = o.id) AS relatorio_id,
+    (SELECT token FROM relatorios r WHERE r.os_id = o.id) AS relatorio_token
   FROM ordens_servico o
   LEFT JOIN clientes c ON c.id = o.cliente_id
   LEFT JOIN locais l ON l.id = o.local_id

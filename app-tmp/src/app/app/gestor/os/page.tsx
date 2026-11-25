@@ -19,6 +19,8 @@ interface OS {
   hora_fim: string | null;
   prioridade: string;
   status: string;
+  relatorio_id?: number | null;
+  relatorio_token?: string | null;
 }
 
 interface Cliente { id: number; nome: string }
@@ -44,6 +46,7 @@ export default function OsPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
+  const [copiadoId, setCopiadoId] = useState<number | null>(null);
   const [filtro, setFiltro] = useState({
     busca: "", status: "", cliente_id: "", equipe_id: "", prioridade: "", data_inicio: "", data_fim: ""
   });
@@ -69,6 +72,30 @@ export default function OsPage() {
   }, []);
 
   const temFiltro = Object.values(filtro).some((v) => v !== "");
+
+  const copiarLinkRelatorio = async (o: OS) => {
+    if (!o.relatorio_token) return;
+    const url = `${window.location.origin}/relatorio/${o.relatorio_token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      } catch {
+        window.prompt("Copie o link do relatório:", url);
+        return;
+      }
+    }
+    setCopiadoId(o.id);
+    setTimeout(() => setCopiadoId((atual) => (atual === o.id ? null : atual)), 2500);
+  };
 
   const excluir = async (o: OS) => {
     const permitido = ["pendente", "cancelada", "aguardando_validacao", "concluida"].includes(o.status);
@@ -202,6 +229,20 @@ export default function OsPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                     </button>
+                    {o.relatorio_token && (
+                      <button
+                        type="button"
+                        onClick={() => copiarLinkRelatorio(o)}
+                        title={`Copiar link do relatório da ${o.numero}`}
+                        className={`rounded-md border px-2 py-1 text-xs font-semibold transition-colors ${
+                          copiadoId === o.id
+                            ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                            : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                        }`}
+                      >
+                        {copiadoId === o.id ? "Copiado!" : "Link"}
+                      </button>
+                    )}
                     {o.status !== "em_andamento" && (
                       <Botao
                         variante="perigo"
