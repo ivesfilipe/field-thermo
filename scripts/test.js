@@ -297,8 +297,10 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     test('comercial recebe relatorio apos re-conclusao', c10.status === 200 && !!recDoc && recDoc.necessidade_adicional === 'nova_manutencao', c10.status);
     const c11 = await api(`/api/comercial/relatorios/${recDoc.id}`, 'GET', comercial);
     test('comercial visualiza relatorio completo', c11.status === 200 && Array.isArray(c11.data.relatorio.fotos) && c11.data.relatorio.diagnostico === 'Diagnostico tecnico original' && c11.data.relatorio.servico_executado === 'Preventiva executada' && c11.data.relatorio.oportunidade && c11.data.relatorio.oportunidade.status === 'novo', c11.status);
-    const c12 = await api(`/api/comercial/relatorios/${recDoc.id}`, 'PUT', comercial, { diagnostico: 'hack' });
-    test('comercial nao consegue editar informacoes tecnicas', c12.status === 404, c12.status);
+    const c12 = await api(`/api/comercial/relatorios/${recDoc.id}`, 'PUT', comercial, { observacoes: 'Ajuste comercial revisado' });
+    test('comercial consegue editar relatorio', c12.status === 200 && c12.data.relatorio.observacoes === 'Ajuste comercial revisado', c12.status);
+    const c12g = await api(`/api/comercial/relatorios/${recDoc.id}`, 'PUT', gestor, { recomendacoes: 'Validado e ajustado pelo gestor' });
+    test('gestor consegue editar relatorio', c12g.status === 200 && c12g.data.relatorio.recomendacoes === 'Validado e ajustado pelo gestor', c12g.status);
 
     const opDocId = c11.data.relatorio.oportunidade.id;
     const c13 = await api(`/api/comercial/oportunidades/${opDocId}`, 'PUT', comercial, { status: 'necessita_contato', valor_estimado: 2500, data_contato: '2026-10-06', resultado_contato: 'Cliente pediu proposta', proposta_vinculada: 'PRO-001', previsao_fechamento: '2026-11-01' });

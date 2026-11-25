@@ -136,7 +136,8 @@ const CAMPO_LABEL: Record<string, string> = {
   complemento: "Complemento solicitado",
   criacao_automatica: "Oportunidade criada automaticamente",
   criacao: "Criação",
-  exclusao: "Exclusão"
+  exclusao: "Exclusão",
+  edicao_relatorio: "Edição do relatório"
 };
 
 function formatarData(d: string | null | undefined): string {
@@ -154,6 +155,19 @@ export default function RelatorioDetalhePage({ params }: { params: Promise<{ id:
   const [msg, setMsg] = useState("");
   const [form, setForm] = useState({ status: "novo", valor_estimado: "", data_contato: "", resultado_contato: "", proposta_vinculada: "", previsao_fechamento: "", descricao: "" });
   const [salvando, setSalvando] = useState(false);
+  const [editandoRelatorio, setEditandoRelatorio] = useState(false);
+  const [salvandoRelatorio, setSalvandoRelatorio] = useState(false);
+  const [formRelatorio, setFormRelatorio] = useState({
+    servico_executado: "",
+    diagnostico: "",
+    causa: "",
+    solucao: "",
+    resultado: "",
+    pendencias: "",
+    recomendacoes_tecnico: "",
+    observacoes: "",
+    recomendacoes: ""
+  });
   const [linkRelatorio, setLinkRelatorio] = useState<string | null>(null);
   const [gerandoLink, setGerandoLink] = useState(false);
 
@@ -287,6 +301,40 @@ export default function RelatorioDetalhePage({ params }: { params: Promise<{ id:
     }
   }
 
+  function abrirEdicaoRelatorio() {
+    if (!relatorio) return;
+    setFormRelatorio({
+      servico_executado: relatorio.servico_executado || "",
+      diagnostico: relatorio.diagnostico || "",
+      causa: relatorio.causa || "",
+      solucao: relatorio.solucao || "",
+      resultado: relatorio.resultado || "",
+      pendencias: relatorio.pendencias || "",
+      recomendacoes_tecnico: relatorio.recomendacoes_tecnico || "",
+      observacoes: relatorio.observacoes || "",
+      recomendacoes: relatorio.recomendacoes || ""
+    });
+    setEditandoRelatorio(true);
+  }
+
+  async function salvarEdicaoRelatorio(e: React.FormEvent) {
+    e.preventDefault();
+    if (!relatorio) return;
+    setErro("");
+    setMsg("");
+    setSalvandoRelatorio(true);
+    try {
+      await api.put(`/api/comercial/relatorios/${relatorio.id}`, formRelatorio);
+      setMsg("Relatório técnico atualizado com sucesso.");
+      setEditandoRelatorio(false);
+      carregar();
+    } catch (err) {
+      setErro((err as Error).message);
+    } finally {
+      setSalvandoRelatorio(false);
+    }
+  }
+
   async function baixarPdf() {
     if (!relatorio) return;
     setErro("");
@@ -320,10 +368,94 @@ export default function RelatorioDetalhePage({ params }: { params: Promise<{ id:
           {relatorio.oportunidade && <Badge status={relatorio.oportunidade.status} />}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Botao onClick={() => (editandoRelatorio ? setEditandoRelatorio(false) : abrirEdicaoRelatorio())}>
+            {editandoRelatorio ? "Cancelar edição" : "Editar relatório"}
+          </Botao>
           <Botao variante="secundario" onClick={baixarPdf}>Imprimir / PDF</Botao>
           <Botao variante="secundario" onClick={() => router.push("/app/comercial/relatorios")}>Voltar</Botao>
         </div>
       </div>
+
+      {editandoRelatorio && (
+        <Card title="Editar informações do relatório técnico">
+          <form onSubmit={salvarEdicaoRelatorio} className="space-y-3">
+            <Textarea
+              label="Relatório Técnico (Serviço Realizado)"
+              rows={5}
+              value={formRelatorio.servico_executado}
+              onChange={(e) => setFormRelatorio({ ...formRelatorio, servico_executado: e.target.value })}
+              placeholder="Descreva o serviço técnico realizado..."
+            />
+            <div className="grid gap-3 md:grid-cols-2">
+              <Textarea
+                label="Diagnóstico técnico"
+                rows={3}
+                value={formRelatorio.diagnostico}
+                onChange={(e) => setFormRelatorio({ ...formRelatorio, diagnostico: e.target.value })}
+              />
+              <Textarea
+                label="Solução aplicada"
+                rows={3}
+                value={formRelatorio.solucao}
+                onChange={(e) => setFormRelatorio({ ...formRelatorio, solucao: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Campo
+                label="Causa identificada / provável"
+                value={formRelatorio.causa}
+                onChange={(e) => setFormRelatorio({ ...formRelatorio, causa: e.target.value })}
+              />
+              <Select
+                label="Resultado do atendimento"
+                value={formRelatorio.resultado}
+                onChange={(e) => setFormRelatorio({ ...formRelatorio, resultado: e.target.value })}
+              >
+                <option value="">Não informado</option>
+                <option value="funcionando">Equipamento funcionando</option>
+                <option value="com_restricao">Funcionando com restrição</option>
+                <option value="indisponivel">Equipamento indisponível</option>
+                <option value="necessita_retorno">Necessita retorno técnico</option>
+                <option value="necessita_orcamento">Necessita orçamento</option>
+              </Select>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Textarea
+                label="Pendências"
+                rows={2}
+                value={formRelatorio.pendencias}
+                onChange={(e) => setFormRelatorio({ ...formRelatorio, pendencias: e.target.value })}
+              />
+              <Textarea
+                label="Recomendações técnicas"
+                rows={2}
+                value={formRelatorio.recomendacoes_tecnico}
+                onChange={(e) => setFormRelatorio({ ...formRelatorio, recomendacoes_tecnico: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Textarea
+                label="Observações adicionais"
+                rows={2}
+                value={formRelatorio.observacoes}
+                onChange={(e) => setFormRelatorio({ ...formRelatorio, observacoes: e.target.value })}
+              />
+              <Textarea
+                label="Recomendações / Validação da gestão"
+                rows={2}
+                value={formRelatorio.recomendacoes}
+                onChange={(e) => setFormRelatorio({ ...formRelatorio, recomendacoes: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+              <Botao tipo="submit" disabled={salvandoRelatorio}>
+                {salvandoRelatorio ? "Salvando..." : "Salvar alterações do relatório"}
+              </Botao>
+              <Botao variante="secundario" onClick={() => setEditandoRelatorio(false)}>Cancelar</Botao>
+            </div>
+          </form>
+        </Card>
+      )}
 
       <Card title="Link do relatório para envio ao cliente">
         <div className="space-y-2.5">

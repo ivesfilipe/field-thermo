@@ -337,6 +337,73 @@ router.get('/relatorios/:id', (req, res) => {
   res.json({ relatorio, historico });
 });
 
+router.put('/relatorios/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const rel = db.prepare('SELECT * FROM relatorios WHERE id = ?').get(id);
+  if (!rel) {
+    return res.status(404).json({ error: 'Relatório não encontrado' });
+  }
+  const b = req.body || {};
+  let exec = db.prepare('SELECT * FROM execucoes WHERE os_id = ?').get(rel.os_id);
+  if (!exec) {
+    const info = db
+      .prepare("INSERT INTO execucoes (os_id, iniciada_em) VALUES (?, datetime('now', '-3 hours'))")
+      .run(rel.os_id);
+    exec = db.prepare('SELECT * FROM execucoes WHERE id = ?').get(info.lastInsertRowid);
+  }
+
+  const mapaExec = {
+    servico_executado: 'servico_executado',
+    diagnostico: 'diagnostico',
+    causa: 'causa',
+    solucao: 'solucao',
+    observacoes: 'observacoes',
+    pendencias: 'pendencias',
+    recomendacoes_tecnico: 'recomendacoes',
+    resultado: 'resultado'
+  };
+
+  const setsExec = [];
+  const valsExec = [];
+  const alterados = [];
+
+  for (const [chaveBody, colunaDb] of Object.entries(mapaExec)) {
+    if (b[chaveBody] !== undefined) {
+      const novoVal = b[chaveBody] === null || b[chaveBody] === '' ? null : String(b[chaveBody]);
+      if (String(novoVal ?? '') !== String(exec[colunaDb] ?? '')) {
+        alterados.push(chaveBody);
+      }
+      setsExec.push(`${colunaDb} = ?`);
+      valsExec.push(novoVal);
+    }
+  }
+
+  if (setsExec.length > 0) {
+    db.prepare(`UPDATE execucoes SET ${setsExec.join(', ')} WHERE id = ?`).run(...valsExec, exec.id);
+  }
+
+  if (b.recomendacoes !== undefined) {
+    const novaRec = b.recomendacoes === null || b.recomendacoes === '' ? null : String(b.recomendacoes);
+    if (String(novaRec ?? '') !== String(rel.recomendacoes ?? '')) {
+      alterados.push('recomendacoes');
+    }
+    db.prepare('UPDATE relatorios SET recomendacoes = ? WHERE id = ?').run(novaRec, rel.id);
+  }
+
+  if (alterados.length > 0) {
+    registrarHistorico({
+      usuario: req.user,
+      tipo: 'relatorio',
+      registroId: rel.id,
+      campo: 'edicao_relatorio',
+      valorNovo: `Campos atualizados: ${alterados.join(', ')}`
+    });
+  }
+
+  const atualizado = db.prepare(`${RELATORIO_DETALHE} WHERE r.id = ?`).get(rel.id);
+  res.json({ relatorio: atualizado });
+});
+
 function escapeHtml(v) {
   return String(v ?? '')
     .replaceAll('&', '&amp;')
