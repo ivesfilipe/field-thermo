@@ -139,6 +139,7 @@ export default function RelatorioPublicoPage() {
                   <span className="text-base font-bold text-slate-900">Ordem de Serviço Nº {relatorio.os_numero}</span>
                   <Badge status={relatorio.status || "aprovado"} />
                 </div>
+                <p className="mt-0.5 text-xs text-slate-500">{relatorio.os_servico}</p>
               </div>
               <div className="text-right text-xs text-slate-500">
                 {relatorio.atendimento_iniciado_em && (
@@ -206,7 +207,7 @@ export default function RelatorioPublicoPage() {
             <div className="border-b border-slate-200 p-4">
               <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">03. Serviço Executado e Parecer Técnico</h2>
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
-                {relatorio.servico_executado || "Atendimento técnico executado conforme especificações."}
+                {relatorio.servico_executado || relatorio.os_descricao || "Atendimento técnico executado conforme especificações."}
               </p>
               {(relatorio.diagnostico || relatorio.solucao || relatorio.observacoes || relatorio.causa || relatorio.recomendacoes || relatorio.recomendacoes_tecnico || relatorio.pendencias) && (
                 <div className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs sm:grid-cols-2">
