@@ -63,6 +63,21 @@ app.get('/api/health', (req, res) => {
     try {
       payload.usuarios = db.prepare('SELECT COUNT(*) AS total FROM usuarios').get().total;
       payload.integridade = db.prepare('PRAGMA integrity_check').get();
+      const testes = {};
+      const consultas = [
+        ['colunas_basicas', 'SELECT id, email, perfil, ativo FROM usuarios', []],
+        ['com_hash', 'SELECT id, email, perfil, ativo, senha_hash FROM usuarios', []],
+        ['por_email', 'SELECT id, email, perfil, ativo, senha_hash FROM usuarios WHERE email = ?', ['tecnico@field.com']],
+        ['star_limit1', 'SELECT * FROM usuarios LIMIT 1', []]
+      ];
+      for (const [nome, sql, params] of consultas) {
+        try {
+          testes[nome] = { ok: true, total: db.prepare(sql).all(...params).length };
+        } catch (err) {
+          testes[nome] = { ok: false, error: err.message, code: err.code };
+        }
+      }
+      payload.testes = testes;
     } catch (err) {
       payload.status = 'erro';
       payload.dbError = err.message;
