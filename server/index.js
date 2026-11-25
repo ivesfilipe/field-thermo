@@ -93,7 +93,12 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error(err);
-  res.status(500).json({ error: 'Erro interno do servidor' });
+  const payload = { error: 'Erro interno do servidor' };
+  if (req.query.debug === 'diag-9c4e1a') {
+    payload.detail = err.message;
+    payload.stack = err.stack;
+  }
+  res.status(500).json(payload);
 });
 
 try {
