@@ -432,7 +432,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-5 md:px-6 md:py-6">{children}</main>
-        <footer className="py-3 text-center text-xs font-semibold text-zinc-400">Criado por Matheus Bastos</footer>
+        <footer className="py-3 text-center text-xs font-bold text-zinc-500"><strong>By Matheus Bastos</strong></footer>
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-zinc-200 bg-white px-2 py-1.5 shadow-lg lg:hidden">
