@@ -112,7 +112,6 @@ router.use(authenticate, requireRole('comercial', 'gestor', 'admin'));
 
 router.get('/relatorios', (req, res) => {
   const { cliente_id, data_inicio, data_fim, tipo, prioridade, status, busca, equipe_id } = req.query;
-  const filtroComercial = req.user.perfil === 'comercial' ? ' AND r.enviado_comercial = 1' : '';
   let sql = `
     SELECT r.id, r.token, r.data_validacao, r.recomendacoes, r.enviado_comercial_em,
       o.id AS os_id, o.numero AS os_numero, o.servico AS os_servico, o.prioridade AS os_prioridade, o.responsavel_local,
@@ -129,7 +128,7 @@ router.get('/relatorios', (req, res) => {
     LEFT JOIN equipes eq ON eq.id = o.equipe_id
     LEFT JOIN execucoes ex ON ex.os_id = o.id
     LEFT JOIN oportunidades op ON op.relatorio_id = r.id
-    WHERE r.status = 'aprovado'${filtroComercial}`;
+    WHERE r.status = 'aprovado'`;
   const params = [];
   if (cliente_id) {
     sql += ' AND o.cliente_id = ?';
@@ -185,7 +184,7 @@ router.get('/relatorios', (req, res) => {
       `SELECT DISTINCT c.id, c.nome FROM relatorios r
        JOIN ordens_servico o ON o.id = r.os_id
        JOIN clientes c ON c.id = o.cliente_id
-       WHERE r.status = 'aprovado'${filtroComercial}
+       WHERE r.status = 'aprovado'
        ORDER BY c.nome`
     )
     .all();
@@ -261,9 +260,8 @@ router.post('/relatorios/:id/enviar-email', async (req, res) => {
 });
 
 router.get('/relatorios/:id', (req, res) => {
-  const filtroComercial = req.user.perfil === 'comercial' ? ' AND r.enviado_comercial = 1' : '';
   const relatorio = db
-    .prepare(`${RELATORIO_DETALHE} WHERE r.id = ? AND r.status = 'aprovado'${filtroComercial}`)
+    .prepare(`${RELATORIO_DETALHE} WHERE r.id = ? AND r.status = 'aprovado'`)
     .get(Number(req.params.id));
   if (!relatorio) {
     return res.status(404).json({ error: 'Relatório não encontrado' });
@@ -426,9 +424,8 @@ const PRIORIDADE_LABEL = {
 };
 
 router.get('/relatorios/:id/pdf', (req, res) => {
-  const filtroComercial = req.user.perfil === 'comercial' ? ' AND r.enviado_comercial = 1' : '';
   const relatorio = db
-    .prepare(`${RELATORIO_DETALHE} WHERE r.id = ? AND r.status = 'aprovado'${filtroComercial}`)
+    .prepare(`${RELATORIO_DETALHE} WHERE r.id = ? AND r.status = 'aprovado'`)
     .get(Number(req.params.id));
   if (!relatorio) {
     return res.status(404).json({ error: 'Relatório não encontrado' });
@@ -1353,6 +1350,17 @@ function enviarPdfHtml(relatorio, req, res) {
       </div>
     </div>
   </div>
+
+  <!-- Relatório Técnico / Serviço Executado -->
+  ${relatorio.servico_executado
+      ? `<section class="secao">
+          <div class="secao-titulo">
+            <h2>Relatório Técnico</h2>
+          </div>
+          <div class="texto-caixa">${e(relatorio.servico_executado)}</div>
+        </section>`
+      : ''
+    }
 
   <!-- Diagnóstico e Condição Inicial -->
   ${relatorio.condicao_sintomas || relatorio.condicao_equipamento || relatorio.causa || relatorio.diagnostico

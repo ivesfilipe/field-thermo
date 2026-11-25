@@ -334,7 +334,11 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     const d2 = await api(`/api/gestor/os/${osSemId}`, 'GET', gestor);
     test('conclusao sem necessidade -> nao envia ao comercial', d1b.status === 200 && d2.status === 200 && d2.data.os.relatorio.enviado_comercial === 0, `${d1b.status} ${d2.data.os?.relatorio?.enviado_comercial}`);
     const d3 = await api('/api/comercial/relatorios', 'GET', comercial);
-    test('relatorio sem oportunidade nao aparece para o comercial', d3.status === 200 && !d3.data.relatorios.some((r) => r.os_numero === d1.data.os.numero), d3.status);
+    test('comercial visualiza todos os relatorios aprovados (inclusive sem oportunidade)', d3.status === 200 && d3.data.relatorios.some((r) => r.os_numero === d1.data.os.numero), d3.status);
+    const relSem = d3.data.relatorios.find((r) => r.os_numero === d1.data.os.numero);
+    const pdfSem = relSem ? await fetch(base + `/api/comercial/relatorios/${relSem.id}/pdf`, { headers: { Authorization: `Bearer ${comercial}` } }) : null;
+    const pdfSemTexto = pdfSem ? await pdfSem.text() : '';
+    test('PDF do relatorio exibe as informacoes do relatorio tecnico (servico_executado)', pdfSem && pdfSem.status === 200 && pdfSemTexto.includes('Lampada trocada'), pdfSem ? pdfSem.status : 'sem_rel');
     const d4 = await api(`/api/comercial/relatorios?status=necessita_contato`, 'GET', comercial);
     test('filtro por status comercial', d4.status === 200 && d4.data.relatorios.length >= 1 && d4.data.relatorios.every((r) => r.oportunidade_status === 'necessita_contato'), d4.status);
   }

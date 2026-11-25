@@ -86,7 +86,7 @@ interface Relatorio {
   necessidade_descricao: string | null;
   tipo_necessidade_label: string | null;
   fotos: string[];
-  anexos: Array<{ id: number; categoria: string; arquivo: string; nome_original: string | null }>;
+  anexos: Array<{ id: number; categoria: string; arquivo: string; nome_original: string | null; legenda?: string | null }>;
   conteudo: unknown;
   oportunidade: Oportunidade | null;
 }
@@ -414,7 +414,7 @@ export default function RelatorioDetalhePage({ params }: { params: Promise<{ id:
       )}
 
       {relatorio.servico_executado && (
-        <Card title="Descrição do serviço realizado">
+        <Card title="Relatório Técnico (Serviço Realizado)">
           <p className="whitespace-pre-wrap text-sm">{relatorio.servico_executado}</p>
         </Card>
       )}
@@ -492,10 +492,13 @@ export default function RelatorioDetalhePage({ params }: { params: Promise<{ id:
         <Card title={`Fotos e evidências (${relatorio.fotos.length})`}>
           {relatorio.fotos.length > 0 ? (
             <GaleriaFotos
-              fotos={relatorio.fotos.map((f, idx) => ({
-                src: mediaUrl(f),
-                legenda: `Foto ${idx + 1}`
-              }))}
+              fotos={relatorio.fotos.map((f, idx) => {
+                const anexoMatch = relatorio.anexos?.find((a) => a.arquivo === f);
+                return {
+                  src: mediaUrl(f),
+                  legenda: anexoMatch?.legenda || `Foto ${idx + 1}`
+                };
+              })}
             />
           ) : (
             <p className="text-sm text-zinc-400">Nenhuma foto.</p>
