@@ -286,22 +286,28 @@ export default function OsDetalhePage() {
     }
   }
 
+  function mensagemLinkRelatorio(): string {
+    const nome = os?.cliente_nome || "";
+    const saudacao = nome ? `Olá, ${nome}!` : "Olá!";
+    return `${saudacao} Segue o relatório técnico do atendimento da OS ${os?.numero}:\n${urlRelatorio()}`;
+  }
+
   async function copiarLinkRelatorio() {
-    const url = urlRelatorio();
+    const texto = mensagemLinkRelatorio();
     try {
-      await navigator.clipboard.writeText(url);
-      setMsg("Link do relatório copiado para a área de transferência.");
+      await navigator.clipboard.writeText(texto);
+      setMsg("Mensagem com link do relatório copiada para a área de transferência.");
     } catch {
       try {
         const ta = document.createElement("textarea");
-        ta.value = url;
+        ta.value = texto;
         ta.style.position = "fixed";
         ta.style.opacity = "0";
         document.body.appendChild(ta);
         ta.select();
         document.execCommand("copy");
         document.body.removeChild(ta);
-        setMsg("Link do relatório copiado para a área de transferência.");
+        setMsg("Mensagem com link do relatório copiada para a área de transferência.");
       } catch {
         setErro("Não foi possível copiar automaticamente. Selecione o link no campo e copie.");
       }
@@ -327,9 +333,7 @@ export default function OsDetalhePage() {
   function linkWhatsAppRelatorio(): string {
     const telRaw = (os?.local_responsavel_telefone || os?.cliente_telefone || "").replace(/\D/g, "");
     const tel = telRaw ? (telRaw.length <= 11 ? `55${telRaw}` : telRaw) : "";
-    const resp = os?.local_responsavel || os?.responsavel_local || os?.cliente_nome || "";
-    const saudacao = resp ? `Olá, ${resp}!` : "Olá!";
-    const texto = encodeURIComponent(`${saudacao} Segue o relatório técnico do atendimento da OS ${os?.numero} (${os?.local_nome || os?.cliente_nome || "Thermo Control"}): ${urlRelatorio()}`);
+    const texto = encodeURIComponent(mensagemLinkRelatorio());
     return tel ? `https://wa.me/${tel}?text=${texto}` : `https://wa.me/?text=${texto}`;
   }
 

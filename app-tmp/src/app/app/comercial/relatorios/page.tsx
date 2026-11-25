@@ -118,15 +118,20 @@ export default function RelatoriosPage() {
     return `${window.location.origin}/relatorio/${r.token}`;
   }
 
+  function mensagemRelatorio(r: Relatorio): string {
+    const saudacao = r.cliente_nome ? `Olá, ${r.cliente_nome}!` : "Olá!";
+    return `${saudacao} Segue o relatório técnico do atendimento da OS ${r.os_numero}:\n${urlRelatorio(r)}`;
+  }
+
   async function copiarLink(e: React.MouseEvent, r: Relatorio) {
     e.stopPropagation();
-    const url = urlRelatorio(r);
+    const texto = mensagemRelatorio(r);
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(texto);
     } catch {
       try {
         const ta = document.createElement("textarea");
-        ta.value = url;
+        ta.value = texto;
         ta.style.position = "fixed";
         ta.style.opacity = "0";
         document.body.appendChild(ta);
@@ -140,15 +145,13 @@ export default function RelatoriosPage() {
     }
     setCopiadoId(r.id);
     setTimeout(() => setCopiadoId((atual) => (atual === r.id ? null : atual)), 2500);
-    setMsg(`Link do relatório da OS ${r.os_numero} copiado: ${url}`);
+    setMsg(`Mensagem com link da OS ${r.os_numero} copiada para enviar a ${r.cliente_nome}!`);
   }
 
   function linkWhatsApp(r: Relatorio): string {
     const telRaw = (r.local_responsavel_telefone || r.cliente_telefone || "").replace(/\D/g, "");
     const tel = telRaw ? (telRaw.length <= 11 ? `55${telRaw}` : telRaw) : "";
-    const resp = r.local_responsavel || r.responsavel_local || r.cliente_nome || "";
-    const saudacao = resp ? `Olá, ${resp}!` : "Olá!";
-    const texto = encodeURIComponent(`${saudacao} Segue o relatório técnico do atendimento da OS ${r.os_numero} (${r.local_nome || r.cliente_nome}): ${urlRelatorio(r)}`);
+    const texto = encodeURIComponent(mensagemRelatorio(r));
     return tel ? `https://wa.me/${tel}?text=${texto}` : `https://wa.me/?text=${texto}`;
   }
 

@@ -76,12 +76,14 @@ export default function OsPage() {
   const copiarLinkRelatorio = async (o: OS) => {
     if (!o.relatorio_token) return;
     const url = `${window.location.origin}/relatorio/${o.relatorio_token}`;
+    const saudacao = o.cliente_nome ? `Olá, ${o.cliente_nome}!` : "Olá!";
+    const texto = `${saudacao} Segue o relatório técnico do atendimento da OS ${o.numero}:\n${url}`;
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(texto);
     } catch {
       try {
         const ta = document.createElement("textarea");
-        ta.value = url;
+        ta.value = texto;
         ta.style.position = "fixed";
         ta.style.opacity = "0";
         document.body.appendChild(ta);
@@ -89,7 +91,7 @@ export default function OsPage() {
         document.execCommand("copy");
         document.body.removeChild(ta);
       } catch {
-        window.prompt("Copie o link do relatório:", url);
+        window.prompt("Copie a mensagem com o link do relatório:", texto);
         return;
       }
     }

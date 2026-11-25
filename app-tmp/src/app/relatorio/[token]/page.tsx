@@ -132,6 +132,17 @@ export default function RelatorioPublicoPage() {
 
         {relatorio && (
           <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            {/* Saudação ao Cliente */}
+            {relatorio.cliente_nome && (
+              <div className="border-b border-blue-100 bg-blue-50/70 px-5 py-3">
+                <p className="text-sm font-semibold text-blue-950">
+                  Olá, {relatorio.cliente_nome}!
+                </p>
+                <p className="text-xs text-blue-800/80">
+                  Segue abaixo o relatório técnico completo do atendimento realizado pela MedicalThermo Herzog.
+                </p>
+              </div>
+            )}
             {/* Cabeçalho do Documento */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4">
               <div>
