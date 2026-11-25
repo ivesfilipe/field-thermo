@@ -1380,7 +1380,8 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
         pdfAtualizadoHtml.includes('10:00') &&
         pdfAtualizadoHtml.includes('11:30') &&
         pdfAtualizadoHtml.includes('VALE - Unidade Alternativa') &&
-        pdfAtualizadoHtml.includes('Inspeção Geral Corrigida pelo Gestor') &&
+        !pdfAtualizadoHtml.includes('Inspeção Geral Corrigida pelo Gestor') &&
+        pdfAtualizadoHtml.includes('Inspeção concluída no local') &&
         !pdfAtualizadoHtml.includes('Ficha do Equipamento') &&
         pdfAtualizadoHtml.includes('Ambiente sem anomalias') &&
         pdfAtualizadoHtml.includes('Nenhuma intervenção necessária'),

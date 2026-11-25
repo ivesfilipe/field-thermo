@@ -1249,10 +1249,6 @@ function enviarPdfHtml(relatorio, req, res) {
       <span class="faixa-os">${e(relatorio.os_numero)}</span>
     </div>
     <div class="faixa-item">
-      <span class="faixa-label">Serviço Realizado</span>
-      <span class="faixa-servico">${e(relatorio.os_servico || '-')}</span>
-    </div>
-    <div class="faixa-item">
       <span class="faixa-label">Prioridade</span>
       <div><span class="badge badge-info">${e(prioridadeTexto)}</span></div>
     </div>
