@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Alerta, Badge, Card, LinhaVazia, PageHeader, Tabela } from "@/components/ui";
+import { Alerta, Badge, Card, EstadoVazio, PageHeader, Tabela } from "@/components/ui";
 
 interface Avaliacao {
   id: number;
@@ -73,7 +73,7 @@ export default function AvaliacoesComercialPage() {
       {clientes === null ? (
         <p className="py-8 text-center text-sm text-zinc-400">Carregando...</p>
       ) : clientes.length === 0 ? (
-        <Card title="Clientes"><LinhaVazia texto="Nenhuma avaliação recebida ainda." /></Card>
+        <Card title="Clientes"><EstadoVazio texto="Nenhuma avaliação recebida ainda." /></Card>
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -100,7 +100,7 @@ export default function AvaliacoesComercialPage() {
 
           <Card title={clienteSel ? "Avaliações do cliente selecionado" : "Histórico de avaliações"}>
             {visiveis.length === 0 ? (
-              <LinhaVazia texto="Nenhuma avaliação recebida ainda." />
+              <EstadoVazio texto="Nenhuma avaliação recebida ainda." />
             ) : (
               <div className="overflow-x-auto">
                 <Tabela cabecalhos={["OS", "Cliente", "Equipe", "Status", "Nota", "Resolveu necessidade", "Comentário", "Respondida em"]}>

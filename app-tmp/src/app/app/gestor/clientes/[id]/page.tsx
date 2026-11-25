@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { Alerta, Badge, Botao, Campo, Card, LinksMapa, LinhaVazia, Loading, Modal, PageHeader, Prioridade, Select, Tabela, Textarea } from "@/components/ui";
+import { Alerta, Badge, Botao, Campo, Card, EstadoVazio, LinksMapa, Loading, Modal, PageHeader, Prioridade, Select, Tabela, Textarea } from "@/components/ui";
 
 interface Cliente {
   id: number;
@@ -259,7 +259,7 @@ export default function ClientePage() {
       {aba === "locais" && (
         <div className="space-y-3">
           {locais.length === 0 ? (
-            <Card title="Locais de atendimento"><LinhaVazia texto="Nenhum local cadastrado para este cliente." /></Card>
+            <Card title="Locais de atendimento"><EstadoVazio texto="Nenhum local cadastrado para este cliente." /></Card>
           ) : (
             locais.map((l) => {
               const enderecoCompleto = l.endereco
@@ -308,7 +308,7 @@ export default function ClientePage() {
             {equipamentos === null ? (
               <Loading />
             ) : equipamentos.length === 0 ? (
-              <LinhaVazia texto="Nenhum equipamento cadastrado para este cliente." />
+              <EstadoVazio texto="Nenhum equipamento cadastrado para este cliente." />
             ) : (
               <div className="space-y-3">
                 {equipamentos.map((e) => (
@@ -382,7 +382,7 @@ export default function ClientePage() {
           {ordens === null ? (
             <Loading />
           ) : ordens.length === 0 ? (
-            <LinhaVazia texto="Nenhuma ordem de serviço para este cliente." />
+            <EstadoVazio texto="Nenhuma ordem de serviço para este cliente." />
           ) : (
             <Tabela cabecalhos={["Nº", "Cliente — Equipe", "Data / hora", "Prioridade", "Status", ""]}>
               {ordens.map((o) => (
@@ -423,7 +423,7 @@ export default function ClientePage() {
           {ordens === null ? (
             <Loading />
           ) : historicoOS.length === 0 ? (
-            <LinhaVazia texto="Nenhum atendimento concluído ou cancelado até o momento." />
+            <EstadoVazio texto="Nenhum atendimento concluído ou cancelado até o momento." />
           ) : (
             <Tabela cabecalhos={["Nº", "Serviço", "Data", "Status", "Ações"]}>
               {historicoOS.map((o) => (
