@@ -58,33 +58,7 @@ app.get('/api/health', (req, res) => {
     .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
     .all()
     .map((t) => t.name);
-  const payload = { status: 'ok', db: config.DB_PATH, tables };
-  if (req.query.deep === '1') {
-    try {
-      payload.usuarios = db.prepare('SELECT COUNT(*) AS total FROM usuarios').get().total;
-      payload.integridade = db.prepare('PRAGMA integrity_check').get();
-      const testes = {};
-      const consultas = [
-        ['colunas_basicas', 'SELECT id, email, perfil, ativo FROM usuarios', []],
-        ['com_hash', 'SELECT id, email, perfil, ativo, senha_hash FROM usuarios', []],
-        ['por_email', 'SELECT id, email, perfil, ativo, senha_hash FROM usuarios WHERE email = ?', ['tecnico@field.com']],
-        ['star_limit1', 'SELECT * FROM usuarios LIMIT 1', []]
-      ];
-      for (const [nome, sql, params] of consultas) {
-        try {
-          testes[nome] = { ok: true, total: db.prepare(sql).all(...params).length };
-        } catch (err) {
-          testes[nome] = { ok: false, error: err.message, code: err.code };
-        }
-      }
-      payload.testes = testes;
-    } catch (err) {
-      payload.status = 'erro';
-      payload.dbError = err.message;
-      payload.dbCode = err.code;
-    }
-  }
-  res.json(payload);
+  res.json({ status: 'ok', db: config.DB_PATH, tables });
 });
 
 app.use((req, res) => {
@@ -93,12 +67,7 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error(err);
-  const payload = { error: 'Erro interno do servidor' };
-  if (req.query.debug === 'diag-9c4e1a') {
-    payload.detail = err.message;
-    payload.stack = err.stack;
-  }
-  res.status(500).json(payload);
+  res.status(500).json({ error: 'Erro interno do servidor' });
 });
 
 try {
