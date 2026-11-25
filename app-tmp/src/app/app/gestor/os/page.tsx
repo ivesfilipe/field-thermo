@@ -32,6 +32,12 @@ const ABAS_STATUS = [
   { v: "cancelada", l: "Canceladas" }
 ];
 
+function fmtData(d: string | null | undefined): string {
+  if (!d) return "-";
+  const p = d.slice(0, 10).split("-");
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d;
+}
+
 export default function OsPage() {
   const router = useRouter();
   const [ordens, setOrdens] = useState<OS[] | null>(null);
@@ -169,13 +175,17 @@ export default function OsPage() {
                   {(o.local_endereco_completo || o.local_endereco) && (
                     <span className="block max-w-48 truncate text-xs text-zinc-500" title={o.local_endereco_completo || o.local_endereco || undefined}>
                       {o.local_endereco_completo || o.local_endereco}
-                      <LinksMapa endereco={(o.local_endereco_completo || o.local_endereco)!} />
+                      <LinksMapa endereco={(o.local_endereco_completo || o.local_endereco)!} pararPropagacao />
                     </span>
                   )}
                 </td>
                 <td className="whitespace-nowrap px-3 py-2">
-                  {o.data_agendada || "-"}
-                  {o.hora_inicio && <span className="block text-xs text-zinc-500">{o.hora_inicio}{o.hora_fim ? `–${o.hora_fim}` : ""}</span>}
+                  {fmtData(o.data_agendada)}
+                  {(o.hora_inicio || o.hora_fim) && (
+                    <span className="block text-xs text-zinc-500">
+                      {o.hora_inicio || "--:--"}{o.hora_fim ? `–${o.hora_fim}` : ""}
+                    </span>
+                  )}
                 </td>
                 <td className="px-3 py-2"><Prioridade p={o.prioridade} /></td>
                 <td className="px-3 py-2"><Badge status={o.status} /></td>

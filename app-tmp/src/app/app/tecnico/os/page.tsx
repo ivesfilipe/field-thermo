@@ -28,6 +28,12 @@ const ABAS_STATUS = [
   { v: "concluida", l: "Concluídas" }
 ];
 
+function fmtData(d: string | null | undefined): string {
+  if (!d) return "-";
+  const p = d.slice(0, 10).split("-");
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d;
+}
+
 export default function MinhasOsPage() {
   const router = useRouter();
   const [ordens, setOrdens] = useState<OS[] | null>(null);
@@ -171,8 +177,12 @@ export default function MinhasOsPage() {
                     )}
                   </td>
                   <td className="whitespace-nowrap px-3 py-2">
-                    {o.data_agendada || "-"}
-                    {o.hora_inicio && <span className="block text-xs text-zinc-500">{o.hora_inicio}{o.hora_fim ? `–${o.hora_fim}` : ""}</span>}
+                    {fmtData(o.data_agendada)}
+                    {(o.hora_inicio || o.hora_fim) && (
+                      <span className="block text-xs text-zinc-500">
+                        {o.hora_inicio || "--:--"}{o.hora_fim ? `–${o.hora_fim}` : ""}
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2"><Prioridade p={o.prioridade} /></td>
                   <td className="px-3 py-2"><Badge status={o.status} /></td>

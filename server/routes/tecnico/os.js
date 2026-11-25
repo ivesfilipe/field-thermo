@@ -168,17 +168,15 @@ router.get('/os', (req, res) => {
     params.push(prioridade);
   }
   if (busca) {
-    sql += ' AND (o.numero LIKE ? OR o.servico LIKE ? OR c.nome LIKE ?)';
+    sql += ' AND (o.numero LIKE ? OR o.servico LIKE ? OR c.nome LIKE ? OR eq.nome LIKE ?)';
     const like = `%${busca}%`;
-    params.push(like, like, like);
+    params.push(like, like, like, like);
   }
   sql += ` ORDER BY
-    CASE WHEN o.data_agendada IS NULL THEN 1 ELSE 0 END,
-    o.data_agendada ASC,
-    CASE WHEN o.hora_inicio IS NULL THEN 1 ELSE 0 END,
-    o.hora_inicio ASC,
-    CASE o.prioridade WHEN 'urgente' THEN 1 WHEN 'alta' THEN 2 WHEN 'media' THEN 3 ELSE 4 END,
-    o.id ASC`;
+    COALESCE(NULLIF(o.data_agendada, ''), substr(o.criado_em, 1, 10)) DESC,
+    CASE WHEN o.hora_inicio IS NULL OR o.hora_inicio = '' THEN 1 ELSE 0 END,
+    o.hora_inicio DESC,
+    o.id DESC`;
   const ordens = db.prepare(sql).all(...params);
   for (const os of ordens) {
     os.execucao = getExecucao(os.id);

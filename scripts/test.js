@@ -175,11 +175,11 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     const listaOrdem = await api(`/api/gestor/os?cliente_id=${cOrdem.data.cliente.id}`, 'GET', gestor);
     const sequencia = listaOrdem.data.ordens.map((o) => o.numero);
     test(
-      'lista de OS em ordem de execução (data e hora)',
+      'lista de OS em ordem decrescente (data e hora, igual aos relatórios)',
       listaOrdem.status === 200 && sequencia.length === 3 &&
-        sequencia[0] === osOrdemManha.data.os.numero &&
+        sequencia[0] === osOrdemDiaSeguinte.data.os.numero &&
         sequencia[1] === osOrdemTarde.data.os.numero &&
-        sequencia[2] === osOrdemDiaSeguinte.data.os.numero,
+        sequencia[2] === osOrdemManha.data.os.numero,
       JSON.stringify(sequencia)
     );
   }
